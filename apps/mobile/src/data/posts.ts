@@ -1,0 +1,86 @@
+import type { Post, Channel, Reply, ReactionKey } from '@hof/ui';
+
+export const CHANNELS: Channel[] = [
+  { id: 'general', name: 'general', desc: 'Announcements & house notes', pinned: true },
+  { id: 'lineup',  name: 'lineup',  desc: 'Artists, set times, music talk' },
+  { id: 'recap',   name: 'recap',   desc: 'After-the-night photos & stories' },
+  { id: 'help',    name: 'help',    desc: 'Lost-and-found, first-timer Qs' },
+  { id: 'crew',    name: 'crew',    desc: 'Crew-only', locked: true },
+];
+
+export const HOF_POSTS: Post[] = [
+  {
+    id: 'p1', channel: 'general', kind: 'announcement',
+    author: { name: 'Jordan', initials: 'JG', role: 'crew' },
+    time: '2h', edition: 24,
+    title: 'Edition 24 lineup is final',
+    body: 'Headliner reveal: HEX takes the 12:00 slot. Doors at 8 sharp — we open the floor at 9. Full set times in the event page.',
+    reactions: { fire: 52, heart: 12, pray: 4 } as Record<ReactionKey, number>,
+    myReaction: null, replyCount: 7, pinned: true,
+  },
+  {
+    id: 'p2', channel: 'recap', kind: 'recap',
+    author: { name: 'Crew', initials: 'CR', role: 'crew' },
+    time: '3d', edition: 23,
+    title: 'Edition 23 recap is up',
+    body: '127 photos from the night by Mauro. Tag yourself — visible to members only.',
+    photoSeeds: [0, 1, 2, 3],
+    reactions: { fire: 184, heart: 41, music: 19 } as Record<ReactionKey, number>,
+    myReaction: 'fire' as ReactionKey, replyCount: 21,
+  },
+  {
+    id: 'p3', channel: 'general', kind: 'quick',
+    author: { name: 'Jordan', initials: 'JG', role: 'crew' },
+    time: '6d',
+    body: "Heads up — coat check this month is $3 cash. We'll have a Venmo backup. See you Friday.",
+    reactions: { fire: 12 } as Record<ReactionKey, number>, replyCount: 3,
+  },
+  {
+    id: 'p4', channel: 'lineup', kind: 'quick',
+    author: { name: 'nightowl', initials: 'SB', role: 'member' },
+    time: '8h', edition: 24,
+    body: 'Anyone know if HEX is playing any tracks from the new EP? Heard the unreleased one at Movement.',
+    reactions: { fire: 8, eyes: 14 } as Record<ReactionKey, number>, replyCount: 11,
+  },
+  {
+    id: 'p5', channel: 'lineup', kind: 'announcement',
+    author: { name: 'M3DIUM', initials: 'M3', role: 'member', verified: true },
+    time: '1d', edition: 24,
+    title: 'Set time confirmed — 10:30 → 12:00',
+    body: 'Bringing the new edit of the Nubya track. Hope you all like it loud.',
+    reactions: { fire: 67, music: 22, heart: 9 } as Record<ReactionKey, number>, replyCount: 5,
+  },
+  {
+    id: 'p6', channel: 'help', kind: 'quick',
+    author: { name: 'iris.w', initials: 'IW', role: 'member' },
+    time: '4h',
+    body: 'First-timer question — how strict is no-phones-on-the-floor? Can I check in once during the night to message my ride?',
+    reactions: { fire: 3 } as Record<ReactionKey, number>, replyCount: 8,
+  },
+  {
+    id: 'p7', channel: 'recap', kind: 'quick',
+    author: { name: 'devon', initials: 'DP', role: 'member' },
+    time: '2d', edition: 23,
+    body: 'Photo #047 is me at peak euphoria. Mauro you are a genius.',
+    reactions: { fire: 24, heart: 8 } as Record<ReactionKey, number>, replyCount: 2,
+  },
+];
+
+export const HOF_REPLIES: Record<string, Reply[]> = {
+  p1: [
+    { author: { name: 'nightowl', initials: 'SB', role: 'member' }, time: '1h',
+      body: "Let's gooo. Glad you held the slot for HEX." },
+    { author: { name: 'devon', initials: 'DP', role: 'member' }, time: '52m',
+      body: 'Set times posted on the event page? Trying to plan my arrival.' },
+    { author: { name: 'Jordan', initials: 'JG', role: 'crew' }, time: '45m',
+      body: 'Yep — go check it. IGNYTE opens at 9 sharp.', replyTo: 'devon' },
+    { author: { name: 'iris.w', initials: 'IW', role: 'member' }, time: '32m',
+      body: 'HEX!!! my year is made.' },
+  ],
+  p2: [
+    { author: { name: 'tara', initials: 'TR', role: 'member' }, time: '2d',
+      body: 'Photo #047 has me crying. The light, the moment, everything.' },
+    { author: { name: 'devon', initials: 'DP', role: 'member' }, time: '2d',
+      body: "Tagged myself in #082. Best night I've had this year." },
+  ],
+};

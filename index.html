@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>House of Fire — PWA Designs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&display=swap">
+
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; }
+  body { font-family: 'Inter', -apple-system, system-ui, sans-serif; }
+
+  /* House of Fire shared display class */
+  .hof-display { font-family: 'Clash Display', 'Inter', system-ui, sans-serif; }
+  .hof-mono    { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+
+  /* Hide native scroll inside artboards */
+  .hof-scroll::-webkit-scrollbar { display: none; }
+  .hof-scroll { scrollbar-width: none; }
+
+  /* Shimmer keyframes for loading + gold badge */
+  @keyframes hof-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes hof-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+  @keyframes hof-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232,101,26,0.0); }
+    50%      { box-shadow: 0 0 24px 4px rgba(232,101,26,0.25); }
+  }
+  @keyframes hof-scanline {
+    0%   { transform: translateY(0); opacity: 0.0; }
+    8%   { opacity: 1; }
+    50%  { transform: translateY(258px); opacity: 1; }
+    92%  { opacity: 1; }
+    100% { transform: translateY(0); opacity: 0; }
+  }
+
+  /* Press effect */
+  .hof-press { transition: transform 80ms ease-out; }
+  .hof-press:active { transform: scale(0.97); }
+
+  /* No-decoration buttons */
+  button.hof-btn { font-family: inherit; border: 0; cursor: pointer; padding: 0; background: none; color: inherit; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design/prototypes/design-canvas.jsx"></script>
+<script type="text/babel" src="design/prototypes/ios-frame.jsx"></script>
+<script type="text/babel" src="design/prototypes/macos-window.jsx"></script>
+
+<script type="text/babel" src="design/prototypes/hof-ui.jsx"></script>
+<script type="text/babel" src="design/prototypes/calendar-sheet.jsx"></script>
+<script type="text/babel" src="design/prototypes/posts-data.jsx"></script>
+<script type="text/babel" src="design/prototypes/community-sheets.jsx"></script>
+<script type="text/babel" src="design/prototypes/platform-sheets.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-landing.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-onboarding.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-settings.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-live-night.jsx"></script>
+<script type="text/babel" src="design/prototypes/brand-artifacts.jsx"></script>
+<script type="text/babel" src="design/prototypes/system-states.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-tablet.jsx"></script>
+<script type="text/babel" src="design/prototypes/final-artifacts.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-home.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-event.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-checkout.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-ticket.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-profile.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-archive.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-admin.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-door.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-community.jsx"></script>
+<script type="text/babel" src="design/prototypes/screen-post.jsx"></script>
+<script type="text/babel" src="design/prototypes/app.jsx"></script>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers.js';
+import type { Database } from './database.types.js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:54321';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder-service-key';
+
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Ignore in Server Components
+        }
+      },
+    },
+  });
+}
+
+export async function createServiceRoleClient() {
+  const cookieStore = await cookies();
+  return createServerClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Ignore in Server Components
+        }
+      },
+    },
+  });
+}

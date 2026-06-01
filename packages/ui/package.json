@@ -1,0 +1,46 @@
+{
+  "name": "@hof/ui",
+  "version": "0.0.0",
+  "description": "House of Fire component library — productionized primitives + feed atoms.",
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome lint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build",
+    "clean": "rm -rf dist .turbo storybook-static"
+  },
+  "dependencies": {
+    "@hof/design-tokens": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3 || ^19.0",
+    "react-dom": "^18.3 || ^19.0"
+  },
+  "devDependencies": {
+    "@storybook/react": "^8.4.7",
+    "@storybook/react-vite": "^8.4.7",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^8.4.7",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  }
+}

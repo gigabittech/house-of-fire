@@ -1,0 +1,134 @@
+/* @hof/design-tokens — CSS custom properties, keyframes, and shared utility
+   classes. Mirrors src/*.ts. Import once at the app root:
+     import '@hof/design-tokens/tokens.css';
+   Fonts (Clash Display via Fontshare, Inter + JetBrains Mono via Google) are
+   loaded by the app shell, not here. */
+
+:root {
+  /* Surfaces */
+  --hof-bg: #0a0a08;
+  --hof-surface: #141412;
+  --hof-elevated: #1e1c19;
+  --hof-border: #2a2826;
+  --hof-border-hi: #3a3835;
+
+  /* Fire */
+  --hof-amber: #e8651a;
+  --hof-ember: #c4401a;
+  --hof-glow: #f5942a;
+  --hof-gold: #c9942a;
+  --hof-gold-dim: #7a5a18;
+
+  /* Text */
+  --hof-text: #f0ede6;
+  --hof-text-sec: #8a8880;
+  --hof-text-dis: #4a4844;
+
+  /* Status */
+  --hof-success: #4caf6e;
+  --hof-warning: #e8a21a;
+  --hof-error: #e84a1a;
+  --hof-info: #4a8ae8;
+
+  /* Type */
+  --hof-font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
+  --hof-font-body: 'Inter', -apple-system, system-ui, sans-serif;
+  --hof-font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  /* Radii */
+  --hof-radius-sm: 4px;
+  --hof-radius-md: 6px;
+  --hof-radius-lg: 8px;
+  --hof-radius-xl: 10px;
+  --hof-radius-2xl: 12px;
+  --hof-radius-3xl: 20px;
+  --hof-radius-full: 9999px;
+
+  /* Motion */
+  --hof-duration-press: 80ms;
+  --hof-duration-fade: 150ms;
+  --hof-duration-image: 200ms;
+  --hof-duration-sheet: 300ms;
+}
+
+/* ── Shared typographic classes ─────────────────────────────────────────── */
+.hof-display {
+  font-family: var(--hof-font-display);
+}
+.hof-mono {
+  font-family: var(--hof-font-mono);
+}
+
+/* Hide native scrollbars inside scroll regions */
+.hof-scroll::-webkit-scrollbar {
+  display: none;
+}
+.hof-scroll {
+  scrollbar-width: none;
+}
+
+/* Press feedback */
+.hof-press {
+  transition: transform var(--hof-duration-press) ease-out;
+}
+.hof-press:active {
+  transform: scale(0.97);
+}
+
+/* Unstyled button reset */
+button.hof-btn {
+  font-family: inherit;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes hof-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes hof-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes hof-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 101, 26, 0);
+  }
+  50% {
+    box-shadow: 0 0 24px 4px rgba(232, 101, 26, 0.25);
+  }
+}
+@keyframes hof-scanline {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(258px);
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}

@@ -1,0 +1,20 @@
+// Layout breakpoints. Mobile-first: 390px (iPhone 14) is the primary canvas.
+// The member app is fully adaptive: mobile → tablet → desktop.
+//
+//   mobile  : < 768px   — single column, bottom tab nav
+//   tablet  : 768–1279  — wider column / split-pane, left sidebar nav
+//   desktop : ≥ 1280    — multi-column, left sidebar nav, capped content width
+
+export const breakpoints = {
+  mobile: 390,
+  tablet: 768,
+  desktop: 1280,
+} as const;
+
+export type BreakpointToken = keyof typeof breakpoints;
+
+// Media-query helpers (min-width). Use in CSS-in-JS or matchMedia.
+export const mq = {
+  tablet: `(min-width: ${breakpoints.tablet}px)`,
+  desktop: `(min-width: ${breakpoints.desktop}px)`,
+} as const;
