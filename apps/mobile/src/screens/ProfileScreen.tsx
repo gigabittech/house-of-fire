@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { colors } from '@hof/design-tokens';
+import { colors, layoutWidth } from '@hof/design-tokens';
 import { Icon, HofAppShell, useResponsive, FeedPost, HofSkeleton, ErrorState } from '@hof/ui';
 import type { NavId } from '@hof/ui';
 import type { Post as UiPost } from '@hof/ui';
 import { photoSrc } from '../data/photos.js';
 import { navHref } from '../lib/nav.js';
+import { createClient } from '../lib/supabase.js';
 
 type ApiPost = {
   id: string;
@@ -317,7 +318,7 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
-  const { isWide } = useResponsive();
+  const { isWide, isDesktop } = useResponsive();
 
   return (
     <HofAppShell active="profile" onNav={(id: NavId) => router.push(navHref[id])}>
@@ -340,7 +341,11 @@ export default function ProfileScreen() {
           left: isWide ? '50%' : 0,
           right: isWide ? 'auto' : 0,
           transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
           overflowY: 'auto',
           paddingBottom: isWide ? 40 : 80,
         }}
@@ -1075,7 +1080,13 @@ export default function ProfileScreen() {
                   <button
                     key={t}
                     className="hof-btn hof-press"
-                    onClick={() => {
+                    onClick={async () => {
+                      if (t === 'Log out') {
+                        const supabase = createClient();
+                        await supabase.auth.signOut();
+                        router.push('/landing');
+                        return;
+                      }
                       if (href) router.push(href);
                     }}
                     style={{

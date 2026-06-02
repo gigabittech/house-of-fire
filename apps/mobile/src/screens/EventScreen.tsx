@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { colors } from '@hof/design-tokens';
+import { colors, layoutWidth } from '@hof/design-tokens';
 import { Icon, HofAppShell, useResponsive, FeedPost } from '@hof/ui';
 import type { NavId } from '@hof/ui';
 import type { Post as UiPost } from '@hof/ui';
@@ -428,7 +428,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     },
   ];
 
-  const { isWide } = useResponsive();
+  const { isWide, isDesktop } = useResponsive();
 
   return (
     <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
@@ -449,7 +449,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           left: isWide ? '50%' : 0,
           right: isWide ? 'auto' : 0,
           transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
           boxSizing: 'border-box',
           zIndex: 10,
           display: 'flex',
@@ -560,7 +564,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           left: isWide ? '50%' : 0,
           right: isWide ? 'auto' : 0,
           transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
           overflowY: 'auto',
           paddingBottom: isWide ? 40 : 80,
         }}
