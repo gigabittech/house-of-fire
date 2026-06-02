@@ -5,8 +5,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Note: `/` is intentionally NOT public (it's the member dashboard).
 const PUBLIC_ROUTES = [
   '/landing',
+  '/sign-in',
   '/onboarding',
   '/auth/callback',
+  '/auth/callback/client',
   '/event',
   '/archive',
   '/live',

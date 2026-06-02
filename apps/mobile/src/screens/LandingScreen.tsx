@@ -3,9 +3,8 @@
 import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { photoSrc } from '../data/photos.js';
-import { createClient } from '../lib/supabase.js';
 
 /** Shared horizontal track — every section uses this for aligned edges. */
 function useLandingLayout() {
@@ -44,16 +43,10 @@ function LandingSection({
 
 export default function LandingScreen() {
   const router = useRouter();
-  const supabase = createClient();
   const { isWide, isDesktop, pageColumn } = useLandingLayout();
-  const [signingIn, setSigningIn] = useState(false);
-  const [siEmail, setSiEmail] = useState('');
-  const [siSent, setSiSent] = useState(false);
-  const [siLoading, setSiLoading] = useState(false);
-  const [siError, setSiError] = useState<string>('');
 
   const onGetStarted = () => router.push('/onboarding');
-  const onSignIn = () => setSigningIn(true);
+  const onSignIn = () => router.push('/sign-in');
 
   const sectionLabel: CSSProperties = {
     fontFamily: 'Inter',
@@ -185,176 +178,6 @@ export default function LandingScreen() {
                 Sign in
               </button>
             </div>
-
-            {/* Sign-in overlay */}
-            {signingIn && (
-              <div
-                style={{
-                  flexShrink: 0,
-                  background: colors.surface,
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <div style={{ ...pageColumn, paddingTop: 16, paddingBottom: 20 }}>
-                  {!siSent ? (
-                    <>
-                      {siError ? (
-                        <div
-                          style={{
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: colors.error,
-                            marginBottom: 10,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {siError}
-                        </div>
-                      ) : null}
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                          color: colors.textSec,
-                          marginBottom: 10,
-                        }}
-                      >
-                        Enter your email — we&apos;ll send a sign-in link.
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          type="email"
-                          value={siEmail}
-                          onChange={(e) => setSiEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          style={{
-                            flex: 1,
-                            height: 44,
-                            padding: '0 12px',
-                            background: colors.bg,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: 8,
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            color: colors.text,
-                            outline: 'none',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="hof-btn hof-press"
-                          disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) || siLoading}
-                          onClick={async () => {
-                            setSiLoading(true);
-                            setSiError('');
-                            const { error } = await supabase.auth.signInWithOtp({
-                              email: siEmail,
-                              options: {
-                                emailRedirectTo: `${window.location.origin}/auth/callback`,
-                              },
-                            });
-                            setSiLoading(false);
-                            if (error) {
-                              setSiError(error.message);
-                              return;
-                            }
-                            setSiSent(true);
-                          }}
-                          style={{
-                            padding: '0 16px',
-                            background: colors.amber,
-                            border: 'none',
-                            borderRadius: 8,
-                            fontFamily: 'Inter',
-                            fontWeight: 600,
-                            fontSize: 13,
-                            color: colors.bg,
-                            opacity: siLoading ? 0.6 : 1,
-                            cursor:
-                              /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) && !siLoading
-                                ? 'pointer'
-                                : 'not-allowed',
-                          }}
-                        >
-                          {siLoading ? '…' : 'Send link'}
-                        </button>
-                        <button
-                          type="button"
-                          className="hof-btn"
-                          onClick={() => {
-                            setSigningIn(false);
-                            setSiEmail('');
-                            setSiSent(false);
-                            setSiError('');
-                          }}
-                          style={{
-                            padding: '0 12px',
-                            background: 'transparent',
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: 8,
-                            color: colors.textSec,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <div
-                          style={{
-                            fontFamily: 'Inter',
-                            fontWeight: 500,
-                            fontSize: 14,
-                            color: colors.text,
-                          }}
-                        >
-                          Check your email
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: colors.textSec,
-                            marginTop: 2,
-                          }}
-                        >
-                          Sent to {siEmail}. Click the link to sign in.
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="hof-btn"
-                        onClick={() => {
-                          setSigningIn(false);
-                          setSiEmail('');
-                          setSiSent(false);
-                          setSiError('');
-                        }}
-                        style={{
-                          padding: '8px',
-                          background: 'transparent',
-                          border: 'none',
-                          color: colors.textSec,
-                          fontSize: 16,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Hero copy — pinned to bottom of hero, same column */}
             <div style={{ flex: 1 }} />
