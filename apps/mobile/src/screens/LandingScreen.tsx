@@ -50,6 +50,7 @@ export default function LandingScreen() {
   const [siEmail, setSiEmail] = useState('');
   const [siSent, setSiSent] = useState(false);
   const [siLoading, setSiLoading] = useState(false);
+  const [siError, setSiError] = useState<string>('');
 
   const onGetStarted = () => router.push('/onboarding');
   const onSignIn = () => setSigningIn(true);
@@ -197,6 +198,19 @@ export default function LandingScreen() {
                 <div style={{ ...pageColumn, paddingTop: 16, paddingBottom: 20 }}>
                   {!siSent ? (
                     <>
+                      {siError ? (
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: colors.error,
+                            marginBottom: 10,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {siError}
+                        </div>
+                      ) : null}
                       <div
                         style={{
                           fontFamily: 'Inter',
@@ -232,13 +246,18 @@ export default function LandingScreen() {
                           disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) || siLoading}
                           onClick={async () => {
                             setSiLoading(true);
-                            await supabase.auth.signInWithOtp({
+                            setSiError('');
+                            const { error } = await supabase.auth.signInWithOtp({
                               email: siEmail,
                               options: {
                                 emailRedirectTo: `${window.location.origin}/auth/callback`,
                               },
                             });
                             setSiLoading(false);
+                            if (error) {
+                              setSiError(error.message);
+                              return;
+                            }
                             setSiSent(true);
                           }}
                           style={{
@@ -266,6 +285,7 @@ export default function LandingScreen() {
                             setSigningIn(false);
                             setSiEmail('');
                             setSiSent(false);
+                            setSiError('');
                           }}
                           style={{
                             padding: '0 12px',
@@ -317,6 +337,7 @@ export default function LandingScreen() {
                           setSigningIn(false);
                           setSiEmail('');
                           setSiSent(false);
+                          setSiError('');
                         }}
                         style={{
                           padding: '8px',
