@@ -8,6 +8,7 @@ import type { NavId } from '@hof/ui';
 import type { Post as UiPost } from '@hof/ui';
 import { photoSrc } from '../data/photos.js';
 import { navHref } from '../lib/nav.js';
+import { createClient } from '../lib/supabase.js';
 
 type ApiPost = {
   id: string;
@@ -1075,7 +1076,13 @@ export default function ProfileScreen() {
                   <button
                     key={t}
                     className="hof-btn hof-press"
-                    onClick={() => {
+                    onClick={async () => {
+                      if (t === 'Log out') {
+                        const supabase = createClient();
+                        await supabase.auth.signOut();
+                        router.push('/landing');
+                        return;
+                      }
                       if (href) router.push(href);
                     }}
                     style={{
