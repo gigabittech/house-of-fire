@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { colors, layoutWidth } from '@hof/design-tokens';
-import { Icon, HofAppShell, useResponsive, FeedPost, HofSkeleton, ErrorState } from '@hof/ui';
+import { Icon, HofAppShell, useResponsive, FeedPost, HofSkeleton, ErrorState, EmptyState } from '@hof/ui';
 import type { NavId } from '@hof/ui';
 import type { Post as UiPost } from '@hof/ui';
 import { photoSrc } from '../data/photos.js';
@@ -21,6 +21,67 @@ type ApiPost = {
   created_at: string;
   profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
 };
+
+type ProfileTicket = {
+  id: string;
+  code: string;
+  status: string;
+  purchased_at: string;
+  amount_cents: number;
+  fee_cents: number;
+  used_at: string | null;
+  events: {
+    name: string;
+    date: string;
+    edition_number: number;
+    venue_name: string;
+    doors_open: string;
+  } | null;
+  ticket_tiers: { display_name: string; name: string } | null;
+};
+
+type ProfileData = {
+  handle: string;
+  display_name: string;
+  member_since: string;
+  role: string;
+  avatar_url: string | null;
+  email: string | null;
+  phone: string | null;
+  tickets_count: number;
+  editions_attended: number;
+};
+
+function formatTicketPrice(cents: number, feeCents: number): string {
+  return `$${((cents + feeCents) / 100).toFixed(2)}`;
+}
+
+function ticketStatusLabel(status: string, usedAt: string | null): string {
+  if (status === 'used' || usedAt) return 'Attended';
+  const labels: Record<string, string> = {
+    valid: 'Confirmed',
+    transferred: 'Transferred',
+    refunded: 'Refunded',
+    cancelled: 'Cancelled',
+  };
+  return labels[status] ?? status;
+}
+
+function isUpcomingTicket(t: ProfileTicket): boolean {
+  if (t.status !== 'valid') return false;
+  const eventDate = t.events?.date;
+  if (!eventDate) return true;
+  return new Date(eventDate).getTime() >= Date.now();
+}
+
+function eventDateParts(iso: string): { month: string; day: string; weekday: string } {
+  const d = new Date(iso);
+  return {
+    month: d.toLocaleDateString('en-US', { month: 'short' }),
+    day: d.toLocaleDateString('en-US', { day: 'numeric' }),
+    weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+  };
+}
 
 function timeAgo(isoStr: string): string {
   const diff = Date.now() - new Date(isoStr).getTime();
@@ -54,6 +115,145 @@ function apiPostToUi(p: ApiPost): UiPost {
     reactions,
     replyCount: p.reply_count,
   };
+}
+
+function ProfileTicketRow({
+  ticket,
+  onOpen,
+}: {
+  ticket: ProfileTicket;
+  onOpen: () => void;
+}) {
+  const ev = ticket.events;
+  const tierName = ticket.ticket_tiers?.display_name ?? ticket.ticket_tiers?.name ?? 'Ticket';
+  const purchased = new Date(ticket.purchased_at);
+  const parts = ev?.date ? eventDateParts(ev.date) : null;
+  const status = ticketStatusLabel(ticket.status, ticket.used_at);
+  const isConfirmed = ticket.status === 'valid' && !ticket.used_at;
+
+  return (
+    <button
+      type="button"
+      className="hof-btn hof-press"
+      onClick={onOpen}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: 12,
+        background: colors.surface,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 8,
+          flexShrink: 0,
+          background: isUpcomingTicket(ticket)
+            ? `linear-gradient(135deg, ${colors.ember}, ${colors.amber})`
+            : colors.elevated,
+          border: `1px solid ${colors.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: isUpcomingTicket(ticket) ? colors.bg : colors.text,
+        }}
+      >
+        {parts ? (
+          <>
+            <div
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 8,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                opacity: 0.9,
+              }}
+            >
+              {parts.month}
+            </div>
+            <div
+              style={{
+                fontFamily: 'Clash Display',
+                fontWeight: 600,
+                fontSize: 18,
+                lineHeight: 1,
+                marginTop: 2,
+              }}
+            >
+              {parts.day}
+            </div>
+          </>
+        ) : (
+          <Icon name="ticket" size={18} color={colors.textSec} />
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: 'Inter',
+            fontWeight: 500,
+            fontSize: 14,
+            color: colors.text,
+          }}
+        >
+          {ev ? `Edition ${ev.edition_number} · ${ev.name}` : ticket.code}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 11,
+            color: colors.textSec,
+            marginTop: 2,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 4,
+            alignItems: 'center',
+          }}
+        >
+          <span>{tierName}</span>
+          <span>·</span>
+          <span>{formatTicketPrice(ticket.amount_cents, ticket.fee_cents)}</span>
+          <span>·</span>
+          <span>
+            {purchased.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </span>
+        </div>
+        <div
+          style={{
+            marginTop: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 8px',
+            borderRadius: 20,
+            background: isConfirmed ? 'rgba(232,101,26,0.12)' : colors.elevated,
+            border: `1px solid ${isConfirmed ? `${colors.amber}40` : colors.border}`,
+            fontFamily: 'Inter',
+            fontSize: 10,
+            fontWeight: 600,
+            color: isConfirmed ? colors.glow : colors.textSec,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {isConfirmed && <Icon name="check" size={10} color={colors.glow} />}
+          {status}
+        </div>
+      </div>
+      <Icon name="chev" size={14} color={colors.textDis} />
+    </button>
+  );
 }
 
 function ProfilePosts({
@@ -277,39 +477,56 @@ function ProfilePosts({
 export default function ProfileScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'overview' | 'posts'>('overview');
-  const [profile, setProfile] = useState<null | {
-    handle: string;
-    display_name: string;
-    member_since: string;
-    role: string;
-    avatar_url: string | null;
-    tickets_count: number;
-    editions_attended: number;
-    recent_tickets: Array<{ code: string; events: { name: string; edition_number: number } | null }>;
-  }>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [tickets, setTickets] = useState<ProfileTicket[]>([]);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [profileReactions, setProfileReactions] = useState({ fire: 0, eyes: 0, heart: 0 });
   const [referral, setReferral] = useState<{ referral_code: string; referral_count: number; conversions: number } | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  useEffect(() => {
+  const loadProfile = useCallback(() => {
     setProfileLoading(true);
     setProfileError(false);
     fetch('/api/profile')
-      .then(r => r.json())
-      .then(d => {
+      .then(async (r) => {
+        if (!r.ok) throw new Error('profile fetch failed');
+        return r.json() as Promise<{
+          profile?: ProfileData;
+          tickets?: ProfileTicket[];
+          reactions?: { fire: number; eyes: number; heart: number };
+        }>;
+      })
+      .then((d) => {
         if (d.profile) setProfile(d.profile);
-        if (d.reactions) setProfileReactions(d.reactions as { fire: number; eyes: number; heart: number });
+        setTickets(d.tickets ?? []);
+        if (d.reactions) setProfileReactions(d.reactions);
       })
       .catch(() => setProfileError(true))
       .finally(() => setProfileLoading(false));
+  }, []);
 
+  useEffect(() => {
+    loadProfile();
     fetch('/api/profile/referral')
       .then(r => r.json())
       .then(d => { if (d.referral_code) setReferral(d as { referral_code: string; referral_count: number; conversions: number }); })
       .catch(() => {});
-  }, []);
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') loadProfile();
+    };
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
+  }, [loadProfile]);
+
+  const upcomingTicket = tickets.find(isUpcomingTicket);
+  const roleLabel =
+    profile?.role === 'crew' ? 'Crew' : profile?.role === 'admin' ? 'Admin' : 'Member';
 
   const initials = (profile?.display_name ?? 'M')
     .split(' ')
@@ -519,6 +736,30 @@ export default function ProfileScreen() {
                     ? new Date(profile.member_since).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                     : 'Recently'}
                 </div>
+                {profile?.email && (
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: colors.textSec,
+                      marginTop: 4,
+                    }}
+                  >
+                    {profile.email}
+                  </div>
+                )}
+                {profile?.phone && (
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: colors.textSec,
+                      marginTop: 2,
+                    }}
+                  >
+                    {profile.phone}
+                  </div>
+                )}
                 <div style={{ marginTop: 8 }}>
                   <span
                     style={{
@@ -526,19 +767,22 @@ export default function ProfileScreen() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '4px 10px',
-                      background: 'rgba(201,148,42,0.1)',
-                      border: `1px solid ${colors.gold}`,
+                      background:
+                        profile?.role === 'crew' || profile?.role === 'admin'
+                          ? 'rgba(232,101,26,0.12)'
+                          : 'rgba(201,148,42,0.1)',
+                      border: `1px solid ${profile?.role === 'crew' || profile?.role === 'admin' ? colors.amber : colors.gold}`,
                       borderRadius: 4,
                       fontFamily: 'Inter',
                       fontSize: 10,
                       fontWeight: 600,
-                      color: colors.gold,
+                      color: profile?.role === 'crew' || profile?.role === 'admin' ? colors.amber : colors.gold,
                       letterSpacing: '0.16em',
                       textTransform: 'uppercase',
                     }}
                   >
-                    <Icon name="star" size={10} color={colors.gold} />
-                    VIP Member
+                    <Icon name="star" size={10} color={profile?.role === 'crew' || profile?.role === 'admin' ? colors.amber : colors.gold} />
+                    {roleLabel}
                   </span>
                 </div>
               </div>
@@ -642,7 +886,7 @@ export default function ProfileScreen() {
 
         {tab === 'overview' && (
           <>
-            {/* Active ticket */}
+            {/* Upcoming ticket */}
             <div style={{ padding: '24px 16px 0' }}>
               <div
                 style={{
@@ -656,130 +900,181 @@ export default function ProfileScreen() {
               >
                 Upcoming ticket
               </div>
-              <button
-                className="hof-btn hof-press"
-                onClick={() => router.push('/ticket')}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: 0,
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  display: 'block',
-                }}
-              >
-                <div style={{ display: 'flex' }}>
-                  <div
-                    style={{
-                      width: 96,
-                      background: `linear-gradient(135deg, ${colors.ember}, ${colors.amber})`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 12,
-                      color: colors.bg,
-                    }}
-                  >
+              {upcomingTicket && upcomingTicket.events ? (
+                <button
+                  className="hof-btn hof-press"
+                  onClick={() => router.push('/ticket')}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: 0,
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    display: 'block',
+                  }}
+                >
+                  <div style={{ display: 'flex' }}>
                     <div
                       style={{
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.16em',
-                      }}
-                    >
-                      Jun
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: 'Clash Display',
-                        fontWeight: 700,
-                        fontSize: 38,
-                        lineHeight: 1,
-                        letterSpacing: '-0.02em',
-                        marginTop: 2,
-                      }}
-                    >
-                      26
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.16em',
-                        marginTop: 2,
-                      }}
-                    >
-                      FRI
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: 'Clash Display',
-                          fontWeight: 600,
-                          fontSize: 16,
-                          color: colors.text,
-                        }}
-                      >
-                        Fireversary · Ed 24
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: colors.textSec,
-                          marginTop: 2,
-                        }}
-                      >
-                        Junkyard Social Club · 8 PM
-                      </div>
-                    </div>
-                    <div
-                      style={{
+                        width: 96,
+                        background: `linear-gradient(135deg, ${colors.ember}, ${colors.amber})`,
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 8,
+                        justifyContent: 'center',
+                        padding: 12,
+                        color: colors.bg,
                       }}
                     >
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 8px',
-                          borderRadius: 20,
-                          background: 'rgba(232,101,26,0.15)',
-                          border: `1px solid ${colors.amber}30`,
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: colors.glow,
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        <Icon name="qr" size={10} color={colors.glow} /> Tap to open QR
-                      </span>
+                      {(() => {
+                        const p = eventDateParts(upcomingTicket.events.date);
+                        return (
+                          <>
+                            <div
+                              style={{
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.16em',
+                              }}
+                            >
+                              {p.month}
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'Clash Display',
+                                fontWeight: 700,
+                                fontSize: 38,
+                                lineHeight: 1,
+                                letterSpacing: '-0.02em',
+                                marginTop: 2,
+                              }}
+                            >
+                              {p.day}
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.16em',
+                                marginTop: 2,
+                              }}
+                            >
+                              {p.weekday}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: 14,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: 'Clash Display',
+                            fontWeight: 600,
+                            fontSize: 16,
+                            color: colors.text,
+                          }}
+                        >
+                          {upcomingTicket.events.name} · Ed {upcomingTicket.events.edition_number}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: colors.textSec,
+                            marginTop: 2,
+                          }}
+                        >
+                          {upcomingTicket.events.venue_name}
+                          {upcomingTicket.events.doors_open
+                            ? ` · ${new Date(upcomingTicket.events.doors_open).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                            : ''}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            color: colors.textSec,
+                            marginTop: 4,
+                          }}
+                        >
+                          {upcomingTicket.ticket_tiers?.display_name ?? upcomingTicket.ticket_tiers?.name ?? 'Ticket'}
+                          {' · '}
+                          {formatTicketPrice(upcomingTicket.amount_cents, upcomingTicket.fee_cents)}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 20,
+                            background: 'rgba(232,101,26,0.15)',
+                            border: `1px solid ${colors.amber}30`,
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: colors.glow,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          <Icon name="qr" size={10} color={colors.glow} /> Tap to open QR
+                        </span>
+                      </div>
                     </div>
                   </div>
+                </button>
+              ) : (
+                <div
+                  style={{
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 12,
+                    padding: 4,
+                  }}
+                >
+                  <EmptyState
+                    title="No upcoming ticket"
+                    body="Get your ticket for the next edition."
+                    action={
+                      <button
+                        type="button"
+                        className="hof-btn hof-press"
+                        onClick={() => router.push('/checkout')}
+                        style={{
+                          padding: '10px 24px',
+                          background: colors.amber,
+                          border: `1px solid ${colors.amber}`,
+                          borderRadius: 8,
+                          fontFamily: 'Inter',
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: colors.bg,
+                        }}
+                      >
+                        Get tickets
+                      </button>
+                    }
+                  />
                 </div>
-              </button>
+              )}
             </div>
 
             {/* Referral card */}
@@ -883,7 +1178,7 @@ export default function ProfileScreen() {
               </div>
             )}
 
-            {/* History */}
+            {/* Ticket history */}
             <div style={{ padding: '28px 16px 0' }}>
               <div
                 style={{
@@ -902,144 +1197,63 @@ export default function ProfileScreen() {
                     textTransform: 'uppercase',
                   }}
                 >
-                  Past tickets
+                  Your tickets
                 </div>
                 <span
                   style={{
                     fontFamily: 'Inter',
                     fontSize: 12,
-                    color: colors.amber,
+                    color: colors.textSec,
+                    fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  View all {profile?.tickets_count ?? 0} →
+                  {tickets.length} total
                 </span>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                {(
-                  [
-                    {
-                      d: '23',
-                      m: 'May',
-                      y: '2026',
-                      n: 'Ed 23 · Late Bloom',
-                      t: 'GA',
-                      a: true,
-                    },
-                    {
-                      d: '25',
-                      m: 'Apr',
-                      y: '2026',
-                      n: 'Ed 22 · Slow Burn',
-                      t: 'VIP',
-                      a: true,
-                    },
-                    {
-                      d: '28',
-                      m: 'Mar',
-                      y: '2026',
-                      n: 'Ed 21 · The Equinox',
-                      t: 'GA',
-                      a: false,
-                    },
-                  ] as { d: string; m: string; y: string; n: string; t: string; a: boolean }[]
-                ).map((it, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      padding: 12,
-                      background: colors.surface,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 10,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 8,
-                        flexShrink: 0,
-                        background: colors.elevated,
-                        border: `1px solid ${colors.border}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <div
+              {tickets.length === 0 ? (
+                <div
+                  style={{
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 12,
+                    padding: 4,
+                  }}
+                >
+                  <EmptyState
+                    title="No tickets yet"
+                    body="Your purchases will show up here after checkout."
+                    action={
+                      <button
+                        type="button"
+                        className="hof-btn hof-press"
+                        onClick={() => router.push('/checkout')}
                         style={{
+                          padding: '10px 24px',
+                          background: colors.amber,
+                          border: `1px solid ${colors.amber}`,
+                          borderRadius: 8,
                           fontFamily: 'Inter',
-                          fontSize: 8,
-                          color: colors.textSec,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.1em',
-                        }}
-                      >
-                        {it.m}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'Clash Display',
                           fontWeight: 600,
-                          fontSize: 18,
-                          color: colors.text,
-                          lineHeight: 1,
-                          marginTop: 2,
-                        }}
-                      >
-                        {it.d}
-                      </div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontWeight: 500,
                           fontSize: 14,
-                          color: colors.text,
+                          color: colors.bg,
                         }}
                       >
-                        {it.n}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          color: colors.textSec,
-                          marginTop: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        {it.t} ·{' '}
-                        {it.a ? (
-                          <>
-                            <Icon
-                              name="check"
-                              size={11}
-                              color={colors.success}
-                            />{' '}
-                            Attended
-                          </>
-                        ) : (
-                          'Missed'
-                        )}
-                      </div>
-                    </div>
-                    <Icon name="chev" size={14} color={colors.textDis} />
-                  </div>
-                ))}
-              </div>
+                        Browse tickets
+                      </button>
+                    }
+                  />
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {tickets.map((t) => (
+                    <ProfileTicketRow
+                      key={t.id}
+                      ticket={t}
+                      onOpen={() => router.push('/ticket')}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Account settings */}
@@ -1071,7 +1285,7 @@ export default function ProfileScreen() {
                       'On · Push & email',
                       '/profile/settings',
                     ],
-                    ['Payment methods', 'Visa ···· 4242', '/profile/settings'],
+                    ['Payment methods', 'Managed at checkout', '/profile/settings'],
                     ['Privacy & data', null, '/profile/settings'],
                     ['Help & contact', null, '/profile/settings'],
                     ['Log out', null, null],
