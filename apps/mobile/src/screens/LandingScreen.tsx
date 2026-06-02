@@ -1,16 +1,51 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { photoSrc } from '../data/photos.js';
 import { createClient } from '../lib/supabase.js';
+
+/** Shared horizontal track — every section uses this for aligned edges. */
+function useLandingLayout() {
+  const { isWide, isDesktop } = useResponsive();
+  const horizontalPad = isWide ? 32 : 16;
+  const contentMaxWidth = isDesktop
+    ? layoutWidth.marketingDesktop
+    : isWide
+      ? layoutWidth.marketingTablet
+      : undefined;
+
+  const pageColumn: CSSProperties = {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    paddingLeft: horizontalPad,
+    paddingRight: horizontalPad,
+    boxSizing: 'border-box',
+  };
+
+  return { isWide, isDesktop, horizontalPad, pageColumn };
+}
+
+function LandingSection({
+  children,
+  pageColumn,
+  style,
+}: {
+  children: ReactNode;
+  pageColumn: CSSProperties;
+  style?: CSSProperties;
+}) {
+  return <div style={{ ...pageColumn, ...style }}>{children}</div>;
+}
 
 export default function LandingScreen() {
   const router = useRouter();
   const supabase = createClient();
-  const { isWide } = useResponsive();
+  const { isWide, isDesktop, pageColumn } = useLandingLayout();
   const [signingIn, setSigningIn] = useState(false);
   const [siEmail, setSiEmail] = useState('');
   const [siSent, setSiSent] = useState(false);
@@ -18,6 +53,24 @@ export default function LandingScreen() {
 
   const onGetStarted = () => router.push('/onboarding');
   const onSignIn = () => setSigningIn(true);
+
+  const sectionLabel: CSSProperties = {
+    fontFamily: 'Inter',
+    fontSize: 10,
+    color: colors.amber,
+    letterSpacing: '0.22em',
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  };
+
+  const surfaceCard: CSSProperties = {
+    width: '100%',
+    padding: isWide ? 20 : 16,
+    background: colors.surface,
+    border: `1px solid ${colors.border}`,
+    borderRadius: 12,
+    boxSizing: 'border-box',
+  };
 
   return (
     <div
@@ -33,17 +86,18 @@ export default function LandingScreen() {
         className="hof-scroll"
         style={{
           position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
+          inset: 0,
           overflowY: 'auto',
         }}
       >
-        {/* Hero */}
-        <div style={{ position: 'relative', height: 620, overflow: 'hidden' }}>
+        {/* Hero — full-bleed image; chrome + copy share pageColumn */}
+        <div
+          style={{
+            position: 'relative',
+            height: isDesktop ? 'min(72vh, 720px)' : isWide ? 680 : 620,
+            overflow: 'hidden',
+          }}
+        >
           <img
             src="/assets/photos/p3-portal-dj.jpg"
             alt=""
@@ -76,363 +130,350 @@ export default function LandingScreen() {
             }}
           />
 
-          {/* Top bar */}
           <div
             style={{
               position: 'absolute',
-              top: isWide ? 12 : 54,
-              left: 0,
-              right: 0,
+              inset: 0,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
+              flexDirection: 'column',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <HofLogoMark size={22} />
-              <span
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  letterSpacing: '0.22em',
-                  color: colors.text,
-                  textTransform: 'uppercase',
-                }}
-              >
-                House of Fire
-              </span>
-            </div>
-            <button
-              type="button"
-              className="hof-btn hof-press"
-              onClick={onSignIn}
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 13,
-                fontWeight: 500,
-                color: colors.text,
-                padding: '8px 14px',
-                borderRadius: 6,
-                background: 'rgba(20,20,18,0.6)',
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              Sign in
-            </button>
-          </div>
-
-          {/* Sign-in overlay */}
-          {signingIn && (
+            {/* Top bar */}
             <div
               style={{
-                position: 'absolute',
-                top: isWide ? 12 : 54,
-                left: 0,
-                right: 0,
-                zIndex: 50,
-                background: colors.surface,
-                borderBottom: `1px solid ${colors.border}`,
-                padding: '16px 16px 20px',
+                ...pageColumn,
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: isWide ? 12 : 54,
+                paddingBottom: 12,
               }}
             >
-              {!siSent ? (
-                <>
-                  <div
-                    style={{
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: colors.textSec,
-                      marginBottom: 10,
-                    }}
-                  >
-                    Enter your email — we&apos;ll send a sign-in link.
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="email"
-                      value={siEmail}
-                      onChange={(e) => setSiEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      style={{
-                        flex: 1,
-                        height: 44,
-                        padding: '0 12px',
-                        background: colors.bg,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: colors.text,
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="hof-btn hof-press"
-                      disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) || siLoading}
-                      onClick={async () => {
-                        setSiLoading(true);
-                        await supabase.auth.signInWithOtp({
-                          email: siEmail,
-                          options: {
-                            emailRedirectTo: `${window.location.origin}/auth/callback`,
-                          },
-                        });
-                        setSiLoading(false);
-                        setSiSent(true);
-                      }}
-                      style={{
-                        padding: '0 16px',
-                        background: colors.amber,
-                        border: 'none',
-                        borderRadius: 8,
-                        fontFamily: 'Inter',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        color: colors.bg,
-                        opacity: siLoading ? 0.6 : 1,
-                        cursor:
-                          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) && !siLoading
-                            ? 'pointer'
-                            : 'not-allowed',
-                      }}
-                    >
-                      {siLoading ? '…' : 'Send link'}
-                    </button>
-                    <button
-                      type="button"
-                      className="hof-btn"
-                      onClick={() => {
-                        setSigningIn(false);
-                        setSiEmail('');
-                        setSiSent(false);
-                      }}
-                      style={{
-                        padding: '0 12px',
-                        background: 'transparent',
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        color: colors.textSec,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <HofLogoMark size={22} />
+                <span
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    fontFamily: 'Clash Display',
+                    fontWeight: 600,
+                    fontSize: 12,
+                    letterSpacing: '0.22em',
+                    color: colors.text,
+                    textTransform: 'uppercase',
                   }}
                 >
-                  <div>
+                  House of Fire
+                </span>
+              </div>
+              <button
+                type="button"
+                className="hof-btn hof-press"
+                onClick={onSignIn}
+                style={{
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: colors.text,
+                  padding: '8px 14px',
+                  borderRadius: 6,
+                  background: 'rgba(20,20,18,0.6)',
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${colors.border}`,
+                }}
+              >
+                Sign in
+              </button>
+            </div>
+
+            {/* Sign-in overlay */}
+            {signingIn && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  background: colors.surface,
+                  borderBottom: `1px solid ${colors.border}`,
+                }}
+              >
+                <div style={{ ...pageColumn, paddingTop: 16, paddingBottom: 20 }}>
+                  {!siSent ? (
+                    <>
+                      <div
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: colors.textSec,
+                          marginBottom: 10,
+                        }}
+                      >
+                        Enter your email — we&apos;ll send a sign-in link.
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="email"
+                          value={siEmail}
+                          onChange={(e) => setSiEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          style={{
+                            flex: 1,
+                            height: 44,
+                            padding: '0 12px',
+                            background: colors.bg,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: 8,
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            color: colors.text,
+                            outline: 'none',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="hof-btn hof-press"
+                          disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) || siLoading}
+                          onClick={async () => {
+                            setSiLoading(true);
+                            await supabase.auth.signInWithOtp({
+                              email: siEmail,
+                              options: {
+                                emailRedirectTo: `${window.location.origin}/auth/callback`,
+                              },
+                            });
+                            setSiLoading(false);
+                            setSiSent(true);
+                          }}
+                          style={{
+                            padding: '0 16px',
+                            background: colors.amber,
+                            border: 'none',
+                            borderRadius: 8,
+                            fontFamily: 'Inter',
+                            fontWeight: 600,
+                            fontSize: 13,
+                            color: colors.bg,
+                            opacity: siLoading ? 0.6 : 1,
+                            cursor:
+                              /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail) && !siLoading
+                                ? 'pointer'
+                                : 'not-allowed',
+                          }}
+                        >
+                          {siLoading ? '…' : 'Send link'}
+                        </button>
+                        <button
+                          type="button"
+                          className="hof-btn"
+                          onClick={() => {
+                            setSigningIn(false);
+                            setSiEmail('');
+                            setSiSent(false);
+                          }}
+                          style={{
+                            padding: '0 12px',
+                            background: 'transparent',
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: 8,
+                            color: colors.textSec,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </>
+                  ) : (
                     <div
                       style={{
-                        fontFamily: 'Inter',
-                        fontWeight: 500,
-                        fontSize: 14,
-                        color: colors.text,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                       }}
                     >
-                      Check your email
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontWeight: 500,
+                            fontSize: 14,
+                            color: colors.text,
+                          }}
+                        >
+                          Check your email
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: colors.textSec,
+                            marginTop: 2,
+                          }}
+                        >
+                          Sent to {siEmail}. Click the link to sign in.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="hof-btn"
+                        onClick={() => {
+                          setSigningIn(false);
+                          setSiEmail('');
+                          setSiSent(false);
+                        }}
+                        style={{
+                          padding: '8px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: colors.textSec,
+                          fontSize: 16,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <div
-                      style={{
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: colors.textSec,
-                        marginTop: 2,
-                      }}
-                    >
-                      Sent to {siEmail}. Click the link to sign in.
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="hof-btn"
-                    onClick={() => {
-                      setSigningIn(false);
-                      setSiEmail('');
-                      setSiSent(false);
-                    }}
-                    style={{
-                      padding: '8px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: colors.textSec,
-                      fontSize: 16,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ×
-                  </button>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Hero copy */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 28,
-              padding: '0 20px',
-            }}
-          >
-            <HofPill tone="amber" size="sm">
-              Boulder · Monthly
-            </HofPill>
-            <div
-              style={{
-                fontFamily: 'Clash Display',
-                fontWeight: 700,
-                fontSize: 44,
-                color: colors.text,
-                marginTop: 14,
-                letterSpacing: '-0.02em',
-                lineHeight: 0.95,
-                textTransform: 'uppercase',
-              }}
-            >
-              The room that keeps the floor full.
-            </div>
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 15,
-                color: colors.textSec,
-                marginTop: 14,
-                lineHeight: 1.5,
-                maxWidth: 320,
-              }}
-            >
-              Underground house and techno. One room. One night a month. Tickets sell out, every
-              time. <span style={{ color: colors.text }}>You should be here.</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Primary CTAs */}
-        <div
-          style={{
-            padding: '24px 16px 8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}
-        >
-          <HofButton
-            variant="primary"
-            full
-            onClick={onGetStarted}
-            icon={<Icon name="flame" size={18} color={colors.bg} />}
-          >
-            Become a member — free
-          </HofButton>
-          <HofButton variant="ghost" full onClick={onGetStarted}>
-            Browse the next event
-          </HofButton>
-        </div>
-
-        {/* Trust strip */}
-        <div
-          style={{
-            margin: '24px 16px 0',
-            padding: '16px 18px',
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 8,
-          }}
-        >
-          {(
-            [
-              ['24', 'editions'],
-              ['7,200+', 'attended'],
-              ['62%', 'return rate'],
-            ] as [string, string][]
-          ).map(([n, l]) => (
-            <div key={l}>
+            {/* Hero copy — pinned to bottom of hero, same column */}
+            <div style={{ flex: 1 }} />
+            <div style={{ ...pageColumn, paddingBottom: 28 }}>
+              <HofPill tone="amber" size="sm">
+                Boulder · Monthly
+              </HofPill>
               <div
                 style={{
                   fontFamily: 'Clash Display',
-                  fontWeight: 600,
-                  fontSize: 22,
+                  fontWeight: 700,
+                  fontSize: isDesktop ? 56 : isWide ? 52 : 44,
                   color: colors.text,
+                  marginTop: 14,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 0.95,
+                  textTransform: 'uppercase',
+                  maxWidth: isDesktop ? 900 : isWide ? 640 : undefined,
                 }}
               >
-                {n}
+                The room that keeps the floor full.
               </div>
               <div
                 style={{
                   fontFamily: 'Inter',
-                  fontSize: 10,
+                  fontSize: isWide ? 16 : 15,
                   color: colors.textSec,
-                  marginTop: 2,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
+                  marginTop: 14,
+                  lineHeight: 1.5,
+                  maxWidth: isDesktop ? 520 : isWide ? 420 : 320,
                 }}
               >
-                {l}
+                Underground house and techno. One room. One night a month. Tickets sell out, every
+                time. <span style={{ color: colors.text }}>You should be here.</span>
               </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* What it is */}
-        <div style={{ padding: '32px 16px 0' }}>
+        {/* Below hero — single aligned column for all sections */}
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 24 }}>
           <div
             style={{
-              fontFamily: 'Inter',
-              fontSize: 10,
-              color: colors.amber,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              marginBottom: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              ...(isWide ? { flexDirection: 'row' } : {}),
             }}
           >
-            What it is
+            <HofButton
+              variant="primary"
+              full={!isWide}
+              onClick={onGetStarted}
+              icon={<Icon name="flame" size={18} color={colors.bg} />}
+              style={isWide ? { flex: 1, width: 'auto' } : undefined}
+            >
+              Become a member — free
+            </HofButton>
+            <HofButton
+              variant="ghost"
+              full={!isWide}
+              onClick={onGetStarted}
+              style={isWide ? { flex: 1, width: 'auto' } : undefined}
+            >
+              Browse the next event
+            </HofButton>
           </div>
+        </LandingSection>
+
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 24 }}>
+          <div
+            style={{
+              ...surfaceCard,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 8,
+            }}
+          >
+            {(
+              [
+                ['24', 'editions'],
+                ['7,200+', 'attended'],
+                ['62%', 'return rate'],
+              ] as [string, string][]
+            ).map(([n, l]) => (
+              <div key={l}>
+                <div
+                  style={{
+                    fontFamily: 'Clash Display',
+                    fontWeight: 600,
+                    fontSize: 22,
+                    color: colors.text,
+                  }}
+                >
+                  {n}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 10,
+                    color: colors.textSec,
+                    marginTop: 2,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {l}
+                </div>
+              </div>
+            ))}
+          </div>
+        </LandingSection>
+
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+          <div style={sectionLabel}>What it is</div>
           <div
             style={{
               fontFamily: 'Clash Display',
               fontWeight: 500,
-              fontSize: 22,
+              fontSize: isWide ? 24 : 22,
               lineHeight: 1.25,
               color: colors.text,
               letterSpacing: '-0.01em',
+              maxWidth: isDesktop ? 720 : undefined,
             }}
           >
             A monthly gathering of the people who keep coming back. Underground house and techno.
             One room. Always at the Junkyard.
           </div>
-        </div>
+        </LandingSection>
 
-        {/* How it works */}
-        <div style={{ padding: '32px 16px 0' }}>
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+          <div style={{ ...sectionLabel, marginBottom: 14 }}>How it works</div>
           <div
             style={{
-              fontFamily: 'Inter',
-              fontSize: 10,
-              color: colors.amber,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              marginBottom: 14,
+              display: 'grid',
+              gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr',
+              gap: isDesktop ? 20 : 14,
             }}
           >
-            How it works
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {(
               [
                 ['01', 'Become a member', 'Free. 30 seconds. Email + phone.'],
@@ -481,40 +522,26 @@ export default function LandingScreen() {
               </div>
             ))}
           </div>
-        </div>
+        </LandingSection>
 
-        {/* Recent photos */}
-        <div style={{ padding: '32px 0 0' }}>
-          <div
-            style={{
-              padding: '0 16px',
-              marginBottom: 12,
-              fontFamily: 'Inter',
-              fontSize: 10,
-              color: colors.amber,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-            }}
-          >
-            From the last 3 editions
-          </div>
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+          <div style={{ ...sectionLabel, marginBottom: 12 }}>From the last 3 editions</div>
           <div
             className="hof-scroll"
             style={{
               display: 'flex',
-              gap: 6,
+              gap: isWide ? 10 : 6,
               overflowX: 'auto',
-              padding: '0 16px',
+              paddingBottom: 4,
             }}
           >
             {([0, 1, 2, 3, 0, 1] as number[]).map((s, i) => (
               <div
                 key={i}
                 style={{
-                  position: 'relative',
                   flex: '0 0 auto',
-                  width: 200,
-                  height: 260,
+                  width: isDesktop ? 280 : isWide ? 240 : 200,
+                  height: isDesktop ? 340 : isWide ? 300 : 260,
                   borderRadius: 10,
                   overflow: 'hidden',
                 }}
@@ -526,44 +553,29 @@ export default function LandingScreen() {
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    borderRadius: 10,
                   }}
                 />
               </div>
             ))}
           </div>
-        </div>
+        </LandingSection>
 
-        {/* Pinned CTA */}
-        <div style={{ padding: '32px 16px 16px' }}>
+        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32, paddingBottom: 16 }}>
           <div
             style={{
-              padding: 22,
+              ...surfaceCard,
               borderRadius: 14,
-              position: 'relative',
-              overflow: 'hidden',
+              padding: isWide ? 24 : 22,
               background: `linear-gradient(135deg, rgba(232,101,26,0.15) 0%, ${colors.surface} 60%)`,
-              border: `1px solid ${colors.border}`,
             }}
           >
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 10,
-                color: colors.amber,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Next edition
-            </div>
+            <div style={{ ...sectionLabel, marginBottom: 6 }}>Next edition</div>
             <div
               style={{
                 fontFamily: 'Clash Display',
                 fontWeight: 600,
                 fontSize: 26,
                 color: colors.text,
-                marginTop: 6,
                 letterSpacing: '-0.01em',
               }}
             >
@@ -590,13 +602,13 @@ export default function LandingScreen() {
               </HofButton>
             </div>
           </div>
-        </div>
+        </LandingSection>
 
-        {/* Footer */}
-        <div
+        <LandingSection
+          pageColumn={pageColumn}
           style={{
-            padding: '20px 16px 40px',
-            textAlign: 'center',
+            paddingTop: 20,
+            paddingBottom: 40,
             fontFamily: 'Inter',
             fontSize: 11,
             color: colors.textDis,
@@ -604,7 +616,7 @@ export default function LandingScreen() {
           }}
         >
           houseoffire.events · Boulder, CO
-        </div>
+        </LandingSection>
       </div>
     </div>
   );

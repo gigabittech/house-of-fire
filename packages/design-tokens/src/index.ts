@@ -20,7 +20,7 @@ export { durations, easings, keyframes } from './motion.js';
 export type { DurationToken } from './motion.js';
 export { shadows } from './shadows.js';
 export type { ShadowToken } from './shadows.js';
-export { breakpoints } from './breakpoints.js';
+export { breakpoints, layoutWidth } from './breakpoints.js';
 export type { BreakpointToken } from './breakpoints.js';
 
 import { colors } from './colors.js';
@@ -35,7 +35,7 @@ import { spacing } from './spacing.js';
 import { radii } from './radii.js';
 import { durations, easings, keyframes } from './motion.js';
 import { shadows } from './shadows.js';
-import { breakpoints } from './breakpoints.js';
+import { breakpoints, layoutWidth } from './breakpoints.js';
 
 /** Every token, grouped — handy for a single import. */
 export const tokens = {
@@ -52,4 +52,5 @@ export const tokens = {
   keyframes,
   shadows,
   breakpoints,
+  layoutWidth,
 } as const;
