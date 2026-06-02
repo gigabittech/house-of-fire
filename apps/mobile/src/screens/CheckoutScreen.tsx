@@ -9,6 +9,30 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder');
 
+const CHECKOUT_STORAGE_KEY = 'hof_checkout_v1';
+
+type CheckoutDraft = { tier: string; qty: number };
+
+function loadCheckoutDraft(): CheckoutDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CheckoutDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCheckoutDraft(draft: CheckoutDraft) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(draft));
+}
+
+function clearCheckoutDraft() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+}
+
 // ─── Form atoms ──────────────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -863,6 +887,7 @@ function formatCurrency(cents: number): string {
 }
 
 function StepPaymentInner({
+  paymentIntentId,
   intentAmount,
   subtotalCents,
   discountCents,
@@ -874,6 +899,7 @@ function StepPaymentInner({
   onApplyPromo,
   onSuccess,
 }: {
+  paymentIntentId: string;
   clientSecret: string;
   intentAmount: number;
   subtotalCents: number;
@@ -901,15 +927,37 @@ function StepPaymentInner({
     setErr('');
     const { error } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: `${window.location.origin}/ticket` },
+      confirmParams: { return_url: `${window.location.origin}/ticket?purchased=1` },
       redirect: 'if_required',
     });
-    setConfirming(false);
     if (error) {
+      setConfirming(false);
       setErr(error.message ?? 'Payment failed');
-    } else {
-      onSuccess();
+      return;
     }
+    if (!paymentIntentId) {
+      setConfirming(false);
+      setErr('Payment session expired. Go back and try again.');
+      return;
+    }
+    try {
+      const r = await fetch('/api/checkout/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+      const d = (await r.json()) as { error?: string };
+      if (!r.ok) {
+        setErr(d.error ?? 'Could not confirm your ticket. Please contact support.');
+        setConfirming(false);
+        return;
+      }
+      clearCheckoutDraft();
+      onSuccess();
+    } catch {
+      setErr('Could not confirm your ticket. Check your connection and try again.');
+    }
+    setConfirming(false);
   };
 
   return (
@@ -1051,6 +1099,7 @@ function StepPaymentInner({
 }
 
 function StepPayment({
+  paymentIntentId,
   clientSecret,
   intentAmount,
   subtotalCents,
@@ -1063,6 +1112,7 @@ function StepPayment({
   onApplyPromo,
   onSuccess,
 }: {
+  paymentIntentId: string;
   clientSecret: string;
   intentAmount: number;
   subtotalCents: number;
@@ -1085,6 +1135,7 @@ function StepPayment({
   return (
     <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', variables: { colorPrimary: '#E8651A', colorBackground: '#141412', colorText: '#F0EDE6', borderRadius: '8px' } } }}>
       <StepPaymentInner
+        paymentIntentId={paymentIntentId}
         clientSecret={clientSecret}
         intentAmount={intentAmount}
         subtotalCents={subtotalCents}
@@ -1107,10 +1158,16 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { isWide } = useResponsive();
   const searchParams = useSearchParams();
-  const tierId = searchParams.get('tierId') ?? '';
+  const tierParam = searchParams.get('tierId') ?? '';
+  const qtyParam = parseInt(searchParams.get('qty') ?? '1', 10);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [qty, setQty] = useState(1);
-  const [tier, setTier] = useState(tierId || 'ga');
+  const [qty, setQty] = useState(
+    Number.isFinite(qtyParam) && qtyParam >= 1 && qtyParam <= 4 ? qtyParam : 1,
+  );
+  const [tier, setTier] = useState(() => {
+    const draft = loadCheckoutDraft();
+    return tierParam || draft?.tier || '';
+  });
   const [accountMode, setAccountMode] = useState<'guest' | 'signup' | 'signin'>('guest');
   const [details, setDetails] = useState<Details>({
     firstName: '',
@@ -1120,6 +1177,7 @@ export default function CheckoutScreen() {
     password: '',
   });
   const [clientSecret, setClientSecret] = useState('');
+  const [paymentIntentId, setPaymentIntentId] = useState('');
   const [intentAmount, setIntentAmount] = useState(0);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState('');
@@ -1156,12 +1214,37 @@ export default function CheckoutScreen() {
       .catch(console.error);
   }, []);
 
+  // Ensure selected tier is a valid API tier id (UUID), not a stale slug
+  useEffect(() => {
+    const keys = Object.keys(tierData);
+    if (keys.length === 0) return;
+    if (tier && tierData[tier]) return;
+    const next =
+      (tierParam && tierData[tierParam] ? tierParam : undefined) ?? keys[0];
+    if (next) setTier(next);
+  }, [tierData, tier, tierParam]);
+
+  useEffect(() => {
+    if (tier) saveCheckoutDraft({ tier, qty });
+  }, [tier, qty]);
+
+  useEffect(() => {
+    if (!tier) return;
+    const currentTierId = searchParams.get('tierId');
+    const currentQty = searchParams.get('qty');
+    if (currentTierId === tier && (currentQty ?? '1') === String(qty)) return;
+    const params = new URLSearchParams();
+    params.set('tierId', tier);
+    if (qty > 1) params.set('qty', String(qty));
+    router.replace(`/checkout?${params.toString()}`, { scroll: false });
+  }, [tier, qty, router, searchParams]);
+
   // Reset promo when tier or quantity changes
   useEffect(() => {
     setPromoResult(null);
   }, [tier, qty]);
 
-  const currentTier = tierData[tierId] ?? tierData[tier] ?? Object.values(tierData).find(Boolean);
+  const currentTier = tierData[tier] ?? Object.values(tierData).find(Boolean);
   const subtotal = (currentTier?.price ?? 0) * qty;
   // subtotalCents for promo validation and price display
   const subtotalCents = Math.round(subtotal * 100);
@@ -1197,7 +1280,7 @@ export default function CheckoutScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
-          tierId: tierId || tier,
+          tierId: tier,
           subtotalCents,
         }),
       });
@@ -1221,19 +1304,25 @@ export default function CheckoutScreen() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              tierId: tierId || tier,
+              tierId: tier,
               quantity: qty,
               codeId: promoResult?.valid ? promoResult.codeId : undefined,
               discountCents: promoResult?.valid ? promoResult.discountCents : 0,
             }),
           });
-          const d = await r.json() as { clientSecret?: string; amount?: number; error?: string };
-          if (d.error || !d.clientSecret) {
+          const d = await r.json() as {
+            clientSecret?: string;
+            paymentIntentId?: string;
+            amount?: number;
+            error?: string;
+          };
+          if (d.error || !d.clientSecret || !d.paymentIntentId) {
             setPayError(d.error ?? 'Could not create payment. Please sign in.');
             setPayLoading(false);
             return;
           }
           setClientSecret(d.clientSecret);
+          setPaymentIntentId(d.paymentIntentId);
           setIntentAmount(d.amount ?? 0);
         } catch {
           setPayError('Network error. Please try again.');
@@ -1461,6 +1550,7 @@ export default function CheckoutScreen() {
         )}
         {step === 3 && (
           <StepPayment
+            paymentIntentId={paymentIntentId}
             clientSecret={clientSecret}
             intentAmount={intentAmount}
             subtotalCents={subtotalCents}
@@ -1471,7 +1561,7 @@ export default function CheckoutScreen() {
             setPromoCode={setPromoCode}
             promoLoading={promoLoading}
             onApplyPromo={() => { void applyPromoCode(); }}
-            onSuccess={() => router.push('/ticket')}
+            onSuccess={() => router.push('/ticket?purchased=1')}
           />
         )}
       </div>

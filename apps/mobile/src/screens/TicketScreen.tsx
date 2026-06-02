@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
 import { Icon, FakeQR, HofToast, HofSkeleton, EmptyState, useResponsive } from '@hof/ui';
 import type { ToastKind } from '@hof/ui';
@@ -11,8 +11,34 @@ import RefundSheet from '../sheets/RefundSheet.js';
 import { ShareSheet } from '../sheets/ShareSheet.js';
 import { UpgradeSheet } from '../sheets/UpgradeSheet.js';
 
+type TicketData = {
+  id: string;
+  code: string;
+  qr_data: string;
+  status: string;
+  purchased_at: string;
+  amount_cents: number;
+  fee_cents: number;
+  events: { name: string; date: string; edition_number: number; venue_name: string; venue_address: string } | null;
+  ticket_tiers: { display_name: string } | null;
+};
+
+async function loadTicketFromApi(): Promise<TicketData | null> {
+  const r = await fetch('/api/tickets/mine');
+  if (!r.ok) throw new Error('fetch failed');
+  const d = (await r.json()) as { tickets?: TicketData[] };
+  return d.tickets?.[0] ?? null;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function TicketScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const purchased = searchParams.get('purchased') === '1';
+  const paymentIntentFromRedirect = searchParams.get('payment_intent');
   const [transferOpen, setTransferOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -22,41 +48,72 @@ export default function TicketScreen() {
     kind: 'success',
     message: '',
   });
-  const [ticket, setTicket] = useState<null | {
-    id: string;
-    code: string;
-    qr_data: string;
-    status: string;
-    purchased_at: string;
-    amount_cents: number;
-    fee_cents: number;
-    events: { name: string; date: string; edition_number: number; venue_name: string; venue_address: string } | null;
-    ticket_tiers: { display_name: string } | null;
-  }>(null);
+  const [ticket, setTicket] = useState<TicketData | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [ticketError, setTicketError] = useState(false);
   const { isWide } = useResponsive();
 
-  useEffect(() => {
-    fetch('/api/tickets/mine')
-      .then(r => r.json())
-      .then(async (d: { tickets?: typeof ticket[] }) => {
-        const t = d.tickets?.[0];
-        if (t) {
-          setTicket(t);
-          try {
-            const url = await QRCode.toDataURL(t.qr_data, {
-              errorCorrectionLevel: 'H', margin: 2, width: 400,
-              color: { dark: '#1a1a1a', light: '#f5f0e8' },
-            });
-            setQrDataUrl(url);
-          } catch (e) { console.error(e); }
-        }
-      })
-      .catch(() => setTicketError(true))
-      .finally(() => setLoading(false));
+  const applyTicket = useCallback(async (t: TicketData) => {
+    setTicket(t);
+    try {
+      const url = await QRCode.toDataURL(t.qr_data, {
+        errorCorrectionLevel: 'H',
+        margin: 2,
+        width: 400,
+        color: { dark: '#1a1a1a', light: '#f5f0e8' },
+      });
+      setQrDataUrl(url);
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setTicketError(false);
+
+      if (paymentIntentFromRedirect) {
+        try {
+          await fetch('/api/checkout/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentIntentId: paymentIntentFromRedirect }),
+          });
+        } catch {
+          /* poll below may still find the ticket */
+        }
+      }
+
+      const shouldPoll = purchased || Boolean(paymentIntentFromRedirect);
+      const attempts = shouldPoll ? 5 : 1;
+      const delayMs = shouldPoll ? 1000 : 0;
+
+      try {
+        for (let i = 0; i < attempts; i++) {
+          if (cancelled) return;
+          const t = await loadTicketFromApi();
+          if (t) {
+            if (!cancelled) await applyTicket(t);
+            return;
+          }
+          if (i < attempts - 1) await sleep(delayMs);
+        }
+      } catch {
+        if (!cancelled) setTicketError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [purchased, paymentIntentFromRedirect, applyTicket]);
 
   function showToast(kind: ToastKind, message: string) {
     setToast({ shown: true, kind, message });
