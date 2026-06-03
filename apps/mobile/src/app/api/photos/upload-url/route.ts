@@ -4,6 +4,23 @@ import {
   createServiceRoleClient,
 } from '../../../../lib/supabase.server';
 
+const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
+
+async function resolveEventId(
+  serviceClient: Awaited<ReturnType<typeof createServiceRoleClient>>,
+  eventId?: string,
+): Promise<string | null> {
+  if (eventId) return eventId;
+  const { data } = await serviceClient
+    .from('events')
+    .select('id')
+    .in('status', ['upcoming', 'live'])
+    .order('date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const {
@@ -11,16 +28,28 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { eventId, fileName } = (await request.json()) as {
-    eventId: string;
+  const { eventId: rawEventId, fileName } = (await request.json()) as {
+    eventId?: string;
     fileName: string;
-    contentType: string;
+    contentType?: string;
   };
 
-  const ext = fileName.split('.').pop() ?? 'jpg';
-  const storagePath = `events/${eventId}/${user.id}/${Date.now()}.${ext}`;
+  if (!fileName?.trim()) {
+    return NextResponse.json({ error: 'fileName required' }, { status: 400 });
+  }
 
   const serviceClient = await createServiceRoleClient();
+  const eventId = await resolveEventId(serviceClient, rawEventId);
+  if (!eventId) {
+    return NextResponse.json({ error: 'No upcoming event found for photo upload' }, { status: 400 });
+  }
+
+  const ext = (fileName.split('.').pop() ?? 'jpg').toLowerCase();
+  if (!ALLOWED_EXT.has(ext)) {
+    return NextResponse.json({ error: 'Unsupported image type' }, { status: 400 });
+  }
+  const storagePath = `events/${eventId}/${user.id}/${Date.now()}.${ext}`;
+
   const { data, error } = await serviceClient.storage
     .from('event-photos')
     .createSignedUploadUrl(storagePath);

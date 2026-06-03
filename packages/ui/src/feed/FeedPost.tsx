@@ -165,6 +165,35 @@ export function FeedPost({
         </div>
       )}
 
+      {post.imageUrls && post.imageUrls.length > 0 && !compact && (
+        <div
+          style={{
+            margin: '4px 14px 12px',
+            display: 'grid',
+            gridTemplateColumns:
+              post.imageUrls.length === 1 ? '1fr' : post.imageUrls.length === 2 ? '1fr 1fr' : '1fr 1fr 1fr',
+            gap: 4,
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+        >
+          {post.imageUrls.slice(0, 3).map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              style={{
+                width: '100%',
+                aspectRatio: '1',
+                objectFit: 'cover',
+                display: 'block',
+                background: colors.elevated,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Recap collage */}
       {isRecap && post.photoSeeds && !compact && (
         <div

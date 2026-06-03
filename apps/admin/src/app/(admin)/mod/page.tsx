@@ -6,6 +6,7 @@ import { Pill } from '@/components/Pill';
 
 interface Report {
   id: string;
+  postId?: string;
   kind: string;
   post: string;
   reporter: string;
@@ -42,28 +43,23 @@ function timeAgo(dateStr: string): string {
   return `${days}d`;
 }
 
-const REPORTS: Report[] = [
-  {
-    id: 'r1',
-    kind: 'spam',
-    post: 'check out this site for cheap tix...',
-    reporter: 'iris.w · member',
-    author: 'newbie_42',
-    age: '12m',
-    severity: 'high',
-  },
-  {
-    id: 'r2',
-    kind: 'off-topic',
-    post: 'Anyone selling extra GA?',
-    reporter: '3 members',
-    author: 'devon',
-    age: '2h',
-    severity: 'low',
-  },
-];
+interface PinnedItem {
+  id: string;
+  title: string;
+  channel: string;
+  author: string;
+  age: string;
+}
 
-function ReportCard({ r }: { r: Report }) {
+function ReportCard({
+  r,
+  onDismiss,
+  onHide,
+}: {
+  r: Report;
+  onDismiss: (id: string) => void;
+  onHide: (id: string, postId?: string) => void;
+}) {
   return (
     <div
       style={{
@@ -117,6 +113,8 @@ function ReportCard({ r }: { r: Report }) {
         }}
       >
         <button
+          type="button"
+          onClick={() => onDismiss(r.id)}
           style={{
             padding: '6px 12px',
             borderRadius: 6,
@@ -131,6 +129,8 @@ function ReportCard({ r }: { r: Report }) {
           Dismiss
         </button>
         <button
+          type="button"
+          onClick={() => onHide(r.id, r.postId)}
           style={{
             padding: '6px 12px',
             borderRadius: 6,
@@ -163,7 +163,15 @@ function ReportCard({ r }: { r: Report }) {
   );
 }
 
-function QueueCard({ q, onDelete }: { q: QueueItem; onDelete: (id: string) => void }) {
+function QueueCard({
+  q,
+  onDelete,
+  onApprove,
+}: {
+  q: QueueItem;
+  onDelete: (id: string) => void;
+  onApprove: (id: string) => void;
+}) {
   return (
     <div
       style={{
@@ -223,6 +231,8 @@ function QueueCard({ q, onDelete }: { q: QueueItem; onDelete: (id: string) => vo
         }}
       >
         <button
+          type="button"
+          onClick={() => onApprove(q.id)}
           style={{
             padding: '6px 12px',
             borderRadius: 6,
@@ -273,6 +283,8 @@ function QueueCard({ q, onDelete }: { q: QueueItem; onDelete: (id: string) => vo
 
 export default function ModPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [pinned, setPinned] = useState<PinnedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -280,7 +292,23 @@ export default function ModPage() {
     async function load() {
       try {
         const res = await fetch('/api/admin/mod');
-        const data = (await res.json()) as { posts?: PostApiRow[]; error?: string };
+        const data = (await res.json()) as {
+          posts?: PostApiRow[];
+          reports?: Array<{
+            id: string;
+            reason: string;
+            created_at: string;
+            reporter: { handle: string } | null;
+            post: {
+              id: string;
+              body: string | null;
+              title: string;
+              profiles: { handle: string } | null;
+            } | null;
+          }>;
+          pinned?: PostApiRow[];
+          error?: string;
+        };
         if (data.error) {
           setError(data.error);
         } else {
@@ -293,6 +321,27 @@ export default function ModPage() {
             age: timeAgo(p.created_at),
           }));
           setQueue(mapped);
+          setReports(
+            (data.reports ?? []).map((r) => ({
+              id: r.id,
+              postId: r.post?.id,
+              kind: r.reason,
+              post: (r.post?.body ?? r.post?.title ?? '').slice(0, 80),
+              reporter: r.reporter?.handle ?? 'member',
+              author: r.post?.profiles?.handle ?? 'unknown',
+              age: timeAgo(r.created_at),
+              severity: /spam|harass/i.test(r.reason) ? 'high' : 'low',
+            })),
+          );
+          setPinned(
+            (data.pinned ?? []).map((p) => ({
+              id: p.id,
+              title: p.title,
+              channel: '#' + p.channel,
+              author: p.profiles?.display_name ?? p.profiles?.handle ?? 'anon',
+              age: timeAgo(p.created_at),
+            })),
+          );
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load posts');
@@ -303,6 +352,14 @@ export default function ModPage() {
     void load();
   }, []);
 
+  async function patchPost(id: string, body: Record<string, unknown>) {
+    await fetch(`/api/admin/posts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
   async function handleDelete(id: string) {
     try {
       await fetch(`/api/admin/mod?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -310,6 +367,35 @@ export default function ModPage() {
     } catch {
       // silent
     }
+  }
+
+  async function handleApprove(id: string) {
+    await patchPost(id, { moderation_status: 'approved' });
+    setQueue((prev) => prev.filter((q) => q.id !== id));
+  }
+
+  async function handleUnpin(id: string) {
+    await patchPost(id, { is_pinned: false });
+    setPinned((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  async function dismissReport(id: string) {
+    await fetch('/api/admin/reports', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'dismissed' }),
+    });
+    setReports((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function hideReport(id: string, postId?: string) {
+    await fetch('/api/admin/reports', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'resolved', hidePost: true }),
+    });
+    setReports((prev) => prev.filter((r) => r.id !== id));
+    if (postId) setQueue((prev) => prev.filter((q) => q.id !== postId));
   }
 
   return (
@@ -355,7 +441,7 @@ export default function ModPage() {
               marginTop: 4,
             }}
           >
-            {REPORTS.length} reports awaiting review · {loading ? '…' : queue.length} posts in queue
+            {reports.length} reports awaiting review · {loading ? '…' : queue.length} posts in queue
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -446,12 +532,17 @@ export default function ModPage() {
               Reported posts
             </div>
             <Pill tone="danger" size="sm">
-              {REPORTS.length} pending
+              {reports.length} pending
             </Pill>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {REPORTS.map((r) => (
-              <ReportCard key={r.id} r={r} />
+            {reports.map((r) => (
+              <ReportCard
+                key={r.id}
+                r={r}
+                onDismiss={(id) => void dismissReport(id)}
+                onHide={(id, postId) => void hideReport(id, postId)}
+              />
             ))}
           </div>
         </div>
@@ -515,7 +606,12 @@ export default function ModPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {!loading &&
               queue.map((q) => (
-                <QueueCard key={q.id} q={q} onDelete={(id) => void handleDelete(id)} />
+                <QueueCard
+                  key={q.id}
+                  q={q}
+                  onDelete={(id) => void handleDelete(id)}
+                  onApprove={(id) => void handleApprove(id)}
+                />
               ))}
           </div>
         </div>
@@ -556,62 +652,67 @@ export default function ModPage() {
               Max 3 pinned per channel
             </span>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              padding: '12px 0',
-              borderBottom: '1px solid var(--hof-border)',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                stroke="var(--hof-amber)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 21 s-7 -7 -7 -12 a7 7 0 0 1 14 0 c0 5 -7 12 -7 12 Z"
-              />
-              <circle stroke="var(--hof-amber)" strokeWidth="1.5" cx="12" cy="9" r="2.5" />
-            </svg>
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontWeight: 500,
-                  fontSize: 13,
-                  color: 'var(--hof-text)',
-                }}
-              >
-                Edition 24 lineup is final
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 11,
-                  color: 'var(--hof-text-sec)',
-                  marginTop: 2,
-                }}
-              >
-                #general · Jordan Groth · 1 day ago
-              </div>
-            </div>
-            <button
+          {pinned.map((p, i) => (
+            <div
+              key={p.id}
               style={{
-                padding: '5px 10px',
-                borderRadius: 6,
-                background: 'transparent',
-                border: '1px solid var(--hof-border)',
-                cursor: 'pointer',
-                fontFamily: 'Inter, system-ui',
-                fontSize: 12,
-                color: 'var(--hof-text-sec)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '12px 0',
+                borderBottom: i < pinned.length - 1 ? '1px solid var(--hof-border)' : 'none',
               }}
             >
-              Unpin
-            </button>
-          </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  stroke="var(--hof-amber)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 21 s-7 -7 -7 -12 a7 7 0 0 1 14 0 c0 5 -7 12 -7 12 Z"
+                />
+                <circle stroke="var(--hof-amber)" strokeWidth="1.5" cx="12" cy="9" r="2.5" />
+              </svg>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontWeight: 500,
+                    fontSize: 13,
+                    color: 'var(--hof-text)',
+                  }}
+                >
+                  {p.title}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    marginTop: 2,
+                  }}
+                >
+                  {p.channel} · {p.author} · {p.age} ago
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleUnpin(p.id)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  border: '1px solid var(--hof-border)',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 12,
+                  color: 'var(--hof-text-sec)',
+                }}
+              >
+                Unpin
+              </button>
+            </div>
+          ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0 0' }}>
             <Avatar initials="JG" size={20} />
             <div

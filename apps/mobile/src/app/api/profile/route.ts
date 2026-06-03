@@ -28,7 +28,15 @@ export async function GET() {
   const posts = postsRes.data ?? [];
 
   const editions = new Set(tickets.map((t: { event_id: string }) => t.event_id)).size;
-  const phone = typeof user.user_metadata?.phone === 'string' ? user.user_metadata.phone : null;
+  const meta = user.user_metadata ?? {};
+  const phone =
+    typeof meta.phone === 'string'
+      ? meta.phone
+      : typeof (profileRow?.settings as { phone?: string } | null)?.phone === 'string'
+        ? (profileRow.settings as { phone: string }).phone
+        : null;
+  const firstName = typeof meta.first_name === 'string' ? meta.first_name : null;
+  const lastName = typeof meta.last_name === 'string' ? meta.last_name : null;
 
   const totalFire = posts.reduce(
     (sum: number, p: { reaction_counts: Json }) =>
@@ -52,6 +60,8 @@ export async function GET() {
           ...profileRow,
           email: user.email ?? null,
           phone,
+          first_name: firstName,
+          last_name: lastName,
           tickets_count: tickets.length,
           editions_attended: editions,
         }

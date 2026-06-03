@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
 
   // Workspace packages ship built ESM; transpile them through Next for safety.
   transpilePackages: ['@hof/ui', '@hof/design-tokens'],
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

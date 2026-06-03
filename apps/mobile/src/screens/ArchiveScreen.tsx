@@ -20,16 +20,40 @@ interface ApiEvent {
 // Heights alternate for visual rhythm (same as original static layout)
 const CARD_HEIGHTS = [240, 200, 240, 200, 240, 200] as const;
 
-const years = ['2026', '2025', '2024'] as const;
-type Year = (typeof years)[number];
-
 export default function ArchiveScreen() {
   const router = useRouter();
-  const [year, setYear] = useState<Year>(String(new Date().getFullYear()) as Year);
+  const [years, setYears] = useState<string[]>([String(new Date().getFullYear())]);
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadEventId, setUploadEventId] = useState<string | undefined>();
+  const [uploadEdition, setUploadEdition] = useState<number | undefined>();
   const [archives, setArchives] = useState<ApiEvent[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(true);
   const [archiveError, setArchiveError] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d: { event?: ApiEvent }) => {
+        if (d.event) {
+          setUploadEventId(d.event.id);
+          setUploadEdition(d.event.edition_number);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/events/archive?yearsOnly=1')
+      .then((r) => r.json())
+      .then((d: { years?: string[] }) => {
+        if (d.years?.length) {
+          setYears(d.years);
+          setYear((y) => (d.years?.includes(y) ? y : d.years![0]!));
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     setLoadingArchive(true);
@@ -311,7 +335,12 @@ export default function ArchiveScreen() {
           </span>
         </button>
 
-        <PhotoSubmitSheet open={uploadOpen} onClose={() => setUploadOpen(false)} edition={23} />
+        <PhotoSubmitSheet
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          eventId={uploadEventId}
+          edition={uploadEdition}
+        />
       </div>
     </HofAppShell>
   );

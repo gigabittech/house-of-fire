@@ -1,117 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
 import { Pill } from '@/components/Pill';
+import { type MemberApiPayload, type MemberRow, mapMemberRow } from '@/lib/mapMemberRow';
 
-interface MemberRow {
-  name: string;
-  email: string;
-  tier: string;
-  role: 'member' | 'crew';
-  joined: string;
-  editions: number;
-  lastSeen: string;
-  posts: number;
-  flag: '' | 'new' | 'flagged' | 'photographer';
+interface MembersStats {
+  total: number;
+  newThisMonth: number;
+  crewCount: number;
+  photographerCount: number;
+  returnRate: number;
+  active90: number;
 }
-
-const MEMBERS: MemberRow[] = [
-  {
-    name: 'Sujan Bhuiyan',
-    email: 'sujan@…',
-    tier: 'VIP',
-    role: 'member',
-    joined: 'Apr 24',
-    editions: 12,
-    lastSeen: 'Ed 23',
-    posts: 8,
-    flag: '',
-  },
-  {
-    name: 'Mia Castellanos',
-    email: 'mia@…',
-    tier: 'GA',
-    role: 'member',
-    joined: 'Jan 25',
-    editions: 6,
-    lastSeen: 'Ed 23',
-    posts: 24,
-    flag: '',
-  },
-  {
-    name: 'Devon Park',
-    email: 'devon@…',
-    tier: 'GA',
-    role: 'member',
-    joined: 'Mar 25',
-    editions: 4,
-    lastSeen: 'Ed 23',
-    posts: 41,
-    flag: '',
-  },
-  {
-    name: 'Tara Reyes',
-    email: 'tara@…',
-    tier: 'VIP',
-    role: 'member',
-    joined: 'Jun 24',
-    editions: 11,
-    lastSeen: 'Ed 22',
-    posts: 5,
-    flag: '',
-  },
-  {
-    name: 'iris.w',
-    email: 'iris@…',
-    tier: 'GA',
-    role: 'member',
-    joined: 'Sep 25',
-    editions: 2,
-    lastSeen: 'Ed 23',
-    posts: 17,
-    flag: 'new',
-  },
-  {
-    name: 'Jordan Groth',
-    email: 'j@…',
-    tier: 'Owner',
-    role: 'crew',
-    joined: 'Jan 24',
-    editions: 24,
-    lastSeen: 'Ed 23',
-    posts: 86,
-    flag: '',
-  },
-  {
-    name: 'Mauro K.',
-    email: 'mauro@…',
-    tier: 'GA',
-    role: 'crew',
-    joined: 'Jan 24',
-    editions: 22,
-    lastSeen: 'Ed 23',
-    posts: 14,
-    flag: 'photographer',
-  },
-  {
-    name: 'newbie_42',
-    email: 'spam@…',
-    tier: 'GA',
-    role: 'member',
-    joined: '6 days',
-    editions: 0,
-    lastSeen: '—',
-    posts: 1,
-    flag: 'flagged',
-  },
-];
 
 export default function MembersPage() {
   const [search, setSearch] = useState('');
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [stats, setStats] = useState<MembersStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = MEMBERS.filter(
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/members');
+        const data = (await res.json()) as {
+          members?: MemberApiPayload[];
+          stats?: MembersStats;
+          error?: string;
+        };
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setMembers((data.members ?? []).map(mapMemberRow));
+          setStats(data.stats ?? null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load members');
+      } finally {
+        setLoading(false);
+      }
+    }
+    void load();
+  }, []);
+
+  const filtered = members.filter(
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase()),
@@ -150,7 +85,7 @@ export default function MembersPage() {
               marginTop: 4,
             }}
           >
-            1,247 members
+            {loading ? '…' : `${stats?.total.toLocaleString() ?? '0'} members`}
           </div>
           <div
             style={{
@@ -160,7 +95,9 @@ export default function MembersPage() {
               marginTop: 4,
             }}
           >
-            +34 this month · 62% return rate · 4 Crew · 2 Photographers
+            {loading || !stats
+              ? 'Loading…'
+              : `+${stats.newThisMonth} this month · ${stats.returnRate}% return rate · ${stats.crewCount} Crew · ${stats.photographerCount} Photographers`}
           </div>
         </div>
         <div
@@ -210,10 +147,34 @@ export default function MembersPage() {
           gap: 12,
         }}
       >
-        <Kpi label="Total members" value="1,247" delta="+34 this month" tone="amber" />
-        <Kpi label="Active (90 day)" value="824" delta="66% of total" tone="neutral" />
-        <Kpi label="Return rate" value="62%" delta="+4% YoY" tone="amber" />
-        <Kpi label="Crew & comp" value="6" delta="4 Crew · 2 Photographers" tone="muted" />
+        <Kpi
+          label="Total members"
+          value={loading ? '…' : String(stats?.total ?? 0)}
+          delta={stats ? `+${stats.newThisMonth} this month` : ''}
+          tone="amber"
+        />
+        <Kpi
+          label="Active (90 day)"
+          value={loading ? '…' : String(stats?.active90 ?? 0)}
+          delta={
+            stats && stats.total > 0
+              ? `${Math.round((stats.active90 / stats.total) * 100)}% of total`
+              : ''
+          }
+          tone="neutral"
+        />
+        <Kpi
+          label="Return rate"
+          value={loading ? '…' : `${stats?.returnRate ?? 0}%`}
+          delta=""
+          tone="amber"
+        />
+        <Kpi
+          label="Crew & comp"
+          value={loading ? '…' : String(stats?.crewCount ?? 0)}
+          delta={stats ? `${stats.crewCount} Crew · ${stats.photographerCount} Photographers` : ''}
+          tone="muted"
+        />
       </div>
 
       <div style={{ padding: '20px 28px 28px' }}>
@@ -246,125 +207,135 @@ export default function MembersPage() {
             <div>Posts</div>
             <div />
           </div>
-          {filtered.map((m, i) => {
-            const initials = m.name
-              .split(' ')
-              .map((s) => s[0] ?? '')
-              .join('')
-              .slice(0, 2);
-            return (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.8fr 1fr 80px',
-                  padding: '12px 18px',
-                  alignItems: 'center',
-                  borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 13,
-                  color: 'var(--hof-text)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <Avatar initials={initials} size={28} />
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
-                    >
-                      <span style={{ fontWeight: 500 }}>{m.name}</span>
-                      {m.role === 'crew' && (
-                        <Pill tone="crew" size="sm">
-                          Crew
-                        </Pill>
-                      )}
-                      {m.flag === 'flagged' && (
-                        <Pill tone="danger" size="sm">
-                          Flagged
-                        </Pill>
-                      )}
-                      {m.flag === 'new' && (
-                        <Pill tone="amber" size="sm">
-                          New
-                        </Pill>
-                      )}
-                      {m.flag === 'photographer' && (
-                        <Pill tone="gold" size="sm">
-                          Photo
-                        </Pill>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: 10,
-                        color: 'var(--hof-text-dis)',
-                      }}
-                    >
-                      Joined {m.joined}
+          {error && (
+            <div style={{ padding: 18, color: 'var(--hof-danger)', fontSize: 13 }}>{error}</div>
+          )}
+          {loading && !error && (
+            <div style={{ padding: 18, color: 'var(--hof-text-sec)', fontSize: 13 }}>
+              Loading members…
+            </div>
+          )}
+          {!loading &&
+            !error &&
+            filtered.map((m, i) => {
+              const initials = m.name
+                .split(' ')
+                .map((s) => s[0] ?? '')
+                .join('')
+                .slice(0, 2);
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.8fr 1fr 80px',
+                    padding: '12px 18px',
+                    alignItems: 'center',
+                    borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 13,
+                    color: 'var(--hof-text)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <Avatar initials={initials} size={28} />
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{m.name}</span>
+                        {m.role === 'crew' && (
+                          <Pill tone="crew" size="sm">
+                            Crew
+                          </Pill>
+                        )}
+                        {m.flag === 'flagged' && (
+                          <Pill tone="danger" size="sm">
+                            Flagged
+                          </Pill>
+                        )}
+                        {m.flag === 'new' && (
+                          <Pill tone="amber" size="sm">
+                            New
+                          </Pill>
+                        )}
+                        {m.flag === 'photographer' && (
+                          <Pill tone="gold" size="sm">
+                            Photo
+                          </Pill>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontSize: 10,
+                          color: 'var(--hof-text-dis)',
+                        }}
+                      >
+                        Joined {m.joined}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div
-                  style={{
-                    color: 'var(--hof-text-sec)',
-                    fontSize: 12,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {m.email}
-                </div>
-                <div>
-                  <Pill
-                    tone={m.tier === 'VIP' || m.tier === 'Owner' ? 'gold' : 'neutral'}
-                    size="sm"
+                  <div
+                    style={{
+                      color: 'var(--hof-text-sec)',
+                      fontSize: 12,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    {m.tier}
-                  </Pill>
+                    {m.email}
+                  </div>
+                  <div>
+                    <Pill
+                      tone={m.tier === 'VIP' || m.tier === 'Owner' ? 'gold' : 'neutral'}
+                      size="sm"
+                    >
+                      {m.tier}
+                    </Pill>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 12,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {m.editions}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 12,
+                      color: 'var(--hof-text-sec)',
+                    }}
+                  >
+                    {m.lastSeen}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 12,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {m.posts}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        stroke="var(--hof-text-sec)"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 6 L15 12 L9 18"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <div
-                  style={{
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 12,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {m.editions}
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--hof-text-sec)',
-                  }}
-                >
-                  {m.lastSeen}
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 12,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {m.posts}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      stroke="var(--hof-text-sec)"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 6 L15 12 L9 18"
-                    />
-                  </svg>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
     </>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { formatDoorsTime } from '@/lib/formatters';
 
 interface ActivityEntry {
   t: string;
@@ -10,29 +11,20 @@ interface ActivityEntry {
   kind: 'sale' | 'scan' | 'system';
 }
 
-const ACTIVITY: ActivityEntry[] = [
-  {
-    t: '10:42',
-    name: 'Walk-up · M. Castellanos',
-    meta: 'GA · Tap to Pay · $28',
-    tone: 'amber',
-    kind: 'sale',
-  },
-  { t: '10:41', name: 'Sujan Bhuiyan', meta: 'VIP · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:40', name: 'Devon Park · +1', meta: 'GA · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:38', name: 'Walk-up · K. Stone', meta: 'GA · Card · $28', tone: 'amber', kind: 'sale' },
-  { t: '10:37', name: 'Tara Reyes', meta: 'VIP · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:36', name: 'Iris Wong', meta: 'GA · scanned in', tone: 'success', kind: 'scan' },
-  {
-    t: '10:34',
-    name: 'Walk-up · J. Lee · ×2',
-    meta: 'GA · Cash · $56',
-    tone: 'amber',
-    kind: 'sale',
-  },
-  { t: '10:32', name: 'Andrés Reyes', meta: 'GA · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:30', name: 'Doors opened', meta: 'Scanner armed', tone: 'neutral', kind: 'system' },
-];
+function activityTime(): string {
+  return new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+interface DoorTierOption {
+  id: string;
+  key: 'ga' | 'vip';
+  name: string;
+  price_cents: number;
+}
 
 function DoorStat({
   label,
@@ -188,9 +180,12 @@ function ActivityRow({ a }: { a: ActivityEntry }) {
 interface SellModalProps {
   open: boolean;
   onClose: () => void;
+  tiers: DoorTierOption[];
+  onSold: (entry: ActivityEntry) => void;
+  onRefreshStats: () => void;
 }
 
-function SellAtDoorModal({ open, onClose }: SellModalProps) {
+function SellAtDoorModal({ open, onClose, tiers, onSold, onRefreshStats }: SellModalProps) {
   const [tier, setTier] = useState<'ga' | 'vip'>('ga');
   const [qty, setQty] = useState(1);
   const [first, setFirst] = useState('');
@@ -200,9 +195,19 @@ function SellAtDoorModal({ open, onClose }: SellModalProps) {
   const [pay, setPay] = useState<'tap' | 'card' | 'cash'>('tap');
   const [stage, setStage] = useState<'form' | 'processing' | 'done'>('form');
 
+  const gaTier = tiers.find((t) => t.key === 'ga') ?? tiers[0];
+  const vipTier = tiers.find((t) => t.key === 'vip') ?? tiers[1] ?? tiers[0];
   const tierData = {
-    ga: { name: 'General', price: 28 },
-    vip: { name: 'VIP', price: 55 },
+    ga: {
+      name: gaTier?.name ?? 'General',
+      price: (gaTier?.price_cents ?? 2800) / 100,
+      id: gaTier?.id ?? '',
+    },
+    vip: {
+      name: vipTier?.name ?? 'VIP',
+      price: (vipTier?.price_cents ?? 5500) / 100,
+      id: vipTier?.id ?? '',
+    },
   };
   const total = (tierData[tier]?.price ?? 0) * qty;
   const valid =
@@ -213,9 +218,36 @@ function SellAtDoorModal({ open, onClose }: SellModalProps) {
 
   if (!open) return null;
 
-  function submit() {
+  async function submit() {
+    const tierId = tierData[tier]?.id;
+    if (!tierId) return;
     setStage('processing');
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/admin/door/sell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier_id: tierId,
+          first_name: first.trim(),
+          last_name: last.trim(),
+          email: email.trim(),
+          qty,
+          pay_method: pay,
+        }),
+      });
+      if (!res.ok) {
+        setStage('form');
+        return;
+      }
+      const payLabel = pay === 'tap' ? 'Tap to Pay' : pay === 'card' ? 'Card' : 'Cash';
+      onSold({
+        t: activityTime(),
+        name: `Walk-up · ${first.trim()[0] ?? ''}. ${last.trim()}`,
+        meta: `${tierData[tier]?.name ?? 'GA'} · ${payLabel} · $${total.toFixed(0)}`,
+        tone: 'amber',
+        kind: 'sale',
+      });
+      onRefreshStats();
       setStage('done');
       setTimeout(() => {
         setStage('form');
@@ -228,7 +260,9 @@ function SellAtDoorModal({ open, onClose }: SellModalProps) {
         setPay('tap');
         onClose();
       }, 1100);
-    }, 1100);
+    } catch {
+      setStage('form');
+    }
   }
 
   function formatPhone(raw: string): string {
@@ -734,7 +768,7 @@ function SellAtDoorModal({ open, onClose }: SellModalProps) {
             <div style={{ marginTop: 12 }}>
               <button
                 disabled={!valid}
-                onClick={submit}
+                onClick={() => void submit()}
                 style={{
                   width: '100%',
                   height: 46,
@@ -762,18 +796,87 @@ export default function DoorPage() {
   const [scanCode, setScanCode] = useState('');
   const [scanResult, setScanResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [tiers, setTiers] = useState<DoorTierOption[]>([]);
+  const [headerEdition, setHeaderEdition] = useState('Loading…');
+  const [headerSub, setHeaderSub] = useState('');
+  const [statSold, setStatSold] = useState('—');
+  const [statScanned, setStatScanned] = useState('—');
+  const [statScannedSub, setStatScannedSub] = useState('');
+  const [statWalkupCount, setStatWalkupCount] = useState('—');
+  const [statWalkupSub, setStatWalkupSub] = useState('');
+  const [statRemaining, setStatRemaining] = useState('—');
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/door/stats');
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        event: {
+          name: string;
+          edition_number: number;
+          venue_name: string;
+          doors_open: string;
+        };
+        stats: {
+          sold: number;
+          scanned: number;
+          walkupCount: number;
+          walkupGrossCents: number;
+          remaining: number;
+          capacity: number;
+        };
+        tiers: DoorTierOption[];
+      };
+      setTiers(data.tiers ?? []);
+      setHeaderEdition(`${data.event.name} · Edition ${data.event.edition_number}`);
+      setHeaderSub(`Doors open ${formatDoorsTime(data.event.doors_open)} · ${data.event.venue_name}`);
+      const pct =
+        data.stats.sold > 0 ? Math.round((data.stats.scanned / data.stats.sold) * 100) : 0;
+      setStatSold(String(data.stats.sold));
+      setStatScanned(String(data.stats.scanned));
+      setStatScannedSub(data.stats.sold > 0 ? `${pct}% in` : '');
+      setStatWalkupCount(String(data.stats.walkupCount));
+      setStatWalkupSub(
+        data.stats.walkupCount > 0
+          ? `$${(data.stats.walkupGrossCents / 100).toFixed(0)} cash + card`
+          : 'none yet',
+      );
+      setStatRemaining(String(data.stats.remaining));
+    } catch {
+      /* keep placeholders */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
+
+  function prependActivity(entry: ActivityEntry) {
+    setActivity((prev) => [entry, ...prev].slice(0, 30));
+  }
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
     if (!scanCode.trim()) return;
+    const code = scanCode.trim();
     try {
       const res = await fetch('/api/admin/door/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: scanCode }),
+        body: JSON.stringify({ code }),
       });
       if (res.ok) {
+        const data = (await res.json()) as { code?: string };
         setScanResult({ ok: true, message: 'Checked in successfully.' });
+        prependActivity({
+          t: activityTime(),
+          name: data.code ?? code,
+          meta: 'Scanned in',
+          tone: 'success',
+          kind: 'scan',
+        });
+        void loadStats();
       } else {
         const data = (await res.json()) as { error?: string };
         setScanResult({ ok: false, message: data.error ?? 'Error checking in.' });
@@ -818,7 +921,7 @@ export default function DoorPage() {
               marginTop: 4,
             }}
           >
-            Fireversary · Edition 24
+            {headerEdition}
           </div>
           <div
             style={{
@@ -828,7 +931,7 @@ export default function DoorPage() {
               marginTop: 4,
             }}
           >
-            Doors open since 8:00 PM · Junkyard Social Club
+            {headerSub || '—'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -953,10 +1056,19 @@ export default function DoorPage() {
 
             {/* Door stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-              <DoorStat label="Sold" value="253" sub="online" />
-              <DoorStat label="Scanned" value="187" sub="74% in" tone="amber" />
-              <DoorStat label="Walk-ups" value="14" sub="$392 cash + card" />
-              <DoorStat label="Remaining" value="47" sub="capacity left" />
+              <DoorStat label="Sold" value={statSold} sub="online" />
+              <DoorStat
+                label="Scanned"
+                value={statScanned}
+                sub={statScannedSub || 'checked in'}
+                tone="amber"
+              />
+              <DoorStat
+                label="Walk-ups"
+                value={statWalkupCount}
+                sub={statWalkupSub || 'walk-ups'}
+              />
+              <DoorStat label="Remaining" value={statRemaining} sub="capacity left" />
             </div>
           </div>
 
@@ -1053,7 +1165,7 @@ export default function DoorPage() {
                 Live activity
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {ACTIVITY.map((a, i) => (
+                {activity.map((a, i) => (
                   <ActivityRow key={i} a={a} />
                 ))}
               </div>
@@ -1062,7 +1174,13 @@ export default function DoorPage() {
         </div>
       </div>
 
-      <SellAtDoorModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <SellAtDoorModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        tiers={tiers}
+        onSold={prependActivity}
+        onRefreshStats={() => void loadStats()}
+      />
     </>
   );
 }

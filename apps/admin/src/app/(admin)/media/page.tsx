@@ -10,6 +10,7 @@ interface PhotoApiRow {
   public_url: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  events: { edition_number: number } | null;
   profiles: { handle: string; display_name: string; avatar_url: string | null } | null;
 }
 
@@ -36,7 +37,7 @@ export default function MediaPage() {
         const mapped: PhotoItem[] = (data.photos ?? []).map((p) => ({
           id: p.id,
           author: p.profiles?.handle ?? 'unknown',
-          edition: 'Ed ?',
+          edition: p.events?.edition_number ? `Ed ${p.events.edition_number}` : 'Ed ?',
           status: p.status,
           public_url: p.public_url,
         }));
