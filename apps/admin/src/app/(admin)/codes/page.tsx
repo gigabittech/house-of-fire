@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pill } from '@/components/Pill.js';
-import { PaneHeader } from '@/components/PaneHeader.js';
+import { PaneHeader } from '@/components/PaneHeader';
+import { Pill } from '@/components/Pill';
 
 type CodeRow = {
   id: string;
@@ -18,9 +18,9 @@ type CodeRow = {
 };
 
 const COMP_POOLS: Array<[string, string, string]> = [
-  ['Crew',     '4 / 8',  'Photographers, helpers'],
-  ['Press',    '3 / 10', 'Reviewers, podcasts'],
-  ['Goodwill', '2 / 5',  "On-the-spot, Jordan's call"],
+  ['Crew', '4 / 8', 'Photographers, helpers'],
+  ['Press', '3 / 10', 'Reviewers, podcasts'],
+  ['Goodwill', '2 / 5', "On-the-spot, Jordan's call"],
 ];
 
 const inputStyle: React.CSSProperties = {
@@ -38,21 +38,21 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function CodesPage() {
-  const [codes, setCodes]     = useState<CodeRow[]>([]);
+  const [codes, setCodes] = useState<CodeRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // New code form state
-  const [showForm, setShowForm]     = useState(false);
-  const [newCode, setNewCode]       = useState('');
-  const [newKind, setNewKind]       = useState<'percent' | 'flat_cents'>('percent');
-  const [newValue, setNewValue]     = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [newCode, setNewCode] = useState('');
+  const [newKind, setNewKind] = useState<'percent' | 'flat_cents'>('percent');
+  const [newValue, setNewValue] = useState('');
   const [newMaxUses, setNewMaxUses] = useState('');
-  const [newNote, setNewNote]       = useState('');
-  const [saving, setSaving]         = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/codes')
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((d: { codes?: CodeRow[] }) => {
         setCodes(d.codes ?? []);
         setLoading(false);
@@ -77,7 +77,7 @@ export default function CodesPage() {
       if (res.ok) {
         const d = (await res.json()) as { code?: CodeRow };
         if (d.code) {
-          setCodes(prev => [d.code as CodeRow, ...prev]);
+          setCodes((prev) => [d.code as CodeRow, ...prev]);
         }
         setShowForm(false);
         setNewCode('');
@@ -95,7 +95,7 @@ export default function CodesPage() {
     if (!confirm('Deactivate this code?')) return;
     const res = await fetch(`/api/admin/codes/${id}`, { method: 'DELETE' });
     if (res.ok) {
-      setCodes(prev => prev.filter(c => c.id !== id));
+      setCodes((prev) => prev.filter((c) => c.id !== id));
     }
   }
 
@@ -117,14 +117,20 @@ export default function CodesPage() {
         cta={
           <button
             type="button"
-            onClick={() => setShowForm(v => !v)}
+            onClick={() => setShowForm((v) => !v)}
             style={{
-              padding: '9px 16px', borderRadius: 8,
+              padding: '9px 16px',
+              borderRadius: 8,
               background: showForm ? 'var(--hof-elevated)' : 'var(--hof-amber)',
               border: showForm ? '1px solid var(--hof-border)' : 'none',
-              fontFamily: 'Inter, system-ui', fontSize: 13, fontWeight: 600,
-              color: showForm ? 'var(--hof-text)' : 'var(--hof-bg)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
+              fontFamily: 'Inter, system-ui',
+              fontSize: 13,
+              fontWeight: 600,
+              color: showForm ? 'var(--hof-text)' : 'var(--hof-bg)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
             {showForm ? (
@@ -132,7 +138,12 @@ export default function CodesPage() {
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 5 L12 19 M5 12 L19 12" />
+                  <path
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    d="M12 5 L12 19 M5 12 L19 12"
+                  />
                 </svg>
                 New code
               </>
@@ -142,40 +153,71 @@ export default function CodesPage() {
       />
 
       <div style={{ padding: '20px 28px 28px' }}>
-
         {/* New code form */}
         {showForm && (
-          <div style={{
-            marginBottom: 20,
-            background: 'var(--hof-surface)',
-            border: '1px solid var(--hof-border)',
-            borderRadius: 12,
-            padding: 20,
-          }}>
-            <div style={{
-              fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-amber)',
-              letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 16,
-            }}>
+          <div
+            style={{
+              marginBottom: 20,
+              background: 'var(--hof-surface)',
+              border: '1px solid var(--hof-border)',
+              borderRadius: 12,
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 10,
+                color: 'var(--hof-amber)',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                marginBottom: 16,
+              }}
+            >
               New promo code
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}
+            >
               {/* Code */}
               <div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
                   Code
                 </div>
                 <input
                   value={newCode}
-                  onChange={e => setNewCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
                   placeholder="FIREFAMILY"
-                  style={{ ...inputStyle, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em' }}
+                  style={{
+                    ...inputStyle,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    letterSpacing: '0.04em',
+                  }}
                 />
               </div>
 
               {/* Type toggle */}
               <div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
                   Type
                 </div>
                 <div style={{ display: 'flex', gap: 8, height: 40 }}>
@@ -183,10 +225,18 @@ export default function CodesPage() {
                     type="button"
                     onClick={() => setNewKind('percent')}
                     style={{
-                      flex: 1, borderRadius: 8, fontFamily: 'Inter, system-ui', fontSize: 13, fontWeight: 500,
+                      flex: 1,
+                      borderRadius: 8,
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 13,
+                      fontWeight: 500,
                       cursor: 'pointer',
-                      background: newKind === 'percent' ? 'var(--hof-amber)' : 'var(--hof-elevated)',
-                      border: newKind === 'percent' ? '1px solid var(--hof-amber)' : '1px solid var(--hof-border)',
+                      background:
+                        newKind === 'percent' ? 'var(--hof-amber)' : 'var(--hof-elevated)',
+                      border:
+                        newKind === 'percent'
+                          ? '1px solid var(--hof-amber)'
+                          : '1px solid var(--hof-border)',
                       color: newKind === 'percent' ? 'var(--hof-bg)' : 'var(--hof-text)',
                     }}
                   >
@@ -196,10 +246,18 @@ export default function CodesPage() {
                     type="button"
                     onClick={() => setNewKind('flat_cents')}
                     style={{
-                      flex: 1, borderRadius: 8, fontFamily: 'Inter, system-ui', fontSize: 13, fontWeight: 500,
+                      flex: 1,
+                      borderRadius: 8,
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 13,
+                      fontWeight: 500,
                       cursor: 'pointer',
-                      background: newKind === 'flat_cents' ? 'var(--hof-amber)' : 'var(--hof-elevated)',
-                      border: newKind === 'flat_cents' ? '1px solid var(--hof-amber)' : '1px solid var(--hof-border)',
+                      background:
+                        newKind === 'flat_cents' ? 'var(--hof-amber)' : 'var(--hof-elevated)',
+                      border:
+                        newKind === 'flat_cents'
+                          ? '1px solid var(--hof-amber)'
+                          : '1px solid var(--hof-border)',
                       color: newKind === 'flat_cents' ? 'var(--hof-bg)' : 'var(--hof-text)',
                     }}
                   >
@@ -210,13 +268,22 @@ export default function CodesPage() {
 
               {/* Value */}
               <div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
                   Value {newKind === 'percent' ? '(% off)' : '(cents, e.g. 1000 = $10)'}
                 </div>
                 <input
                   type="number"
                   value={newValue}
-                  onChange={e => setNewValue(e.target.value)}
+                  onChange={(e) => setNewValue(e.target.value)}
                   placeholder={newKind === 'percent' ? '15' : '1000'}
                   min="0"
                   style={inputStyle}
@@ -225,13 +292,22 @@ export default function CodesPage() {
 
               {/* Max uses */}
               <div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
                   Max uses (blank = unlimited)
                 </div>
                 <input
                   type="number"
                   value={newMaxUses}
-                  onChange={e => setNewMaxUses(e.target.value)}
+                  onChange={(e) => setNewMaxUses(e.target.value)}
                   placeholder="100"
                   min="1"
                   style={inputStyle}
@@ -241,12 +317,21 @@ export default function CodesPage() {
 
             {/* Note */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div
+                style={{
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 11,
+                  color: 'var(--hof-text-sec)',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
                 Note
               </div>
               <input
                 value={newNote}
-                onChange={e => setNewNote(e.target.value)}
+                onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Friends & family 15% off"
                 style={inputStyle}
               />
@@ -256,11 +341,18 @@ export default function CodesPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
-                onClick={() => { setShowForm(false); }}
+                onClick={() => {
+                  setShowForm(false);
+                }}
                 style={{
-                  padding: '9px 18px', borderRadius: 8, cursor: 'pointer',
-                  background: 'var(--hof-elevated)', border: '1px solid var(--hof-border)',
-                  fontFamily: 'Inter, system-ui', fontSize: 13, fontWeight: 500,
+                  padding: '9px 18px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  background: 'var(--hof-elevated)',
+                  border: '1px solid var(--hof-border)',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 13,
+                  fontWeight: 500,
                   color: 'var(--hof-text)',
                 }}
               >
@@ -268,14 +360,27 @@ export default function CodesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { void createCode(); }}
+                onClick={() => {
+                  void createCode();
+                }}
                 disabled={saving || !newCode.trim() || !newValue}
                 style={{
-                  padding: '9px 18px', borderRadius: 8, cursor: saving || !newCode.trim() || !newValue ? 'not-allowed' : 'pointer',
-                  background: saving || !newCode.trim() || !newValue ? 'var(--hof-elevated)' : 'var(--hof-amber)',
-                  border: saving || !newCode.trim() || !newValue ? '1px solid var(--hof-border)' : 'none',
-                  fontFamily: 'Inter, system-ui', fontSize: 13, fontWeight: 600,
-                  color: saving || !newCode.trim() || !newValue ? 'var(--hof-text-dis)' : 'var(--hof-bg)',
+                  padding: '9px 18px',
+                  borderRadius: 8,
+                  cursor: saving || !newCode.trim() || !newValue ? 'not-allowed' : 'pointer',
+                  background:
+                    saving || !newCode.trim() || !newValue
+                      ? 'var(--hof-elevated)'
+                      : 'var(--hof-amber)',
+                  border:
+                    saving || !newCode.trim() || !newValue ? '1px solid var(--hof-border)' : 'none',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color:
+                    saving || !newCode.trim() || !newValue
+                      ? 'var(--hof-text-dis)'
+                      : 'var(--hof-bg)',
                   opacity: saving || !newCode.trim() || !newValue ? 0.6 : 1,
                 }}
               >
@@ -286,16 +391,27 @@ export default function CodesPage() {
         )}
 
         {/* Codes table */}
-        <div style={{
-          background: 'var(--hof-surface)', border: '1px solid var(--hof-border)',
-          borderRadius: 12, overflow: 'hidden',
-        }}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
-            padding: '12px 18px', borderBottom: '1px solid var(--hof-border)',
-            fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)',
-            letterSpacing: '0.16em', textTransform: 'uppercase',
-          }}>
+        <div
+          style={{
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
+              padding: '12px 18px',
+              borderBottom: '1px solid var(--hof-border)',
+              fontFamily: 'Inter, system-ui',
+              fontSize: 10,
+              color: 'var(--hof-text-sec)',
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+            }}
+          >
             <div>Code</div>
             <div>Kind</div>
             <div>Value</div>
@@ -305,35 +421,57 @@ export default function CodesPage() {
           </div>
 
           {loading && (
-            <div style={{
-              padding: '24px 18px', fontFamily: 'Inter, system-ui', fontSize: 13,
-              color: 'var(--hof-text-sec)', textAlign: 'center',
-            }}>
+            <div
+              style={{
+                padding: '24px 18px',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+                textAlign: 'center',
+              }}
+            >
               Loading…
             </div>
           )}
 
           {!loading && codes.length === 0 && (
-            <div style={{
-              padding: '24px 18px', fontFamily: 'Inter, system-ui', fontSize: 13,
-              color: 'var(--hof-text-sec)', textAlign: 'center',
-            }}>
+            <div
+              style={{
+                padding: '24px 18px',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+                textAlign: 'center',
+              }}
+            >
               No codes yet. Create your first code above.
             </div>
           )}
 
           {codes.map((c, i) => (
-            <div key={c.id} style={{
-              display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
-              padding: '14px 18px', alignItems: 'center',
-              borderBottom: i < codes.length - 1 ? '1px solid var(--hof-border)' : 'none',
-              fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text)',
-              opacity: c.active ? 1 : 0.5,
-            }}>
-              <div style={{
-                fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
-                color: 'var(--hof-text)', fontWeight: 600, letterSpacing: '0.04em',
-              }}>
+            <div
+              key={c.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
+                padding: '14px 18px',
+                alignItems: 'center',
+                borderBottom: i < codes.length - 1 ? '1px solid var(--hof-border)' : 'none',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text)',
+                opacity: c.active ? 1 : 0.5,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 13,
+                  color: 'var(--hof-text)',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                }}
+              >
                 {c.code}
               </div>
               <div>
@@ -341,15 +479,22 @@ export default function CodesPage() {
                   {c.kind === 'percent' ? 'Discount' : 'Flat'}
                 </Pill>
               </div>
-              <div style={{
-                fontFamily: 'JetBrains Mono, monospace', fontVariantNumeric: 'tabular-nums',
-              }}>
+              <div
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {formatValue(c)}
               </div>
-              <div style={{
-                fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
-                color: 'var(--hof-text-sec)', fontVariantNumeric: 'tabular-nums',
-              }}>
+              <div
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 12,
+                  color: 'var(--hof-text-sec)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {formatUses(c)}
               </div>
               <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{c.note ?? '—'}</div>
@@ -357,11 +502,18 @@ export default function CodesPage() {
                 {c.active && (
                   <button
                     type="button"
-                    onClick={() => { void deactivateCode(c.id); }}
+                    onClick={() => {
+                      void deactivateCode(c.id);
+                    }}
                     style={{
-                      padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                      background: 'var(--hof-elevated)', border: '1px solid var(--hof-border)',
-                      fontFamily: 'Inter, system-ui', fontSize: 11, fontWeight: 500,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      background: 'var(--hof-elevated)',
+                      border: '1px solid var(--hof-border)',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      fontWeight: 500,
                       color: 'var(--hof-text-sec)',
                     }}
                   >
@@ -369,10 +521,14 @@ export default function CodesPage() {
                   </button>
                 )}
                 {!c.active && (
-                  <span style={{
-                    fontFamily: 'Inter, system-ui', fontSize: 11,
-                    color: 'var(--hof-text-dis)', letterSpacing: '0.1em',
-                  }}>
+                  <span
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      color: 'var(--hof-text-dis)',
+                      letterSpacing: '0.1em',
+                    }}
+                  >
                     INACTIVE
                   </span>
                 )}
@@ -382,31 +538,62 @@ export default function CodesPage() {
         </div>
 
         {/* Comp-ticket pool */}
-        <div style={{
-          marginTop: 24, padding: '16px 18px',
-          background: 'var(--hof-surface)', border: '1px solid var(--hof-border)', borderRadius: 12,
-        }}>
-          <div style={{
-            fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-amber)',
-            letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10,
-          }}>Comp-ticket pool</div>
+        <div
+          style={{
+            marginTop: 24,
+            padding: '16px 18px',
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 12,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'Inter, system-ui',
+              fontSize: 10,
+              color: 'var(--hof-amber)',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              marginBottom: 10,
+            }}
+          >
+            Comp-ticket pool
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {COMP_POOLS.map(([label, value, sub]) => (
               <div key={label}>
-                <div style={{
-                  fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.16em', textTransform: 'uppercase',
-                }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {label}
                 </div>
-                <div style={{
-                  fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 24,
-                  color: 'var(--hof-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums',
-                }}>
+                <div
+                  style={{
+                    fontFamily: 'Clash Display, system-ui',
+                    fontWeight: 600,
+                    fontSize: 24,
+                    color: 'var(--hof-text)',
+                    marginTop: 4,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   {value}
                 </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', marginTop: 2 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    marginTop: 2,
+                  }}
+                >
                   {sub}
                 </div>
               </div>

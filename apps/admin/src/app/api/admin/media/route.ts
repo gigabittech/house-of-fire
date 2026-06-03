@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get('status') ?? 'pending';
-  const status = (['pending', 'approved', 'rejected'].includes(statusParam)
-    ? statusParam
-    : 'pending') as 'pending' | 'approved' | 'rejected';
+  const status = (
+    ['pending', 'approved', 'rejected'].includes(statusParam) ? statusParam : 'pending'
+  ) as 'pending' | 'approved' | 'rejected';
 
   const supabase = createAdminSupabaseClient();
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const body = await request.json() as { id: string; status: 'approved' | 'rejected' };
+  const body = (await request.json()) as { id: string; status: 'approved' | 'rejected' };
   const { id, status } = body;
 
   if (!id || !['approved', 'rejected'].includes(status)) {
@@ -47,10 +47,7 @@ export async function PATCH(request: NextRequest) {
 
   const supabase = createAdminSupabaseClient();
 
-  const { error } = await supabase
-    .from('event_photos')
-    .update({ status })
-    .eq('id', id);
+  const { error } = await supabase.from('event_photos').update({ status }).eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

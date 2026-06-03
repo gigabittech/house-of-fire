@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface HofPhotoProps {
   /** Resolved image URL (app supplies from its photo library). */

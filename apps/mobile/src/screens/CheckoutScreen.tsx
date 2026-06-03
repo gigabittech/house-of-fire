@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
 import { Icon, useResponsive } from '@hof/ui';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder');
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
+);
 
 const CHECKOUT_STORAGE_KEY = 'hof_checkout_v1';
 
@@ -198,13 +200,7 @@ function PhoneInput({
   );
 }
 
-function SaveToggle({
-  on,
-  onChange,
-}: {
-  on: boolean;
-  onChange: (on: boolean) => void;
-}) {
+function SaveToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <button
       type="button"
@@ -341,10 +337,7 @@ function StepTickets({
               textAlign: 'left',
               padding: '14px 16px',
               background: tier === id ? colors.elevated : colors.surface,
-              border:
-                tier === id
-                  ? `2px solid ${colors.amber}`
-                  : `1px solid ${colors.border}`,
+              border: tier === id ? `2px solid ${colors.amber}` : `1px solid ${colors.border}`,
               borderRadius: 12,
               display: 'flex',
               alignItems: 'center',
@@ -460,11 +453,7 @@ function StepTickets({
                 justifyContent: 'center',
               }}
             >
-              <Icon
-                name="minus"
-                size={16}
-                color={qty === 1 ? colors.textDis : colors.text}
-              />
+              <Icon name="minus" size={16} color={qty === 1 ? colors.textDis : colors.text} />
             </button>
             <span
               style={{
@@ -689,11 +678,7 @@ function StepAccount({
             autoComplete="email"
             error={errors.email}
           />
-          {errors.email && (
-            <FieldError>
-              Use a valid email — your ticket goes here.
-            </FieldError>
-          )}
+          {errors.email && <FieldError>Use a valid email — your ticket goes here.</FieldError>}
 
           <div style={{ height: 12 }} />
           <FieldLabel>Phone number</FieldLabel>
@@ -702,14 +687,9 @@ function StepAccount({
             onChange={(v) => setField('phone', v)}
             error={errors.phone}
           />
-          <HelperText>
-            For ticket SMS and door lookup. We won&apos;t text you otherwise.
-          </HelperText>
+          <HelperText>For ticket SMS and door lookup. We won&apos;t text you otherwise.</HelperText>
 
-          <SaveToggle
-            on={mode === 'signup'}
-            onChange={(on) => setMode(on ? 'signup' : 'guest')}
-          />
+          <SaveToggle on={mode === 'signup'} onChange={(on) => setMode(on ? 'signup' : 'guest')} />
 
           {mode === 'signup' && (
             <div style={{ marginTop: 12 }}>
@@ -733,8 +713,7 @@ function StepAccount({
               fontWeight: 500,
             }}
           >
-            Already a member?{' '}
-            <span style={{ color: colors.amber }}>Sign in →</span>
+            Already a member? <span style={{ color: colors.amber }}>Sign in →</span>
           </button>
         </>
       )}
@@ -792,7 +771,9 @@ function PromoCodeSection({
           onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onApply(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onApply();
+          }}
           placeholder="Enter code (e.g. FIREFAMILY)"
           style={{
             flex: 1,
@@ -813,7 +794,8 @@ function PromoCodeSection({
           disabled={promoLoading || promoCode.trim().length === 0}
           style={{
             padding: '10px 16px',
-            background: promoLoading || promoCode.trim().length === 0 ? colors.elevated : colors.amber,
+            background:
+              promoLoading || promoCode.trim().length === 0 ? colors.elevated : colors.amber,
             border: `1px solid ${promoLoading || promoCode.trim().length === 0 ? colors.border : colors.amber}`,
             borderRadius: 8,
             fontFamily: 'Inter',
@@ -849,7 +831,10 @@ function PromoCodeSection({
           </span>
           <button
             className="hof-btn"
-            onClick={() => { setPromoResult(null); setPromoCode(''); }}
+            onClick={() => {
+              setPromoResult(null);
+              setPromoCode('');
+            }}
             style={{
               fontFamily: 'Inter',
               fontSize: 12,
@@ -1069,7 +1054,17 @@ function StepPaymentInner({
 
       {/* Payment element */}
       <div style={{ padding: '0 16px' }}>
-        <div style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 12, marginTop: 4 }}>
+        <div
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 11,
+            color: colors.textSec,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            marginBottom: 12,
+            marginTop: 4,
+          }}
+        >
           Payment
         </div>
         <div style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec, marginBottom: 16 }}>
@@ -1077,17 +1072,28 @@ function StepPaymentInner({
         </div>
         <PaymentElement />
         {err && (
-          <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.error, marginTop: 12 }}>{err}</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.error, marginTop: 12 }}>
+            {err}
+          </div>
         )}
         <div style={{ marginTop: 16 }}>
           <button
             className="hof-btn hof-press"
-            onClick={() => { void handleConfirm(); }}
+            onClick={() => {
+              void handleConfirm();
+            }}
             disabled={confirming || !stripe}
             style={{
-              width: '100%', padding: '15px', background: confirming ? colors.elevated : colors.amber,
-              border: 'none', borderRadius: 12, fontFamily: 'Inter', fontWeight: 600,
-              fontSize: 16, color: confirming ? colors.textSec : colors.bg, transition: 'background 150ms',
+              width: '100%',
+              padding: '15px',
+              background: confirming ? colors.elevated : colors.amber,
+              border: 'none',
+              borderRadius: 12,
+              fontFamily: 'Inter',
+              fontWeight: 600,
+              fontSize: 16,
+              color: confirming ? colors.textSec : colors.bg,
+              transition: 'background 150ms',
             }}
           >
             {confirming ? 'Processing…' : `Pay ${formatCurrency(intentAmount)}`}
@@ -1127,13 +1133,35 @@ function StepPayment({
 }) {
   if (!clientSecret) {
     return (
-      <div style={{ padding: '40px 16px', textAlign: 'center', fontFamily: 'Inter', fontSize: 14, color: colors.textSec }}>
+      <div
+        style={{
+          padding: '40px 16px',
+          textAlign: 'center',
+          fontFamily: 'Inter',
+          fontSize: 14,
+          color: colors.textSec,
+        }}
+      >
         Preparing payment…
       </div>
     );
   }
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', variables: { colorPrimary: '#E8651A', colorBackground: '#141412', colorText: '#F0EDE6', borderRadius: '8px' } } }}>
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#E8651A',
+            colorBackground: '#141412',
+            colorText: '#F0EDE6',
+            borderRadius: '8px',
+          },
+        },
+      }}
+    >
       <StepPaymentInner
         paymentIntentId={paymentIntentId}
         clientSecret={clientSecret}
@@ -1187,8 +1215,7 @@ export default function CheckoutScreen() {
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
-  const setField = (k: keyof Details, v: string) =>
-    setDetails((d) => ({ ...d, [k]: v }));
+  const setField = (k: keyof Details, v: string) => setDetails((d) => ({ ...d, [k]: v }));
 
   const [tierData, setTierData] = useState<Record<string, TierData>>({
     ga: { name: 'General', price: 28 },
@@ -1197,20 +1224,32 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     fetch('/api/events/upcoming')
-      .then(r => r.json())
-      .then((d: { event?: { ticket_tiers: Array<{ id: string; name: string; display_name: string; price_cents: number; status: string }> } }) => {
-        if (!d.event?.ticket_tiers) return;
-        const built: Record<string, TierData> = {};
-        for (const t of d.event.ticket_tiers) {
-          if (t.status === 'hidden') continue;
-          const priceNum = t.price_cents / 100;
-          const tierName = t.display_name || t.name;
-          built[t.id] = { name: tierName, price: priceNum };
-          // Key by id only — keying by slug too duplicated every tier in the
-          // render list AND set `tier` to a slug the checkout API rejects.
-        }
-        if (Object.keys(built).length > 0) setTierData(built);
-      })
+      .then((r) => r.json())
+      .then(
+        (d: {
+          event?: {
+            ticket_tiers: Array<{
+              id: string;
+              name: string;
+              display_name: string;
+              price_cents: number;
+              status: string;
+            }>;
+          };
+        }) => {
+          if (!d.event?.ticket_tiers) return;
+          const built: Record<string, TierData> = {};
+          for (const t of d.event.ticket_tiers) {
+            if (t.status === 'hidden') continue;
+            const priceNum = t.price_cents / 100;
+            const tierName = t.display_name || t.name;
+            built[t.id] = { name: tierName, price: priceNum };
+            // Key by id only — keying by slug too duplicated every tier in the
+            // render list AND set `tier` to a slug the checkout API rejects.
+          }
+          if (Object.keys(built).length > 0) setTierData(built);
+        },
+      )
       .catch(console.error);
   }, []);
 
@@ -1219,8 +1258,7 @@ export default function CheckoutScreen() {
     const keys = Object.keys(tierData);
     if (keys.length === 0) return;
     if (tier && tierData[tier]) return;
-    const next =
-      (tierParam && tierData[tierParam] ? tierParam : undefined) ?? keys[0];
+    const next = (tierParam && tierData[tierParam] ? tierParam : undefined) ?? keys[0];
     if (next) setTier(next);
   }, [tierData, tier, tierParam]);
 
@@ -1240,6 +1278,7 @@ export default function CheckoutScreen() {
   }, [tier, qty, router, searchParams]);
 
   // Reset promo when tier or quantity changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear promo when tier/qty change
   useEffect(() => {
     setPromoResult(null);
   }, [tier, qty]);
@@ -1259,11 +1298,8 @@ export default function CheckoutScreen() {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim());
   const phoneDigits = details.phone.replace(/\D/g, '');
   const phoneOk = phoneDigits.length >= 10;
-  const nameOk =
-    details.firstName.trim().length >= 1 &&
-    details.lastName.trim().length >= 1;
-  const passwordOk =
-    accountMode !== 'signup' || details.password.length >= 6;
+  const nameOk = details.firstName.trim().length >= 1 && details.lastName.trim().length >= 1;
+  const passwordOk = accountMode !== 'signup' || details.password.length >= 6;
   const step2Valid =
     accountMode === 'signin'
       ? emailOk && details.password.length >= 1
@@ -1310,7 +1346,7 @@ export default function CheckoutScreen() {
               discountCents: promoResult?.valid ? promoResult.discountCents : 0,
             }),
           });
-          const d = await r.json() as {
+          const d = (await r.json()) as {
             clientSecret?: string;
             paymentIntentId?: string;
             amount?: number;
@@ -1331,7 +1367,7 @@ export default function CheckoutScreen() {
         }
         setPayLoading(false);
       }
-      setStep((s) => (s < 3 ? (s + 1) as 1 | 2 | 3 : s));
+      setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
       return;
     }
     // Step 3: payment is handled by StepPaymentInner
@@ -1441,11 +1477,7 @@ export default function CheckoutScreen() {
                       flexShrink: 0,
                     }}
                   >
-                    {i + 1 < step ? (
-                      <Icon name="check" size={12} color={colors.bg} />
-                    ) : (
-                      i + 1
-                    )}
+                    {i + 1 < step ? <Icon name="check" size={12} color={colors.bg} /> : i + 1}
                   </div>
                   <span
                     style={{
@@ -1560,7 +1592,9 @@ export default function CheckoutScreen() {
             promoCode={promoCode}
             setPromoCode={setPromoCode}
             promoLoading={promoLoading}
-            onApplyPromo={() => { void applyPromoCode(); }}
+            onApplyPromo={() => {
+              void applyPromoCode();
+            }}
             onSuccess={() => router.push('/ticket?purchased=1')}
           />
         )}
@@ -1617,14 +1651,18 @@ export default function CheckoutScreen() {
             </span>
           </div>
           {payError && (
-            <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.error, marginBottom: 8 }}>
+            <div
+              style={{ fontFamily: 'Inter', fontSize: 13, color: colors.error, marginBottom: 8 }}
+            >
               {payError}
             </div>
           )}
           <button
             className="hof-btn hof-press"
             disabled={(step === 2 && !step2Valid) || payLoading}
-            onClick={() => { void handleAdvance(); }}
+            onClick={() => {
+              void handleAdvance();
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1638,13 +1676,17 @@ export default function CheckoutScreen() {
               fontFamily: 'Inter',
               fontWeight: 600,
               fontSize: 16,
-              color:
-                (step === 2 && !step2Valid) || payLoading ? colors.textDis : colors.bg,
+              color: (step === 2 && !step2Valid) || payLoading ? colors.textDis : colors.bg,
               opacity: (step === 2 && !step2Valid) || payLoading ? 0.6 : 1,
             }}
           >
             {step === 1 && 'Continue to your details'}
-            {step === 2 && (payLoading ? 'Preparing…' : step2Valid ? 'Continue to payment' : 'Fill in your details')}
+            {step === 2 &&
+              (payLoading
+                ? 'Preparing…'
+                : step2Valid
+                  ? 'Continue to payment'
+                  : 'Fill in your details')}
           </button>
         </div>
       )}

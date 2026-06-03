@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient();
@@ -22,10 +22,7 @@ export async function POST(request: NextRequest) {
   const { endpoint, p256dh, auth, platform } = body;
 
   if (!endpoint || !p256dh || !auth) {
-    return NextResponse.json(
-      { error: 'endpoint, p256dh, and auth are required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'endpoint, p256dh, and auth are required' }, { status: 400 });
   }
 
   const { error } = await supabase.from('push_subscriptions').upsert(
@@ -36,7 +33,7 @@ export async function POST(request: NextRequest) {
       auth_key: auth,
       platform: platform ?? 'web',
     },
-    { onConflict: 'user_id,endpoint' }
+    { onConflict: 'user_id,endpoint' },
   );
 
   if (error) {

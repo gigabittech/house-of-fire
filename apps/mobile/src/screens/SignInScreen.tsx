@@ -4,11 +4,11 @@ import { colors } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { createClient } from '../lib/supabase.js';
+import { createClient } from '../lib/supabase';
 
 function AuthToggle({
   mode,
-  onGoSignIn,
+  onGoSignIn: _onGoSignIn,
   onGoSignUp,
 }: {
   mode: 'sign-in' | 'sign-up';
@@ -35,7 +35,6 @@ function AuthToggle({
         alignItems: 'center',
       }}
     >
-    
       <button
         type="button"
         className="hof-btn"
@@ -313,4 +312,3 @@ export default function SignInScreen() {
     </div>
   );
 }
-

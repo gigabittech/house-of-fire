@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
-import { Icon, HofConfirm, useResponsive } from '@hof/ui';
-import { createClient } from '../lib/supabase.js';
+import { HofConfirm, Icon, useResponsive } from '@hof/ui';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { createClient } from '../lib/supabase';
 
 type View = 'list' | 'notifs' | 'payment' | 'privacy' | 'help';
 
@@ -142,8 +142,8 @@ function SettingsNotifs() {
 
   useEffect(() => {
     fetch('/api/user/settings')
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         const s = d.settings ?? {};
         if (s.push_notifications !== undefined) setPush(s.push_notifications);
         if (s.email_notifications !== undefined) setEmail(s.email_notifications);
@@ -172,29 +172,69 @@ function SettingsNotifs() {
         <ActionRow
           label="Push notifications"
           sub="App badge + lock screen"
-          right={<Toggle on={push} onChange={v => { setPush(v); persist('push_notifications', v); }} />}
+          right={
+            <Toggle
+              on={push}
+              onChange={(v) => {
+                setPush(v);
+                persist('push_notifications', v);
+              }}
+            />
+          }
         />
         <ActionRow
           label="Email"
           sub="sujan@example.com"
-          right={<Toggle on={email} onChange={v => { setEmail(v); persist('email_notifications', v); }} />}
+          right={
+            <Toggle
+              on={email}
+              onChange={(v) => {
+                setEmail(v);
+                persist('email_notifications', v);
+              }}
+            />
+          }
         />
         <ActionRow
           label="SMS"
           sub="Add a phone number"
           last
-          right={<Toggle on={sms} onChange={v => { setSms(v); persist('sms_notifications', v); }} />}
+          right={
+            <Toggle
+              on={sms}
+              onChange={(v) => {
+                setSms(v);
+                persist('sms_notifications', v);
+              }}
+            />
+          }
         />
       </Section>
       <Section title="Topics">
         <ActionRow
           label="Lineup & schedule alerts"
-          right={<Toggle on={lineupAlerts} onChange={v => { setLineupAlerts(v); persist('lineup_alerts', v); }} />}
+          right={
+            <Toggle
+              on={lineupAlerts}
+              onChange={(v) => {
+                setLineupAlerts(v);
+                persist('lineup_alerts', v);
+              }}
+            />
+          }
         />
         <ActionRow
           label="Community mentions"
           last
-          right={<Toggle on={communityMentions} onChange={v => { setCommunityMentions(v); persist('community_mentions', v); }} />}
+          right={
+            <Toggle
+              on={communityMentions}
+              onChange={(v) => {
+                setCommunityMentions(v);
+                persist('community_mentions', v);
+              }}
+            />
+          }
         />
       </Section>
     </>
@@ -255,12 +295,28 @@ function SettingsPrivacy() {
       <Section title="Community">
         <ActionRow
           label="Post anonymously by default"
-          right={<Toggle on={anon} onChange={v => { setAnon(v); persist('post_anonymously', v); }} />}
+          right={
+            <Toggle
+              on={anon}
+              onChange={(v) => {
+                setAnon(v);
+                persist('post_anonymously', v);
+              }}
+            />
+          }
         />
         <ActionRow
           label="Share attendance activity"
           last
-          right={<Toggle on={shareActivity} onChange={v => { setShareActivity(v); persist('share_activity', v); }} />}
+          right={
+            <Toggle
+              on={shareActivity}
+              onChange={(v) => {
+                setShareActivity(v);
+                persist('share_activity', v);
+              }}
+            />
+          }
         />
       </Section>
       <Section title="Data">
@@ -268,12 +324,7 @@ function SettingsPrivacy() {
           label="Download my data"
           onClick={() => alert('Your data export will be emailed to you within 24 hours.')}
         />
-        <ActionRow
-          label="Delete account"
-          danger
-          last
-          onClick={() => setDeleteConfirmOpen(true)}
-        />
+        <ActionRow label="Delete account" danger last onClick={() => setDeleteConfirmOpen(true)} />
       </Section>
       <HofConfirm
         open={deleteConfirmOpen}
@@ -378,7 +429,12 @@ export default function SettingsScreen() {
               justifyContent: 'center',
             }}
           >
-            <Icon name="chev" size={16} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+            <Icon
+              name="chev"
+              size={16}
+              color={colors.text}
+              style={{ transform: 'rotate(180deg)' }}
+            />
           </button>
           <div
             style={{
@@ -406,15 +462,8 @@ export default function SettingsScreen() {
                 sub="Visa ···· 4242"
                 onClick={() => setView('payment')}
               />
-              <ActionRow
-                label="Privacy & data"
-                onClick={() => setView('privacy')}
-              />
-              <ActionRow
-                label="Help & contact"
-                last
-                onClick={() => setView('help')}
-              />
+              <ActionRow label="Privacy & data" onClick={() => setView('privacy')} />
+              <ActionRow label="Help & contact" last onClick={() => setView('help')} />
             </Section>
             <Section title="Session">
               <ActionRow

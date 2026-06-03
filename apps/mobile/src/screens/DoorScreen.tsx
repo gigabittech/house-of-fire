@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useRef, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
 import { colors } from '@hof/design-tokens';
 import { useResponsive } from '@hof/ui';
+import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ScanResult =
-  | { ok: true; holder: { display_name: string } | null; tier: { display_name: string } | null; code: string }
+  | {
+      ok: true;
+      holder: { display_name: string } | null;
+      tier: { display_name: string } | null;
+      code: string;
+    }
   | { ok: false; error: string };
 
 type ActivityEntry = {
@@ -23,7 +28,11 @@ type SellStage = 'form' | 'processing' | 'done';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function now12(): string {
-  return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }
 
 function formatPhone(raw: string): string {
@@ -37,7 +46,13 @@ function formatPhone(raw: string): string {
 
 const MOCK_ACTIVITY: ActivityEntry[] = [
   { t: '10:41', name: 'Sujan Bhuiyan', meta: 'VIP · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:40', name: 'Walk-up · M. Castellanos', meta: 'GA · Tap to Pay · $28', tone: 'amber', kind: 'sale' },
+  {
+    t: '10:40',
+    name: 'Walk-up · M. Castellanos',
+    meta: 'GA · Tap to Pay · $28',
+    tone: 'amber',
+    kind: 'sale',
+  },
   { t: '10:38', name: 'Devon Park · +1', meta: 'GA · scanned in', tone: 'success', kind: 'scan' },
   { t: '10:30', name: 'Doors opened', meta: 'Scanner armed', tone: 'neutral', kind: 'system' },
 ];
@@ -155,12 +170,23 @@ function Processing({ total }: { total: number }) {
         }}
       >
         {/* Wallet icon (SVG) */}
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colors.amber} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2"/>
-          <path d="M16 14h2"/>
+        <svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={colors.amber}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M16 14h2" />
         </svg>
       </div>
-      <div style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20, color: colors.text }}>
+      <div
+        style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20, color: colors.text }}
+      >
         Charging ${total.toFixed(2)}…
       </div>
       <div style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec, marginTop: 6 }}>
@@ -186,11 +212,22 @@ function Done({ first }: { first: string }) {
           justifyContent: 'center',
         }}
       >
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={colors.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={colors.success}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
-      <div style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20, color: colors.text }}>
+      <div
+        style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20, color: colors.text }}
+      >
         Approved
       </div>
       <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.textSec, marginTop: 6 }}>
@@ -214,7 +251,7 @@ function ActivityRow({ a }: { a: ActivityEntry }) {
     a.kind === 'sale'
       ? 'M12 5v14M5 12h14' // plus
       : a.kind === 'scan'
-        ? 'M20 6L9 17l-5-5'  // check
+        ? 'M20 6L9 17l-5-5' // check
         : 'M13 10V3L4 14h7v7l9-11h-7z'; // bolt
 
   return (
@@ -249,8 +286,17 @@ function ActivityRow({ a }: { a: ActivityEntry }) {
           justifyContent: 'center',
         }}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d={iconPath}/>
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={c}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d={iconPath} />
         </svg>
       </span>
       <div style={{ minWidth: 0 }}>
@@ -267,9 +313,7 @@ function ActivityRow({ a }: { a: ActivityEntry }) {
         >
           {a.name}
         </div>
-        <div style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec }}>
-          {a.meta}
-        </div>
+        <div style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec }}>{a.meta}</div>
       </div>
     </div>
   );
@@ -310,8 +354,13 @@ function SellAtDoorModal({
 
   function reset() {
     setStage('form');
-    setFirst(''); setLast(''); setEmail(''); setPhone('');
-    setTier('ga'); setQty(1); setPay('tap');
+    setFirst('');
+    setLast('');
+    setEmail('');
+    setPhone('');
+    setTier('ga');
+    setQty(1);
+    setPay('tap');
   }
 
   async function submit() {
@@ -322,7 +371,15 @@ function SellAtDoorModal({
       const res = await fetch('/api/door/sell', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, qty, first_name: first, last_name: last, email, phone, pay_method: pay }),
+        body: JSON.stringify({
+          tier,
+          qty,
+          first_name: first,
+          last_name: last,
+          email,
+          phone,
+          pay_method: pay,
+        }),
       });
       const data = (await res.json()) as { ok?: boolean };
       if (!data.ok) throw new Error('Sell failed');
@@ -438,8 +495,17 @@ function SellAtDoorModal({
               cursor: 'pointer',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.textSec} strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={colors.textSec}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -462,16 +528,37 @@ function SellAtDoorModal({
                     padding: '12px 14px',
                     textAlign: 'left',
                     background: tier === id ? colors.elevated : colors.bg,
-                    border: tier === id ? `2px solid ${colors.amber}` : `1px solid ${colors.border}`,
+                    border:
+                      tier === id ? `2px solid ${colors.amber}` : `1px solid ${colors.border}`,
                     borderRadius: 10,
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <span style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 14, color: colors.text }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'Inter',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: colors.text,
+                      }}
+                    >
                       {t.name}
                     </span>
-                    <span style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 18, color: colors.text }}>
+                    <span
+                      style={{
+                        fontFamily: 'Clash Display',
+                        fontWeight: 600,
+                        fontSize: 18,
+                        color: colors.text,
+                      }}
+                    >
                       ${t.price}
                     </span>
                   </div>
@@ -514,8 +601,16 @@ function SellAtDoorModal({
                     cursor: 'pointer',
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={qty === 1 ? colors.textDis : colors.text} strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={qty === 1 ? colors.textDis : colors.text}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                 </button>
                 <span
@@ -544,8 +639,17 @@ function SellAtDoorModal({
                     cursor: 'pointer',
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.bg} strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={colors.bg}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                 </button>
               </div>
@@ -584,7 +688,9 @@ function SellAtDoorModal({
               <DoorInput
                 type="tel"
                 value={phone}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(formatPhone(e.target.value))}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPhone(formatPhone(e.target.value))
+                }
                 placeholder="(555) 123-4567"
               />
             </div>
@@ -592,8 +698,20 @@ function SellAtDoorModal({
             {/* Payment */}
             <DoorLabel style={{ marginTop: 18 }}>Payment</DoorLabel>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              <PayChoice id="tap" pay={pay} setPay={setPay} title="Tap to Pay" sub="Apple / Google" />
-              <PayChoice id="card" pay={pay} setPay={setPay} title="Card reader" sub="Insert / tap" />
+              <PayChoice
+                id="tap"
+                pay={pay}
+                setPay={setPay}
+                title="Tap to Pay"
+                sub="Apple / Google"
+              />
+              <PayChoice
+                id="card"
+                pay={pay}
+                setPay={setPay}
+                title="Card reader"
+                sub="Insert / tap"
+              />
               <PayChoice id="cash" pay={pay} setPay={setPay} title="Cash" sub="Log to register" />
             </div>
 
@@ -657,8 +775,17 @@ function SellAtDoorModal({
                   gap: 8,
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={valid ? colors.bg : colors.textDis} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={valid ? colors.bg : colors.textDis}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
                 </svg>
                 {valid ? `Charge $${total.toFixed(2)}` : 'Fill in buyer details'}
               </button>
@@ -676,8 +803,17 @@ function SellAtDoorModal({
                 color: colors.textSec,
               }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={colors.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={colors.success}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
               </svg>
               Encrypted via Stripe Terminal · ticket emailed instantly
             </div>
@@ -690,11 +826,7 @@ function SellAtDoorModal({
 
 // ─── Scanner area (text input viewfinder) ─────────────────────────────────────
 
-function ScannerArea({
-  onScanned,
-}: {
-  onScanned: (result: ScanResult, code: string) => void;
-}) {
+function ScannerArea({ onScanned }: { onScanned: (result: ScanResult, code: string) => void }) {
   const [code, setCode] = useState('');
   const [scanning, setScanning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -747,7 +879,14 @@ function ScannerArea({
       }}
     >
       {/* Corner brackets (viewfinder aesthetic) */}
-      {([['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']] as const).map(([v, h]) => (
+      {(
+        [
+          ['top', 'left'],
+          ['top', 'right'],
+          ['bottom', 'left'],
+          ['bottom', 'right'],
+        ] as const
+      ).map(([v, h]) => (
         <div
           key={`${v}-${h}`}
           style={{
@@ -931,19 +1070,26 @@ const DOOR_MAX_WIDTH = 760;
 export default function DoorScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityEntry[]>(MOCK_ACTIVITY);
-  const [scanToast, setScanToast] = useState<{ ok: boolean; message: string; sub?: string } | null>(null);
+  const [scanToast, setScanToast] = useState<{ ok: boolean; message: string; sub?: string } | null>(
+    null,
+  );
   const { isWide } = useResponsive();
 
   function handleScanned(result: ScanResult, code: string) {
     if ('ok' in result && result.ok) {
       const displayName =
         (result.holder as { display_name?: string } | null)?.display_name ?? 'Guest';
-      const tierName =
-        (result.tier as { display_name?: string } | null)?.display_name ?? 'GA';
+      const tierName = (result.tier as { display_name?: string } | null)?.display_name ?? 'GA';
 
       setScanToast({ ok: true, message: `✓ Valid — ${displayName}`, sub: `${tierName} · ${code}` });
       setActivity((prev) => [
-        { t: now12(), name: displayName, meta: `${tierName} · scanned in`, tone: 'success', kind: 'scan' },
+        {
+          t: now12(),
+          name: displayName,
+          meta: `${tierName} · scanned in`,
+          tone: 'success',
+          kind: 'scan',
+        },
         ...prev,
       ]);
     } else {
@@ -1082,12 +1228,18 @@ export default function DoorScreen() {
             gap: 6,
           }}
         >
-          {([
-            ['Sold', '253', colors.text],
-            ['In', String(activity.filter((a) => a.kind === 'scan').length + 187), colors.success],
-            ['Walk', String(activity.filter((a) => a.kind === 'sale').length + 12), colors.amber],
-            ['Left', '47', colors.text],
-          ] as [string, string, string][]).map(([l, v, c]) => (
+          {(
+            [
+              ['Sold', '253', colors.text],
+              [
+                'In',
+                String(activity.filter((a) => a.kind === 'scan').length + 187),
+                colors.success,
+              ],
+              ['Walk', String(activity.filter((a) => a.kind === 'sale').length + 12), colors.amber],
+              ['Left', '47', colors.text],
+            ] as [string, string, string][]
+          ).map(([l, v, c]) => (
             <div
               key={l}
               style={{
@@ -1148,8 +1300,17 @@ export default function DoorScreen() {
               gap: 8,
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.bg} strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={colors.bg}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Sell at the door
           </button>
@@ -1165,8 +1326,17 @@ export default function DoorScreen() {
               color: colors.textSec,
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={colors.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={colors.success}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
             </svg>
             Tap to Pay, card reader, or cash — Stripe Terminal.
           </div>
@@ -1204,7 +1374,12 @@ export default function DoorScreen() {
       </div>
 
       {/* Sell-at-door modal */}
-      <SellAtDoorModal open={modalOpen} onClose={() => setModalOpen(false)} onSold={handleSold} isWide={isWide} />
+      <SellAtDoorModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSold={handleSold}
+        isWide={isWide}
+      />
     </div>
   );
 }

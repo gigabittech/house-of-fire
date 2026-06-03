@@ -1,4 +1,4 @@
-import SettingsScreen from '../../../screens/SettingsScreen.js';
+import SettingsScreen from '../../../screens/SettingsScreen';
 
 export default function Page() {
   return <SettingsScreen />;

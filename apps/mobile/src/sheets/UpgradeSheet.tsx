@@ -1,10 +1,10 @@
 'use client';
 
-import type { CSSProperties } from 'react';
 import { colors } from '@hof/design-tokens';
-import { Icon, HofButton } from '@hof/ui';
-import { useRouter } from 'next/navigation.js';
-import { useSheet } from './useSheet.js';
+import { HofButton, Icon } from '@hof/ui';
+import { useRouter } from 'next/navigation';
+import type { CSSProperties } from 'react';
+import { useSheet } from './useSheet';
 
 interface UpgradeSheetProps {
   open: boolean;
@@ -19,9 +19,21 @@ interface Benefit {
 
 const BENEFITS: Benefit[] = [
   { ic: 'star', t: 'Private room', s: 'A second room with its own bar, away from the main floor.' },
-  { ic: 'flame', t: 'First drink on us', s: 'One pour at the bar — bourbon, mezcal, beer, or water with a fancy garnish.' },
-  { ic: 'ticket', t: 'Member pre-sale', s: '24 hours of access to tickets before they open to the public.' },
-  { ic: 'image', t: 'Photo first look', s: 'See recap photos a week before they hit the public archive.' },
+  {
+    ic: 'flame',
+    t: 'First drink on us',
+    s: 'One pour at the bar — bourbon, mezcal, beer, or water with a fancy garnish.',
+  },
+  {
+    ic: 'ticket',
+    t: 'Member pre-sale',
+    s: '24 hours of access to tickets before they open to the public.',
+  },
+  {
+    ic: 'image',
+    t: 'Photo first look',
+    s: 'See recap photos a week before they hit the public archive.',
+  },
 ];
 
 export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
@@ -251,7 +263,9 @@ export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
                 marginTop: 8,
               }}
             >
-              <span style={{ fontFamily: 'Inter', fontSize: 14, color: colors.text, fontWeight: 500 }}>
+              <span
+                style={{ fontFamily: 'Inter', fontSize: 14, color: colors.text, fontWeight: 500 }}
+              >
                 Upgrade to VIP
               </span>
               <span
@@ -288,8 +302,10 @@ export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
               icon={<Icon name="star" size={16} color={colors.bg} />}
               onClick={async () => {
                 const r = await fetch('/api/events/upcoming');
-                const d = await r.json() as { event?: { ticket_tiers?: Array<{ id: string; name: string }> } };
-                const vipTier = d.event?.ticket_tiers?.find(t => t.name === 'vip');
+                const d = (await r.json()) as {
+                  event?: { ticket_tiers?: Array<{ id: string; name: string }> };
+                };
+                const vipTier = d.event?.ticket_tiers?.find((t) => t.name === 'vip');
                 if (vipTier) {
                   router.push(`/checkout?tierId=${encodeURIComponent(vipTier.id)}`);
                   onClose();

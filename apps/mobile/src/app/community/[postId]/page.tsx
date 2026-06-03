@@ -1,5 +1,5 @@
 import { use } from 'react';
-import PostScreen from '../../../screens/PostScreen.js';
+import PostScreen from '../../../screens/PostScreen';
 
 interface Props {
   params: Promise<{ postId: string }>;

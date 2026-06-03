@@ -1,5 +1,5 @@
-import type { ReactNode, SVGProps } from 'react';
 import { colors } from '@hof/design-tokens';
+import type { ReactNode, SVGProps } from 'react';
 
 export type IconName =
   | 'home'

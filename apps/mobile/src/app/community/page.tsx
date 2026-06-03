@@ -1,4 +1,4 @@
-import CommunityScreen from '../../screens/CommunityScreen.js';
+import CommunityScreen from '../../screens/CommunityScreen';
 
 export default function Page() {
   return <CommunityScreen />;

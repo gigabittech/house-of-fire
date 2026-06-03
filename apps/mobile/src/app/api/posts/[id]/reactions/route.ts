@@ -1,13 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../../lib/supabase.server.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 type Emoji = 'fire' | 'eyes' | 'heart' | 'music' | 'pray';
 const VALID_EMOJIS: Emoji[] = ['fire', 'eyes', 'heart', 'music', 'pray'];
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
   const {

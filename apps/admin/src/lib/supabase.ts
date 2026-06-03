@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from './database.types.js';
+import type { Database } from './database.types';
 
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | undefined;
 

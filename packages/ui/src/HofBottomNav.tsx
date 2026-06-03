@@ -1,5 +1,5 @@
 import { colors } from '@hof/design-tokens';
-import { Icon, type IconName } from './Icon.js';
+import { Icon, type IconName } from './Icon';
 
 export type NavId = 'home' | 'events' | 'community' | 'profile';
 

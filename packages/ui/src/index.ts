@@ -1,63 +1,61 @@
 // @hof/ui — House of Fire component library, productionized from the prototype
 // (design/prototypes/hof-ui.jsx + posts-data.jsx). Consumes @hof/design-tokens.
 
-export { Icon } from './Icon.js';
-export type { IconName, IconProps } from './Icon.js';
-export { HofButton } from './HofButton.js';
-export type { HofButtonProps, ButtonVariant, ButtonSize } from './HofButton.js';
-export { HofPill } from './HofPill.js';
-export type { HofPillProps, PillTone, PillSize } from './HofPill.js';
-export { HofCard } from './HofCard.js';
-export type { HofCardProps } from './HofCard.js';
-export { HofLogoMark } from './HofLogoMark.js';
-export type { HofLogoMarkProps } from './HofLogoMark.js';
-export { HofWordmark } from './HofWordmark.js';
-export type { HofWordmarkProps } from './HofWordmark.js';
-export { HofPhoto } from './HofPhoto.js';
-export type { HofPhotoProps } from './HofPhoto.js';
-export { PhotoPlaceholder } from './PhotoPlaceholder.js';
-export type { PhotoPlaceholderProps } from './PhotoPlaceholder.js';
-export { FakeQR } from './FakeQR.js';
-export type { FakeQRProps } from './FakeQR.js';
-export { HofBottomNav } from './HofBottomNav.js';
-export type { HofBottomNavProps, NavId } from './HofBottomNav.js';
-export { HofAppShell, HofContent } from './HofAppShell.js';
-export type { HofAppShellProps, HofContentProps } from './HofAppShell.js';
-export { useBreakpoint, useResponsive } from './useBreakpoint.js';
-export type { Breakpoint } from './useBreakpoint.js';
-export { HofTopBar } from './HofTopBar.js';
-export type { HofTopBarProps } from './HofTopBar.js';
-export { HofScreen, HofScroll, HofStatusbarSpacer, HofHomeSpacer } from './HofScreen.js';
-export type { HofScreenProps, HofScrollProps } from './HofScreen.js';
-
-export { HofSkeleton } from './HofSkeleton.js';
-export type { HofSkeletonProps } from './HofSkeleton.js';
-export { FeedSkeletonCard } from './FeedSkeletonCard.js';
-export { EmptyState } from './EmptyState.js';
-export type { EmptyStateProps } from './EmptyState.js';
-export { ErrorState } from './ErrorState.js';
-export type { ErrorStateProps } from './ErrorState.js';
-export { HofToast } from './HofToast.js';
-export type { HofToastProps, ToastKind } from './HofToast.js';
-export { HofConfirm } from './HofConfirm.js';
-export type { HofConfirmProps } from './HofConfirm.js';
-
+export type { EmptyStateProps } from './EmptyState';
+export { EmptyState } from './EmptyState';
+export type { ErrorStateProps } from './ErrorState';
+export { ErrorState } from './ErrorState';
+export type { FakeQRProps } from './FakeQR';
+export { FakeQR } from './FakeQR';
+export { FeedSkeletonCard } from './FeedSkeletonCard';
+export type { AvatarProps } from './feed/Avatar';
+export { Avatar } from './feed/Avatar';
+export type { ChannelTagProps } from './feed/ChannelTag';
+export { ChannelTag } from './feed/ChannelTag';
+export type { FeedPostProps } from './feed/FeedPost';
 // Feed / community atoms
-export { FeedPost } from './feed/FeedPost.js';
-export type { FeedPostProps } from './feed/FeedPost.js';
-export { Avatar } from './feed/Avatar.js';
-export type { AvatarProps } from './feed/Avatar.js';
-export { ChannelTag } from './feed/ChannelTag.js';
-export type { ChannelTagProps } from './feed/ChannelTag.js';
-export { ReactionStrip } from './feed/ReactionStrip.js';
-export type { ReactionStripProps } from './feed/ReactionStrip.js';
-export { REACTION_EMOJI, totalReactions } from './feed/reactions.js';
+export { FeedPost } from './feed/FeedPost';
+export type { ReactionStripProps } from './feed/ReactionStrip';
+export { ReactionStrip } from './feed/ReactionStrip';
+export { REACTION_EMOJI, totalReactions } from './feed/reactions';
 export type {
+  Channel,
   Post,
   PostAuthor,
   PostKind,
-  Channel,
-  Reply,
   ReactionKey,
+  Reply,
   UserRole,
-} from './feed/types.js';
+} from './feed/types';
+export type { HofAppShellProps, HofContentProps } from './HofAppShell';
+export { HofAppShell, HofContent } from './HofAppShell';
+export type { HofBottomNavProps, NavId } from './HofBottomNav';
+export { HofBottomNav } from './HofBottomNav';
+export type { ButtonSize, ButtonVariant, HofButtonProps } from './HofButton';
+export { HofButton } from './HofButton';
+export type { HofCardProps } from './HofCard';
+export { HofCard } from './HofCard';
+export type { HofConfirmProps } from './HofConfirm';
+export { HofConfirm } from './HofConfirm';
+export type { HofLogoMarkProps } from './HofLogoMark';
+export { HofLogoMark } from './HofLogoMark';
+export type { HofPhotoProps } from './HofPhoto';
+export { HofPhoto } from './HofPhoto';
+export type { HofPillProps, PillSize, PillTone } from './HofPill';
+export { HofPill } from './HofPill';
+export type { HofScreenProps, HofScrollProps } from './HofScreen';
+export { HofHomeSpacer, HofScreen, HofScroll, HofStatusbarSpacer } from './HofScreen';
+export type { HofSkeletonProps } from './HofSkeleton';
+export { HofSkeleton } from './HofSkeleton';
+export type { HofToastProps, ToastKind } from './HofToast';
+export { HofToast } from './HofToast';
+export type { HofTopBarProps } from './HofTopBar';
+export { HofTopBar } from './HofTopBar';
+export type { HofWordmarkProps } from './HofWordmark';
+export { HofWordmark } from './HofWordmark';
+export type { IconName, IconProps } from './Icon';
+export { Icon } from './Icon';
+export type { PhotoPlaceholderProps } from './PhotoPlaceholder';
+export { PhotoPlaceholder } from './PhotoPlaceholder';
+export type { Breakpoint } from './useBreakpoint';
+export { useBreakpoint, useResponsive } from './useBreakpoint';

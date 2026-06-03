@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET() {
   const supabase = createAdminSupabaseClient();
@@ -40,10 +40,7 @@ export async function DELETE(request: NextRequest) {
 
   const supabase = createAdminSupabaseClient();
 
-  const { error } = await supabase
-    .from('posts')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('posts').delete().eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

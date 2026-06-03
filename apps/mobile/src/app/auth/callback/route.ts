@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server.js';
+import { type NextRequest, NextResponse } from 'next/server';
 
 /**
  * Legacy / direct Supabase redirects may land on `/auth/callback` instead of

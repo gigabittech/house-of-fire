@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
+import type { CSSProperties } from 'react';
 
 export interface ChannelTagProps {
   id: string;

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { Icon } from './Icon.js';
+import type { ReactNode } from 'react';
+import { Icon } from './Icon';
 
 export interface HofTopBarProps {
   title?: ReactNode;

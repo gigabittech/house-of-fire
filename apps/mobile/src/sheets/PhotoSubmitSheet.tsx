@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { colors } from '@hof/design-tokens';
-import { Icon, HofButton } from '@hof/ui';
-import SheetShell from './SheetShell.js';
+import { HofButton, Icon } from '@hof/ui';
+import { useEffect, useRef, useState } from 'react';
+import SheetShell from './SheetShell';
 
 interface PhotoSubmitSheetProps {
   open: boolean;
@@ -15,18 +15,34 @@ type Stage = 'form' | 'sent';
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      fontFamily: 'Inter', fontSize: 11, color: colors.textSec,
-      letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8,
-    }}>{children}</div>
+    <div
+      style={{
+        fontFamily: 'Inter',
+        fontSize: 11,
+        color: colors.textSec,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        marginBottom: 8,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
 function Helper({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      fontFamily: 'Inter', fontSize: 12, color: colors.textSec, marginTop: 8, lineHeight: 1.45,
-    }}>{children}</div>
+    <div
+      style={{
+        fontFamily: 'Inter',
+        fontSize: 12,
+        color: colors.textSec,
+        marginTop: 8,
+        lineHeight: 1.45,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -63,9 +79,9 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
             accept="image/*"
             multiple
             style={{ display: 'none' }}
-            onChange={e => {
+            onChange={(e) => {
               const picked = Array.from(e.target.files ?? []);
-              setFiles(prev => [...prev, ...picked].slice(0, 5));
+              setFiles((prev) => [...prev, ...picked].slice(0, 5));
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
           />
@@ -75,27 +91,43 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
               <div
                 key={i}
                 style={{
-                  position: 'relative', aspectRatio: '1/1', borderRadius: 8, overflow: 'hidden',
+                  position: 'relative',
+                  aspectRatio: '1/1',
+                  borderRadius: 8,
+                  overflow: 'hidden',
                   background: '#2a2826',
                 }}
               >
                 <img
                   src={URL.createObjectURL(f)}
                   alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
                 />
                 <button
                   className="hof-btn hof-press"
-                  onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                  onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
                   style={{
-                    position: 'absolute', top: 4, right: 4,
-                    width: 22, height: 22, borderRadius: 11,
-                    background: 'rgba(10,10,8,0.8)', backdropFilter: 'blur(6px)',
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    background: 'rgba(10,10,8,0.8)',
+                    backdropFilter: 'blur(6px)',
                     border: `1px solid ${colors.border}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  <Icon name="close" size={10} color={colors.text}/>
+                  <Icon name="close" size={10} color={colors.text} />
                 </button>
               </div>
             ))}
@@ -106,60 +138,101 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
                 className="hof-btn hof-press"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  aspectRatio: '1/1', borderRadius: 8,
-                  background: colors.bg, border: `1px dashed ${colors.border}`,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 4,
+                  aspectRatio: '1/1',
+                  borderRadius: 8,
+                  background: colors.bg,
+                  border: `1px dashed ${colors.border}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
                 }}
               >
-                <Icon name="plus" size={20} color={colors.textSec}/>
-                <span style={{
-                  fontFamily: 'Inter', fontSize: 10, color: colors.textSec,
-                  letterSpacing: '0.16em', textTransform: 'uppercase',
-                }}>Add</span>
+                <Icon name="plus" size={20} color={colors.textSec} />
+                <span
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 10,
+                    color: colors.textSec,
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Add
+                </span>
               </button>
             )}
           </div>
           <Helper>
-            Up to 8 per submission. JPG / HEIC / PNG. Faces of strangers will be blurred unless they&apos;re members who opted in.
+            Up to 8 per submission. JPG / HEIC / PNG. Faces of strangers will be blurred unless
+            they&apos;re members who opted in.
           </Helper>
 
-          <div style={{ height: 14 }}/>
+          <div style={{ height: 14 }} />
           <Label>Caption (optional)</Label>
           <input
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="e.g. peak moment, second drop"
             style={{
-              width: '100%', boxSizing: 'border-box', height: 46, padding: '0 14px',
-              background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 8,
-              fontFamily: 'Inter', fontSize: 14, color: colors.text, outline: 'none',
+              width: '100%',
+              boxSizing: 'border-box',
+              height: 46,
+              padding: '0 14px',
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 8,
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: colors.text,
+              outline: 'none',
             }}
           />
 
           {/* Consent */}
           <button
             className="hof-btn hof-press"
-            onClick={() => setConsent(c => !c)}
+            onClick={() => setConsent((c) => !c)}
             style={{
-              width: '100%', marginTop: 18, textAlign: 'left',
-              display: 'flex', alignItems: 'center', gap: 12,
+              width: '100%',
+              marginTop: 18,
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
               padding: '14px 16px',
               background: consent ? colors.elevated : colors.bg,
               border: consent ? `1px solid ${colors.amber}` : `1px solid ${colors.border}`,
               borderRadius: 10,
             }}
           >
-            <div style={{
-              width: 22, height: 22, borderRadius: 5, flexShrink: 0,
-              background: consent ? colors.amber : 'transparent',
-              border: `1.5px solid ${consent ? colors.amber : colors.borderHi}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {consent && <Icon name="check" size={12} color={colors.bg}/>}
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 5,
+                flexShrink: 0,
+                background: consent ? colors.amber : 'transparent',
+                border: `1.5px solid ${consent ? colors.amber : colors.borderHi}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {consent && <Icon name="check" size={12} color={colors.bg} />}
             </div>
-            <div style={{ flex: 1, fontFamily: 'Inter', fontSize: 13, color: colors.text, lineHeight: 1.45 }}>
-              I took these or have permission to share them. Approved photos may appear in the recap and on the home archive.
+            <div
+              style={{
+                flex: 1,
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: colors.text,
+                lineHeight: 1.45,
+              }}
+            >
+              I took these or have permission to share them. Approved photos may appear in the recap
+              and on the home archive.
             </div>
           </button>
 
@@ -178,15 +251,23 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ fileName: file.name, contentType: file.type }),
                     });
-                    const d = await r.json() as { signedUrl?: string };
+                    const d = (await r.json()) as { signedUrl?: string };
                     if (d.signedUrl) {
-                      await fetch(d.signedUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+                      await fetch(d.signedUrl, {
+                        method: 'PUT',
+                        body: file,
+                        headers: { 'Content-Type': file.type },
+                      });
                     }
-                  } catch (e) { console.error(e); }
+                  } catch (e) {
+                    console.error(e);
+                  }
                 }
               }}
             >
-              {valid ? `Submit ${files.length} photo${files.length === 1 ? '' : 's'}` : 'Confirm consent'}
+              {valid
+                ? `Submit ${files.length} photo${files.length === 1 ? '' : 's'}`
+                : 'Confirm consent'}
             </HofButton>
           </div>
         </>
@@ -195,25 +276,50 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
       {stage === 'sent' && (
         <>
           <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
-            <div style={{
-              width: 64, height: 64, margin: '0 auto 16px', borderRadius: 32,
-              background: 'rgba(76,175,110,0.15)', border: `2px solid ${colors.success}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Icon name="camera" size={28} color={colors.success}/>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                margin: '0 auto 16px',
+                borderRadius: 32,
+                background: 'rgba(76,175,110,0.15)',
+                border: `2px solid ${colors.success}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="camera" size={28} color={colors.success} />
             </div>
-            <div style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 22, color: colors.text }}>
+            <div
+              style={{
+                fontFamily: 'Clash Display',
+                fontWeight: 600,
+                fontSize: 22,
+                color: colors.text,
+              }}
+            >
               In the review queue
             </div>
-            <div style={{
-              fontFamily: 'Inter', fontSize: 13, color: colors.textSec, marginTop: 8, lineHeight: 1.5,
-              maxWidth: 260, marginLeft: 'auto', marginRight: 'auto',
-            }}>
+            <div
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: colors.textSec,
+                marginTop: 8,
+                lineHeight: 1.5,
+                maxWidth: 260,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}
+            >
               Crew reviews within a couple days. We&apos;ll notify you when they&apos;re up.
             </div>
           </div>
           <div style={{ marginTop: 20 }}>
-            <HofButton variant="primary" full onClick={onClose}>Done</HofButton>
+            <HofButton variant="primary" full onClick={onClose}>
+              Done
+            </HofButton>
           </div>
         </>
       )}

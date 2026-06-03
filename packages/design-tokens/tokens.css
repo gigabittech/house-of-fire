@@ -31,9 +31,9 @@
   --hof-info: #4a8ae8;
 
   /* Type */
-  --hof-font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
-  --hof-font-body: 'Inter', -apple-system, system-ui, sans-serif;
-  --hof-font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --hof-font-display: "Clash Display", "Inter", system-ui, sans-serif;
+  --hof-font-body: "Inter", -apple-system, system-ui, sans-serif;
+  --hof-font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
   /* Radii */
   --hof-radius-sm: 4px;

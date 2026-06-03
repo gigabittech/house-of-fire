@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation.js';
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // Minimal artist profile stub — data wired in Phase 3
 type Artist = {
@@ -27,7 +27,7 @@ export default function ArtistPage() {
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/artists/${slug}`)
-      .then(r => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((d: { artist?: Artist } | null) => {
         setArtist(d?.artist ?? null);
         setLoading(false);
@@ -198,7 +198,8 @@ export default function ArtistPage() {
                   right: 0,
                   bottom: 0,
                   height: 200,
-                  background: 'linear-gradient(180deg, transparent, rgba(10,10,8,0.9) 70%, #0A0A08)',
+                  background:
+                    'linear-gradient(180deg, transparent, rgba(10,10,8,0.9) 70%, #0A0A08)',
                 }}
               />
             </div>
@@ -258,7 +259,7 @@ export default function ArtistPage() {
 
             {artist.genres.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
-                {artist.genres.map(g => (
+                {artist.genres.map((g) => (
                   <span
                     key={g}
                     style={{
