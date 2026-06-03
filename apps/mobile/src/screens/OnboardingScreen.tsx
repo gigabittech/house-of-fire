@@ -599,7 +599,7 @@ export default function OnboardingScreen() {
     const { error: authErr } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client`,
+        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
         data: {
           first_name: data.first,
           last_name: data.last,

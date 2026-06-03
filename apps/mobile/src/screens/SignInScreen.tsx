@@ -71,7 +71,7 @@ export default function SignInScreen() {
     const { error: authErr } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client`,
+        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
         // Important: don't create accounts on the Sign In flow.
         shouldCreateUser: false,
       },
