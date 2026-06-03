@@ -127,8 +127,4 @@ if (!response.ok) {
 
 console.log('SMTP configured successfully.');
 console.log('Verify with: pnpm verify:auth-smtp');
-console.log(
-  'In Supabase Dashboard → Authentication → URL Configuration, ensure redirect URLs include:',
-);
-console.log('  http://localhost:3000/auth/callback/client');
-console.log('  (and your production URL when deployed)');
+console.log('Set Site URL + redirect URLs with: pnpm configure:auth-urls');
