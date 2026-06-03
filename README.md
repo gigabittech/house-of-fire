@@ -26,8 +26,12 @@ nvm use
 # Install workspace deps
 pnpm install
 
+# Environment (one file for all apps)
+cp .env.local.example .env.local
+# Edit .env.local at the repo root — mobile and admin both load it.
+
 # Common tasks (Turbo orchestrates across workspaces)
-pnpm dev          # run all dev servers
+pnpm dev          # mobile :3000 + admin :3001
 pnpm build        # build everything
 pnpm lint         # biome lint
 pnpm format       # biome format --write
@@ -114,6 +118,71 @@ When a surface in `apps/` is ready to start, the path is:
 - **Changesets** for versioning shared packages ✅ configured
 - **Biome** for formatting + linting ✅ configured
 - **Playwright** for cross-surface visual regression — add when first app lands
+
+---
+
+## Deploy (Vercel)
+
+Both production apps deploy from **one Git repo** on push. Each app is a separate Vercel project (two URLs). See [docs/deploy-vercel.md](./docs/deploy-vercel.md) for the full checklist.
+
+### Local environment
+
+| Location | Purpose |
+|----------|---------|
+| `.env.local` (repo root) | Secrets for local dev — loaded by `apps/mobile` and `apps/admin` via `loadEnvConfig` in `next.config.ts` |
+| `.env.local.example` | Committed template; copy to `.env.local` |
+
+Do not keep per-app `.env.local` files under `apps/*/` — they are ignored and unused.
+
+### Vercel projects (one-time)
+
+Create **two** projects from the same repository:
+
+| Project | Root directory | Build command |
+|---------|----------------|---------------|
+| Mobile (member PWA) | `apps/mobile` | `cd ../.. && pnpm install && pnpm turbo run build --filter=@hof/mobile` |
+| Admin dashboard | `apps/admin` | `cd ../.. && pnpm install && pnpm turbo run build --filter=@hof/admin` |
+
+Install command (both): `pnpm install` from the monorepo root (Vercel detects the pnpm workspace).
+
+Enable Turborepo remote caching in each project (optional). Attach domains (e.g. `app.` / `admin.` subdomains).
+
+### Environment variables on Vercel
+
+**Team → Settings → Environment Variables → Shared** (attach to both projects):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+**Mobile project only:**
+
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- `NEXT_PUBLIC_APP_URL` (production member app URL)
+- `QR_HMAC_SECRET`
+
+Admin does not need Stripe, Resend, or `NEXT_PUBLIC_APP_URL` in production.
+
+### Stripe webhooks
+
+Point the Stripe webhook endpoint at the **mobile** deployment only:
+
+`https://<mobile-domain>/api/webhooks/stripe`
+
+Set `STRIPE_WEBHOOK_SECRET` on the mobile Vercel project from the Stripe Dashboard signing secret.
+
+### Supabase database migrations
+
+Apply schema **before or after** first deploy (not part of Vercel):
+
+```bash
+# Connection string: Supabase Dashboard → Project Settings → Database → URI (with password)
+SUPABASE_DB_URL="postgresql://postgres:[PASSWORD]@db.<ref>.supabase.co:5432/postgres" \
+  pnpm db:migrate
+```
+
+Migrations live in `supabase/migrations/` and run in filename order via `scripts/run-migrations.mjs`.
 
 ---
 

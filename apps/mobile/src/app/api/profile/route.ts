@@ -19,12 +19,17 @@ export async function GET() {
     supabase.from('posts').select('id, reaction_counts').eq('author_id', user.id),
   ]);
 
-  const profile = profileRes.data;
+  if (profileRes.error) {
+    return NextResponse.json({ error: profileRes.error.message }, { status: 500 });
+  }
+
+  const profileRow = profileRes.data;
   const tickets = ticketsRes.data ?? [];
   const posts = postsRes.data ?? [];
 
-  // Compute stats
   const editions = new Set(tickets.map((t: { event_id: string }) => t.event_id)).size;
+  const phone =
+    typeof user.user_metadata?.phone === 'string' ? user.user_metadata.phone : null;
 
   const totalFire = posts.reduce(
     (sum: number, p: { reaction_counts: Json }) =>
@@ -43,10 +48,16 @@ export async function GET() {
   );
 
   return NextResponse.json({
-    profile,
-    email: user.email,
-    stats: { editions, ticketCount: tickets.length },
+    profile: profileRow
+      ? {
+          ...profileRow,
+          email: user.email ?? null,
+          phone,
+          tickets_count: tickets.length,
+          editions_attended: editions,
+        }
+      : null,
+    tickets,
     reactions: { fire: totalFire, eyes: totalEyes, heart: totalHeart },
-    tickets: tickets.slice(0, 5), // Most recent 5
   });
 }

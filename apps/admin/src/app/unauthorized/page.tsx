@@ -1,20 +1,13 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase.js';
 import { useRouter } from 'next/navigation.js';
-import type { Database } from '@/lib/database.types.js';
-
-function getBrowserClient() {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://placeholder.supabase.co';
-  const key = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? 'placeholder-anon-key';
-  return createClient<Database>(url, key);
-}
 
 export default function UnauthorizedPage() {
   const router = useRouter();
 
   async function handleSignOut() {
-    const supabase = getBrowserClient();
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
   }

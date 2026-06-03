@@ -1,7 +1,19 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/', '/landing', '/onboarding', '/event', '/archive', '/live', '/accept-transfer'];
+// Routes that should be reachable without a session.
+// Note: `/` is intentionally NOT public (it's the member dashboard).
+const PUBLIC_ROUTES = [
+  '/landing',
+  '/sign-in',
+  '/onboarding',
+  '/auth/callback',
+  '/auth/callback/client',
+  '/event',
+  '/archive',
+  '/live',
+  '/accept-transfer',
+];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
