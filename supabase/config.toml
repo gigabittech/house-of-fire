@@ -1,6 +1,6 @@
 # Local Supabase (optional). Run from repo root:
 #   supabase start
-# Requires RESEND_API_KEY and RESEND_FROM_EMAIL in repo root `.env` (see .env.example).
+# Requires repo root `.env` for Supabase CLI env() (copy from `.env.local` or symlink).
 
 project_id = "house-of-fire"
 
@@ -29,11 +29,8 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = [
-  "http://localhost:3000/auth/callback/client",
-  "http://localhost:3000/auth/callback",
-]
+site_url = "env(NEXT_PUBLIC_APP_URL)"
+additional_redirect_urls = ["env(SUPABASE_AUTH_REDIRECT_URLS)"]
 enable_signup = true
 
 [auth.email]

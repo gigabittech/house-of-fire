@@ -22,7 +22,9 @@
     "version": "changeset version",
     "release": "turbo run build && changeset publish",
     "configure:auth-smtp": "node scripts/configure-supabase-auth-smtp.mjs",
-    "verify:auth-smtp": "node scripts/verify-supabase-auth-smtp.mjs"
+    "verify:auth-smtp": "node scripts/verify-supabase-auth-smtp.mjs",
+    "configure:auth-urls": "node scripts/configure-supabase-auth-urls.mjs",
+    "verify:auth-urls": "node scripts/verify-supabase-auth-urls.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
