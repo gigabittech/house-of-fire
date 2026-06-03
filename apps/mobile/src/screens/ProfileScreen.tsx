@@ -13,6 +13,7 @@ import {
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { formatDoorsTime } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
 import { createClient } from '../lib/supabase';
@@ -1030,7 +1031,7 @@ export default function ProfileScreen() {
                           >
                             {upcomingTicket.events.venue_name}
                             {upcomingTicket.events.doors_open
-                              ? ` · ${new Date(upcomingTicket.events.doors_open).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                              ? ` · Doors ${formatDoorsTime(upcomingTicket.events.doors_open)}`
                               : ''}
                           </div>
                           <div

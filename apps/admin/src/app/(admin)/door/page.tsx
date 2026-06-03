@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { formatDoorsTime } from '@/lib/formatters';
 
 interface ActivityEntry {
   t: string;
@@ -829,7 +830,7 @@ export default function DoorPage() {
       };
       setTiers(data.tiers ?? []);
       setHeaderEdition(`${data.event.name} · Edition ${data.event.edition_number}`);
-      setHeaderSub(`Doors open ${data.event.doors_open} · ${data.event.venue_name}`);
+      setHeaderSub(`Doors open ${formatDoorsTime(data.event.doors_open)} · ${data.event.venue_name}`);
       const pct =
         data.stats.sold > 0 ? Math.round((data.stats.scanned / data.stats.sold) * 100) : 0;
       setStatSold(String(data.stats.sold));

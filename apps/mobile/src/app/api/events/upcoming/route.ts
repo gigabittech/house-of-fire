@@ -4,6 +4,10 @@ import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 
+function normalizeDbTime(value: string): string {
+  return value.length >= 5 ? value.slice(0, 5) : value;
+}
+
 export async function GET() {
   const supabase = await createServerSupabaseClient();
 
@@ -50,6 +54,8 @@ export async function GET() {
   return NextResponse.json({
     event: {
       ...event,
+      doors_open: normalizeDbTime(event.doors_open),
+      doors_close: normalizeDbTime(event.doors_close),
       faqs,
       ticket_tiers: tiersWithRemaining as TicketTierRow[],
     },

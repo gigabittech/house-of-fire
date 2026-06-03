@@ -4,7 +4,16 @@ import { colors, layoutWidth } from '@hof/design-tokens';
 import type { NavId, Post as UiPost } from '@hof/ui';
 import { ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import {
+  formatCapacityMeta,
+  formatDoorsRange,
+  formatEventDateLong,
+  parseEventFaqs,
+  resolveEventHeroImage,
+  totalTicketsSold,
+  type UpcomingEvent,
+} from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
 import CalendarSheet from '../sheets/CalendarSheet';
@@ -350,24 +359,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [wlEmail, setWlEmail] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlDone, setWlDone] = useState<{ position: number } | null>(null);
-  const [eventData, setEventData] = useState<null | {
-    id: string;
-    edition_number: number;
-    name: string;
-    date: string;
-    doors_open?: string;
-    venue_name?: string;
-    ticket_tiers: Array<{
-      id: string;
-      name: string;
-      display_name: string;
-      price_cents: number;
-      capacity: number;
-      status: 'available' | 'sold_out' | 'hidden';
-      sort_order: number;
-      description: string | null;
-    }>;
-  }>(null);
+  const [eventData, setEventData] = useState<UpcomingEvent | null>(null);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -406,16 +398,23 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   const soldOut =
     rawTiers.length > 0 &&
-    rawTiers.every((t) => t.status === 'sold_out' || (t.capacity > 0 && t.capacity <= 0));
+    rawTiers.every((t) => {
+      if (t.status === 'sold_out') return true;
+      const rem = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
+      return rem <= 0;
+    });
 
   const tiers: Tier[] =
     rawTiers.length > 0
       ? rawTiers.map((t) => ({
           id: t.id,
-          name: t.display_name,
+          name: t.display_name ?? t.name,
           price: t.price_cents / 100,
-          sub: t.description ?? '',
-          remaining: t.status === 'sold_out' ? 0 : Math.max(0, t.capacity - 0),
+          sub: (t as { description?: string | null }).description ?? '',
+          remaining:
+            t.status === 'sold_out'
+              ? 0
+              : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0))),
           tone: (t.status === 'sold_out'
             ? 'soldout'
             : t.name === 'vip'
@@ -463,26 +462,53 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     { t: '1:00', name: 'After', note: 'DJ residents close' },
   ];
 
-  const faqs = [
-    {
-      q: 'Where do I get in?',
-      a: 'The side entrance on 23rd Street. Look for the orange light. We do not use the main door.',
-    },
-    {
-      q: 'Dress code?',
-      a: 'No code. People show up looking like themselves. Wear what makes you move.',
-    },
-    {
-      q: 'Is there a coat check?',
-      a: 'Yes — $3. Cash or in-app. The line moves fastest before 10:30.',
-    },
-    {
-      q: "Can I bring a friend who didn't buy a ticket?",
-      a: 'Only if they bought a ticket. We do not sell at the door. We sell out every month.',
-    },
-  ];
+  const apiFaqs = parseEventFaqs(eventData?.faqs);
+  const faqs =
+    apiFaqs.length > 0
+      ? apiFaqs
+      : [
+          {
+            q: 'Where do I get in?',
+            a: 'The side entrance on 23rd Street. Look for the orange light. We do not use the main door.',
+          },
+          {
+            q: 'Dress code?',
+            a: 'No code. People show up looking like themselves. Wear what makes you move.',
+          },
+          {
+            q: 'Is there a coat check?',
+            a: 'Yes — $3. Cash or in-app. The line moves fastest before 10:30.',
+          },
+          {
+            q: "Can I bring a friend who didn't buy a ticket?",
+            a: 'Only if they bought a ticket. We do not sell at the door. We sell out every month.',
+          },
+        ];
+
+  const ticketsSold = totalTicketsSold(eventData?.ticket_tiers);
+  const eventCapacity = eventData?.capacity ?? 300;
 
   const { isWide, isDesktop } = useResponsive();
+
+  const heroSrc = resolveEventHeroImage(eventData?.hero_image_url);
+
+  const pageColumn: CSSProperties = useMemo(() => {
+    const horizontalPad = isWide ? 32 : 16;
+    const contentMaxWidth = isDesktop
+      ? layoutWidth.appDesktop
+      : isWide
+        ? layoutWidth.app
+        : undefined;
+    return {
+      width: '100%',
+      maxWidth: contentMaxWidth,
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      paddingLeft: horizontalPad,
+      paddingRight: horizontalPad,
+      boxSizing: 'border-box',
+    };
+  }, [isWide, isDesktop]);
 
   return (
     <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
@@ -500,24 +526,23 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           style={{
             position: 'absolute',
             top: isWide ? 12 : 54,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
-            boxSizing: 'border-box',
+            left: 0,
+            right: 0,
             zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
+            padding: '12px 0',
             background: 'rgba(10,10,8,0.7)',
             backdropFilter: 'blur(12px)',
+            boxSizing: 'border-box',
           }}
         >
+          <div
+            style={{
+              ...pageColumn,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
           <button
             className="hof-btn hof-press"
             onClick={() => router.back()}
@@ -611,31 +636,30 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               <Icon name="share" size={20} color={colors.text} />
             </button>
           </div>
+          </div>
         </div>
 
-        {/* Scrollable content — centered column on tablet/desktop */}
+        {/* Scrollable content — hero full bleed; body in centered column */}
         <div
           className="hof-scroll"
           style={{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
+            inset: 0,
             overflowY: 'auto',
             paddingBottom: isWide ? 40 : 80,
           }}
         >
           {/* Hero */}
-          <div style={{ position: 'relative', height: 360, overflow: 'hidden' }}>
+          <div
+            style={{
+              position: 'relative',
+              height: isDesktop ? 'min(52vh, 480px)' : isWide ? 420 : 360,
+              overflow: 'hidden',
+              width: '100%',
+            }}
+          >
             <img
-              src={photoSrc(1)}
+              src={heroSrc}
               alt=""
               style={{
                 position: 'absolute',
@@ -659,11 +683,12 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             <div
               style={{
                 position: 'absolute',
-                left: 16,
-                right: 16,
+                left: 0,
+                right: 0,
                 bottom: 18,
               }}
             >
+              <div style={pageColumn}>
               <span
                 style={{
                   padding: '4px 10px',
@@ -678,7 +703,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                   textTransform: 'uppercase',
                 }}
               >
-                Upcoming · Edition № 24
+                Upcoming · Edition № {eventData?.edition_number ?? '—'}
               </span>
               <div
                 style={{
@@ -693,16 +718,22 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 }}
               >
                 {eventData?.name ?? 'Next edition'}
-                <br />
-                <span style={{ color: colors.amber }}>2-Year Anniversary</span>
+                {eventData?.tagline ? (
+                  <>
+                    <br />
+                    <span style={{ color: colors.amber }}>{eventData.tagline}</span>
+                  </>
+                ) : null}
+              </div>
               </div>
             </div>
           </div>
 
+          <div style={pageColumn}>
           {/* Meta */}
           <div
             style={{
-              padding: '20px 16px',
+              padding: '20px 0',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: 12,
@@ -711,20 +742,19 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             <MetaItem
               icon="calendar"
               label="Date"
-              value={
-                eventData?.date
-                  ? new Date(eventData.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  : '—'
-              }
+              value={eventData?.date ? formatEventDateLong(eventData.date) : '—'}
             />
-            <MetaItem icon="clock" label="Doors" value="8 PM — 1 AM" />
-            <MetaItem icon="pin" label="Venue" value="Junkyard Social Club" />
-            <MetaItem icon="users" label="Capacity" value="300 · sold out 23/24" />
+            <MetaItem
+              icon="clock"
+              label="Doors"
+              value={formatDoorsRange(eventData?.doors_open, eventData?.doors_close)}
+            />
+            <MetaItem icon="pin" label="Venue" value={eventData?.venue_name ?? '—'} />
+            <MetaItem
+              icon="users"
+              label="Capacity"
+              value={formatCapacityMeta(eventCapacity, ticketsSold)}
+            />
           </div>
 
           {/* Add to Calendar */}
@@ -1241,7 +1271,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                     color: colors.text,
                   }}
                 >
-                  Junkyard Social Club
+                  {eventData?.venue_name ?? 'Venue'}
                 </div>
                 <div
                   style={{
@@ -1251,7 +1281,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                     marginTop: 2,
                   }}
                 >
-                  2525 Pearl St, Boulder, CO 80302
+                  {eventData?.venue_address ?? '—'}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   {(['Directions', 'Parking info'] as const).map((label) => (
@@ -1438,9 +1468,14 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           </div>
 
           <div style={{ height: 24 }} />
+          </div>
         </div>
 
-        <CalendarSheet open={calOpen} onClose={() => setCalOpen(false)} />
+        <CalendarSheet
+          open={calOpen}
+          onClose={() => setCalOpen(false)}
+          event={eventData ?? undefined}
+        />
         <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
         <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>

@@ -6,6 +6,7 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { formatEventDateShort, type UpcomingEvent } from '@/lib/eventDisplay';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
@@ -1221,22 +1222,25 @@ export default function CheckoutScreen() {
     ga: { name: 'General', price: 28 },
     vip: { name: 'VIP', price: 55 },
   });
+  const [checkoutEvent, setCheckoutEvent] = useState<Pick<
+    UpcomingEvent,
+    'name' | 'date' | 'venue_name'
+  > | null>(null);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
       .then((r) => r.json())
       .then(
         (d: {
-          event?: {
-            ticket_tiers: Array<{
-              id: string;
-              name: string;
-              display_name: string;
-              price_cents: number;
-              status: string;
-            }>;
-          };
+          event?: UpcomingEvent;
         }) => {
+          if (d.event) {
+            setCheckoutEvent({
+              name: d.event.name,
+              date: d.event.date,
+              venue_name: d.event.venue_name,
+            });
+          }
           if (!d.event?.ticket_tiers) return;
           const built: Record<string, TierData> = {};
           for (const t of d.event.ticket_tiers) {
@@ -1531,7 +1535,9 @@ export default function CheckoutScreen() {
                     color: colors.text,
                   }}
                 >
-                  Fireversary — June 26
+                  {checkoutEvent
+                    ? `${checkoutEvent.name} — ${formatEventDateShort(checkoutEvent.date)}`
+                    : 'Loading event…'}
                 </div>
                 <div
                   style={{
@@ -1540,7 +1546,7 @@ export default function CheckoutScreen() {
                     color: colors.textSec,
                   }}
                 >
-                  Junkyard Social Club
+                  {checkoutEvent?.venue_name ?? '—'}
                 </div>
               </div>
             </div>

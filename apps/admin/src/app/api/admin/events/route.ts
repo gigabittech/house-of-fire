@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { eventFormPayloadToInsert, parseEventPayload, type EventFormPayload } from '@/lib/eventPayload';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
@@ -114,34 +115,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ event: created });
   }
 
-  if (
-    !body.name ||
-    body.edition_number == null ||
-    !body.date ||
-    !body.venue_name ||
-    !body.venue_address
-  ) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  const parsed = parseEventPayload(body);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+
+  const full = parsed.data as EventFormPayload;
 
   const { data: created, error: createErr } = await supabase
     .from('events')
-    .insert({
-      edition_number: body.edition_number,
-      name: body.name,
-      tagline: null,
-      date: body.date,
-      doors_open: '20:00',
-      doors_close: '02:00',
-      venue_name: body.venue_name,
-      venue_address: body.venue_address,
-      venue_lat: null,
-      venue_lng: null,
-      capacity: body.capacity ?? 300,
-      status: 'upcoming',
-      hero_image_url: null,
-      faqs: [],
-    })
+    .insert(eventFormPayloadToInsert(full))
     .select()
     .single();
 

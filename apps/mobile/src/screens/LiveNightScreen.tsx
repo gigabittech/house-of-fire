@@ -176,6 +176,7 @@ export default function LiveNightScreen() {
   const [postsError, setPostsError] = useState(false);
 
   const [eventId, setEventId] = useState<string | null>(null);
+  const [eventName, setEventName] = useState<string | null>(null);
   const [setTimes, setSetTimes] = useState<SetTimeItem[]>([]);
   const [lineupLoading, setLineupLoading] = useState(true);
 
@@ -236,6 +237,7 @@ export default function LiveNightScreen() {
       .then(({ event }) => {
         if (cancelled || !event) return;
         setEventId(event.id);
+        setEventName(event.name);
         return fetch(`/api/events/${event.id}/lineup`)
           .then((r) => r.json() as Promise<{ lineup?: ApiLineupEntry[] }>)
           .then(({ lineup }) => {
@@ -589,7 +591,7 @@ export default function LiveNightScreen() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Fireversary · open mic
+                  {eventName ? `${eventName} · open mic` : "Tonight's thread"}
                 </div>
               </div>
               <button

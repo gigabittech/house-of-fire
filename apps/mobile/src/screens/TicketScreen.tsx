@@ -6,6 +6,7 @@ import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useState } from 'react';
+import { formatDoorsTime } from '@/lib/eventDisplay';
 import RefundSheet from '../sheets/RefundSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 import TransferSheet from '../sheets/TransferSheet';
@@ -25,6 +26,7 @@ type TicketData = {
     edition_number: number;
     venue_name: string;
     venue_address: string;
+    doors_open?: string;
   } | null;
   ticket_tiers: { display_name: string } | null;
 };
@@ -300,7 +302,9 @@ export default function TicketScreen() {
                     marginTop: 1,
                   }}
                 >
-                  Doors open at 8 PM. Side entrance on 23rd.
+                  {ticket?.events?.doors_open
+                    ? `Doors open at ${formatDoorsTime(ticket.events.doors_open)}. Side entrance on 23rd.`
+                    : 'Doors open soon. Side entrance on 23rd.'}
                 </div>
               </div>
             </div>
