@@ -43,17 +43,33 @@ textarea {
 }
 
 @keyframes hof-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes hof-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(232, 101, 26, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(232, 101, 26, 0.8); }
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(232, 101, 26, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(232, 101, 26, 0.8);
+  }
 }
 
 @keyframes hof-scanline {
-  0% { top: 0; }
-  50% { top: calc(100% - 2px); }
-  100% { top: 0; }
+  0% {
+    top: 0;
+  }
+  50% {
+    top: calc(100% - 2px);
+  }
+  100% {
+    top: 0;
+  }
 }

@@ -2,40 +2,34 @@
 // values, consumed by @hof/ui and the app surfaces. CSS custom properties
 // mirroring these live in ./tokens.css.
 
-export { colors } from './colors.js';
-export type { ColorToken } from './colors.js';
+export type { BreakpointToken } from './breakpoints';
+export { breakpoints, layoutWidth } from './breakpoints';
+export type { ColorToken } from './colors';
+export { colors } from './colors';
+export type { DurationToken } from './motion';
+export { durations, easings, keyframes } from './motion';
+export type { RadiusToken } from './radii';
+export { radii } from './radii';
+export type { ShadowToken } from './shadows';
+export { shadows } from './shadows';
+export type { SpacingToken } from './spacing';
+export { spacing } from './spacing';
+export type { FontFamilyToken, FontSizeToken } from './typography';
 export {
   fontFamilies,
-  fontWeights,
   fontSizes,
-  lineHeights,
+  fontWeights,
   letterSpacing,
-} from './typography.js';
-export type { FontFamilyToken, FontSizeToken } from './typography.js';
-export { spacing } from './spacing.js';
-export type { SpacingToken } from './spacing.js';
-export { radii } from './radii.js';
-export type { RadiusToken } from './radii.js';
-export { durations, easings, keyframes } from './motion.js';
-export type { DurationToken } from './motion.js';
-export { shadows } from './shadows.js';
-export type { ShadowToken } from './shadows.js';
-export { breakpoints } from './breakpoints.js';
-export type { BreakpointToken } from './breakpoints.js';
+  lineHeights,
+} from './typography';
 
-import { colors } from './colors.js';
-import {
-  fontFamilies,
-  fontWeights,
-  fontSizes,
-  letterSpacing,
-  lineHeights,
-} from './typography.js';
-import { spacing } from './spacing.js';
-import { radii } from './radii.js';
-import { durations, easings, keyframes } from './motion.js';
-import { shadows } from './shadows.js';
-import { breakpoints } from './breakpoints.js';
+import { breakpoints, layoutWidth } from './breakpoints';
+import { colors } from './colors';
+import { durations, easings, keyframes } from './motion';
+import { radii } from './radii';
+import { shadows } from './shadows';
+import { spacing } from './spacing';
+import { fontFamilies, fontSizes, fontWeights, letterSpacing, lineHeights } from './typography';
 
 /** Every token, grouped — handy for a single import. */
 export const tokens = {
@@ -52,4 +46,5 @@ export const tokens = {
   keyframes,
   shadows,
   breakpoints,
+  layoutWidth,
 } as const;

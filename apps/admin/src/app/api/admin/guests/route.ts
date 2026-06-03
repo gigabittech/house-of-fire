@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

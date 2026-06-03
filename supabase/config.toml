@@ -1,0 +1,53 @@
+# Local Supabase (optional). Run from repo root:
+#   supabase start
+# Requires RESEND_API_KEY and RESEND_FROM_EMAIL in repo root `.env` (see .env.example).
+
+project_id = "house-of-fire"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback/client",
+  "http://localhost:3000/auth/callback",
+]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# Resend SMTP — same settings as hosted (see scripts/configure-supabase-auth-smtp.mjs).
+# https://supabase.com/docs/guides/auth/auth-smtp
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "env(RESEND_FROM_EMAIL)"
+sender_name = "House of Fire"

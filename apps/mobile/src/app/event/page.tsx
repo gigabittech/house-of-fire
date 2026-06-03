@@ -1,4 +1,4 @@
-import EventScreen from '../../screens/EventScreen.js';
+import EventScreen from '../../screens/EventScreen';
 
 export default function Page() {
   return <EventScreen />;

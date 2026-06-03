@@ -3,12 +3,17 @@
   "version": "0.0.0",
   "description": "House of Fire design tokens — colors, type, spacing, radii, motion. TS exports + CSS custom properties.",
   "type": "module",
-  "sideEffects": ["*.css"],
-  "files": ["dist", "tokens.css"],
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist",
+    "tokens.css"
+  ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
     },
     "./tokens.css": "./tokens.css"
   },
@@ -19,6 +24,6 @@
     "clean": "rm -rf dist .turbo"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.9.0"
   }
 }

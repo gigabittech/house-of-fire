@@ -1,4 +1,4 @@
-import DoorScreen from '../../screens/DoorScreen.js';
+import DoorScreen from '../../screens/DoorScreen';
 
 export default function Page() {
   return <DoorScreen />;

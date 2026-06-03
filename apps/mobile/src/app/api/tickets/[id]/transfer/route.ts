@@ -1,15 +1,12 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../../lib/supabase.server.js';
-import { resend } from '../../../../../lib/resend.js';
-import type { Database } from '../../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../../../lib/database.types';
+import { resend } from '../../../../../lib/resend';
+import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
 type EventRow = Database['public']['Tables']['events']['Row'];
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
   const {
@@ -84,11 +81,7 @@ export async function POST(
     user_id: user.id,
     type: 'ticket_transferred',
     title: 'Ticket transfer sent',
-    body:
-      'Your ticket for Edition ' +
-      (ev?.edition_number ?? '?') +
-      ' was sent to ' +
-      toEmail,
+    body: 'Your ticket for Edition ' + (ev?.edition_number ?? '?') + ' was sent to ' + toEmail,
     link: '/ticket',
   });
 

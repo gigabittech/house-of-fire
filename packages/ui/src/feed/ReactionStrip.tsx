@@ -1,6 +1,6 @@
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { REACTION_EMOJI, totalReactions } from './reactions.js';
-import type { Post, ReactionKey } from './types.js';
+import { REACTION_EMOJI, totalReactions } from './reactions';
+import type { Post, ReactionKey } from './types';
 
 export interface ReactionStripProps {
   post: Post;

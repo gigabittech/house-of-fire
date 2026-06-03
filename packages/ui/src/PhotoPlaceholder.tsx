@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
 import { fontFamilies } from '@hof/design-tokens';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface PhotoPlaceholderProps {
   label?: string;

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { colors, layoutWidth } from '@hof/design-tokens';
+import type { IconName, NavId } from '@hof/ui';
+import { Avatar, FakeQR, HofAppShell, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { colors } from '@hof/design-tokens';
-import { Icon, HofAppShell, useResponsive, HofPill, FakeQR, Avatar } from '@hof/ui';
-import type { NavId, IconName } from '@hof/ui';
-import { navHref } from '../lib/nav.js';
-import { MapSheet } from '../sheets/MapSheet.js';
+import { useEffect, useState } from 'react';
+import { navHref } from '../lib/nav';
+import { MapSheet } from '../sheets/MapSheet';
 
 // ── API response shapes ────────────────────────────────────────────────────
 
@@ -54,11 +54,11 @@ interface ApiTicket {
 // ── Display shapes used in render ─────────────────────────────────────────
 
 interface PostItem {
-  i: string;   // initials
-  n: string;   // display name
+  i: string; // initials
+  n: string; // display name
   role: 'crew' | 'member';
-  t: string;   // relative time
-  b: string;   // body text
+  t: string; // relative time
+  b: string; // body text
 }
 
 interface SetTimeItem {
@@ -142,13 +142,15 @@ function computeSetStatuses(
 
 function Skeleton({ height = 48, width = '100%' }: { height?: number; width?: number | string }) {
   return (
-    <div style={{
-      background: colors.surface,
-      borderRadius: 8,
-      height,
-      width,
-      animation: 'hof-shimmer 1.5s ease-in-out infinite',
-    }}/>
+    <div
+      style={{
+        background: colors.surface,
+        borderRadius: 8,
+        height,
+        width,
+        animation: 'hof-shimmer 1.5s ease-in-out infinite',
+      }}
+    />
   );
 }
 
@@ -188,9 +190,10 @@ export default function LiveNightScreen() {
         const mapped: PostItem[] = raw.slice(0, 3).map((p) => {
           const profile = p.is_anonymous ? null : p.profiles;
           const displayName = profile?.display_name ?? 'Anonymous';
-          const role = (profile?.role === 'crew' || profile?.role === 'admin')
-            ? ('crew' as const)
-            : ('member' as const);
+          const role =
+            profile?.role === 'crew' || profile?.role === 'admin'
+              ? ('crew' as const)
+              : ('member' as const);
           return {
             i: initialsFrom(displayName),
             n: displayName,
@@ -202,8 +205,12 @@ export default function LiveNightScreen() {
         setPosts(mapped);
       })
       .catch(console.error)
-      .finally(() => { if (!cancelled) setPostsLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setPostsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch upcoming event → then fetch lineup
@@ -230,9 +237,13 @@ export default function LiveNightScreen() {
           });
       })
       .catch(console.error)
-      .finally(() => { if (!cancelled) setLineupLoading(false); });
+      .finally(() => {
+        if (!cancelled) setLineupLoading(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Re-compute set statuses every minute as wall-clock advances.
@@ -258,344 +269,655 @@ export default function LiveNightScreen() {
         setTicketHolderName(valid?.profiles?.display_name ?? null);
       })
       .catch(console.error)
-      .finally(() => { if (!cancelled) setTicketLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setTicketLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const { isWide } = useResponsive();
+  const { isWide, isDesktop } = useResponsive();
 
   const hh = new Date(now).getHours();
   const mm = String(new Date(now).getMinutes()).padStart(2, '0');
 
   const venueInfo: Array<[string, IconName, string]> = [
-    ['Bar / Water',   'pin',    'Free water · cash bar'],
-    ['Coat check',    'wallet', '$3 cash · Venmo backup'],
-    ['Restrooms',     'user',   'Back hallway · left'],
-    ['Photographer',  'camera', 'Mauro · ask before pics'],
+    ['Bar / Water', 'pin', 'Free water · cash bar'],
+    ['Coat check', 'wallet', '$3 cash · Venmo backup'],
+    ['Restrooms', 'user', 'Back hallway · left'],
+    ['Photographer', 'camera', 'Mauro · ask before pics'],
   ];
 
   return (
     <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
-    <div style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: colors.bg }}>
-      {/* Live banner — amber top strip */}
-      <div style={{
-        position: 'absolute',
-        top: isWide ? 12 : 54,
-        left: isWide ? '50%' : 0,
-        right: isWide ? 'auto' : 0,
-        transform: isWide ? 'translateX(-50%)' : undefined,
-        width: isWide ? 'min(100%, 912px)' : 'auto',
-        boxSizing: 'border-box',
-        zIndex: 10,
-        padding: '10px 16px',
-        background: colors.amber,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: 4, background: colors.bg,
-            animation: 'hof-pulse 1.4s ease-in-out infinite',
-          }}/>
-          <span style={{
-            fontFamily: 'Inter', fontWeight: 600, fontSize: 11, color: colors.bg,
-            letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>Doors are open</span>
-        </div>
-        <span style={{
-          fontFamily: 'JetBrains Mono', fontSize: 11, color: colors.bg,
-          fontVariantNumeric: 'tabular-nums', fontWeight: 600,
-        }}>{hh}:{mm} MT</span>
-      </div>
-
-      {/* Inner scroll — centered column on tablet/desktop */}
       <div
-        className="hof-scroll"
         style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
-          overflowY: 'auto',
+          position: 'relative',
+          width: '100%',
+          height: '100dvh',
+          overflow: 'hidden',
+          background: colors.bg,
         }}
       >
-        <div style={{ height: 92 }}/>
-
-        {/* QR ticket hero */}
-        <div style={{ padding: '14px 16px 0' }}>
-          {ticketLoading ? (
-            <Skeleton height={280}/>
-          ) : ticketCode ? (
-            <button
-              className="hof-btn hof-press"
-              onClick={() => router.push('/ticket')}
+        {/* Live banner — amber top strip */}
+        <div
+          style={{
+            position: 'absolute',
+            top: isWide ? 12 : 54,
+            left: isWide ? '50%' : 0,
+            right: isWide ? 'auto' : 0,
+            transform: isWide ? 'translateX(-50%)' : undefined,
+            width: isWide
+              ? isDesktop
+                ? `min(100%, ${layoutWidth.appDesktop}px)`
+                : `min(100%, ${layoutWidth.app}px)`
+              : 'auto',
+            boxSizing: 'border-box',
+            zIndex: 10,
+            padding: '10px 16px',
+            background: colors.amber,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
               style={{
-                width: '100%', padding: 0, textAlign: 'left',
-                background: colors.text, borderRadius: 16, overflow: 'hidden',
-                boxShadow: '0 12px 40px rgba(232,101,26,0.25), 0 0 0 1px rgba(240,237,230,0.1)',
-                display: 'block',
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                background: colors.bg,
+                animation: 'hof-pulse 1.4s ease-in-out infinite',
+              }}
+            />
+            <span
+              style={{
+                fontFamily: 'Inter',
+                fontWeight: 600,
+                fontSize: 11,
+                color: colors.bg,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
               }}
             >
-              <div style={{ padding: '16px 18px 8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{
-                    fontFamily: 'Inter', fontSize: 10, color: colors.bg, opacity: 0.55,
-                    letterSpacing: '0.22em', textTransform: 'uppercase',
-                  }}>Your ticket · Ed {eventId ? '' : '24'}</div>
-                  <span style={{
-                    padding: '3px 7px', background: colors.amber, color: colors.bg,
-                    fontFamily: 'Inter', fontSize: 9, fontWeight: 700,
-                    letterSpacing: '0.14em', textTransform: 'uppercase', borderRadius: 3,
-                  }}>GA</span>
-                </div>
-              </div>
-              <div style={{
-                padding: '4px 16px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-              }}>
-                <FakeQR size={220} fg={colors.bg} bg={colors.text}/>
-                <div style={{
-                  marginTop: 12, fontFamily: 'JetBrains Mono', fontSize: 13, color: colors.bg,
-                  letterSpacing: '0.16em', fontWeight: 500,
-                }}>{ticketCode}{ticketHolderName ? ` · ${ticketHolderName}` : ''}</div>
-              </div>
-            </button>
-          ) : (
-            <div style={{
-              padding: '20px 18px',
-              background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16,
-              textAlign: 'center',
-            }}>
-              <div style={{
-                fontFamily: 'Inter', fontWeight: 500, fontSize: 14, color: colors.text, marginBottom: 8,
-              }}>No ticket yet</div>
+              Doors are open
+            </span>
+          </div>
+          <span
+            style={{
+              fontFamily: 'JetBrains Mono',
+              fontSize: 11,
+              color: colors.bg,
+              fontVariantNumeric: 'tabular-nums',
+              fontWeight: 600,
+            }}
+          >
+            {hh}:{mm} MT
+          </span>
+        </div>
+
+        {/* Inner scroll — centered column on tablet/desktop */}
+        <div
+          className="hof-scroll"
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: isWide ? '50%' : 0,
+            right: isWide ? 'auto' : 0,
+            transform: isWide ? 'translateX(-50%)' : undefined,
+            width: isWide
+              ? isDesktop
+                ? `min(100%, ${layoutWidth.appDesktop}px)`
+                : `min(100%, ${layoutWidth.app}px)`
+              : 'auto',
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{ height: 92 }} />
+
+          {/* QR ticket hero */}
+          <div style={{ padding: '14px 16px 0' }}>
+            {ticketLoading ? (
+              <Skeleton height={280} />
+            ) : ticketCode ? (
               <button
                 className="hof-btn hof-press"
-                onClick={() => router.push('/checkout')}
+                onClick={() => router.push('/ticket')}
                 style={{
-                  fontFamily: 'Inter', fontSize: 13, color: colors.amber, fontWeight: 600,
+                  width: '100%',
+                  padding: 0,
+                  textAlign: 'left',
+                  background: colors.text,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  boxShadow: '0 12px 40px rgba(232,101,26,0.25), 0 0 0 1px rgba(240,237,230,0.1)',
+                  display: 'block',
                 }}
-              >Get a ticket →</button>
-            </div>
-          )}
-        </div>
-
-        {/* Brightness hint */}
-        <div style={{
-          margin: '10px 16px 0', padding: '10px 14px',
-          background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10,
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <Icon name="bolt" size={14} color={colors.warning}/>
-          <div style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
-            Brightness will auto-max when you reach the scanner.
-          </div>
-        </div>
-
-        {/* Live thread strip */}
-        <div style={{ padding: '24px 16px 0' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '3px 8px', borderRadius: 4,
-                  background: colors.amber, color: colors.bg,
-                  fontFamily: 'Inter', fontSize: 10, fontWeight: 600,
-                  letterSpacing: '0.16em', textTransform: 'uppercase',
-                }}>
-                  <span style={{
-                    width: 5, height: 5, borderRadius: 3, background: colors.bg,
-                    animation: 'hof-pulse 1.4s ease-in-out infinite',
-                  }}/>
-                  Live
-                </span>
-                <span style={{
-                  fontFamily: 'Inter', fontSize: 10, color: colors.textSec,
-                  letterSpacing: '0.22em', textTransform: 'uppercase',
-                }}>Tonight&apos;s thread</span>
+              >
+                <div style={{ padding: '16px 18px 8px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: colors.bg,
+                        opacity: 0.55,
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Your ticket · Ed {eventId ? '' : '24'}
+                    </div>
+                    <span
+                      style={{
+                        padding: '3px 7px',
+                        background: colors.amber,
+                        color: colors.bg,
+                        fontFamily: 'Inter',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        borderRadius: 3,
+                      }}
+                    >
+                      GA
+                    </span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    padding: '4px 16px 18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                  }}
+                >
+                  <FakeQR size={220} fg={colors.bg} bg={colors.text} />
+                  <div
+                    style={{
+                      marginTop: 12,
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 13,
+                      color: colors.bg,
+                      letterSpacing: '0.16em',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {ticketCode}
+                    {ticketHolderName ? ` · ${ticketHolderName}` : ''}
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <div
+                style={{
+                  padding: '20px 18px',
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 16,
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: 'Inter',
+                    fontWeight: 500,
+                    fontSize: 14,
+                    color: colors.text,
+                    marginBottom: 8,
+                  }}
+                >
+                  No ticket yet
+                </div>
+                <button
+                  className="hof-btn hof-press"
+                  onClick={() => router.push('/checkout')}
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.amber,
+                    fontWeight: 600,
+                  }}
+                >
+                  Get a ticket →
+                </button>
               </div>
-              <div style={{
-                fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20,
-                color: colors.text, marginTop: 6, letterSpacing: '-0.01em',
-              }}>Fireversary · open mic</div>
+            )}
+          </div>
+
+          {/* Brightness hint */}
+          <div
+            style={{
+              margin: '10px 16px 0',
+              padding: '10px 14px',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Icon name="bolt" size={14} color={colors.warning} />
+            <div style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
+              Brightness will auto-max when you reach the scanner.
             </div>
-            <button
-              className="hof-btn"
-              onClick={() => router.push(navHref.community)}
-              style={{ fontFamily: 'Inter', fontSize: 12, color: colors.amber, fontWeight: 500 }}
+          </div>
+
+          {/* Live thread strip */}
+          <div style={{ padding: '24px 16px 0' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+              }}
             >
-              Open →
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      background: colors.amber,
+                      color: colors.bg,
+                      fontFamily: 'Inter',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.16em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: 3,
+                        background: colors.bg,
+                        animation: 'hof-pulse 1.4s ease-in-out infinite',
+                      }}
+                    />
+                    Live
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 10,
+                      color: colors.textSec,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Tonight&apos;s thread
+                  </span>
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'Clash Display',
+                    fontWeight: 600,
+                    fontSize: 20,
+                    color: colors.text,
+                    marginTop: 6,
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  Fireversary · open mic
+                </div>
+              </div>
+              <button
+                className="hof-btn"
+                onClick={() => router.push(navHref.community)}
+                style={{ fontFamily: 'Inter', fontSize: 12, color: colors.amber, fontWeight: 500 }}
+              >
+                Open →
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {postsLoading ? (
+                <>
+                  <Skeleton height={72} />
+                  <Skeleton height={72} />
+                  <Skeleton height={72} />
+                </>
+              ) : posts.length > 0 ? (
+                posts.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      alignItems: 'flex-start',
+                      padding: '10px 12px',
+                      background: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Avatar initials={p.i} userRole={p.role} size={28} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'Inter',
+                            fontWeight: 500,
+                            fontSize: 12,
+                            color: colors.text,
+                          }}
+                        >
+                          {p.n}
+                        </span>
+                        {p.role === 'crew' && (
+                          <HofPill tone="crew" size="sm">
+                            Crew
+                          </HofPill>
+                        )}
+                        <span
+                          style={{
+                            fontFamily: 'JetBrains Mono',
+                            fontSize: 10,
+                            color: colors.textSec,
+                          }}
+                        >
+                          · {p.t}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: colors.text,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {p.b}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div
+                  style={{
+                    padding: '14px 12px',
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 10,
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.textSec,
+                  }}
+                >
+                  Nothing yet — be the first to post.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Set times */}
+          <div style={{ padding: '24px 16px 0' }}>
+            <div
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 10,
+                color: colors.amber,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                marginBottom: 10,
+              }}
+            >
+              Now playing · Set times
+            </div>
+            <div
+              style={{
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}
+            >
+              {lineupLoading ? (
+                <div
+                  style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}
+                >
+                  <Skeleton height={44} />
+                  <Skeleton height={44} />
+                  <Skeleton height={44} />
+                </div>
+              ) : setTimes.length > 0 ? (
+                setTimes.map((l, i, a) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      padding: '12px 14px',
+                      borderBottom: i < a.length - 1 ? `1px solid ${colors.border}` : 'none',
+                      opacity: l.status === 'past' ? 0.4 : 1,
+                      background: l.status === 'now' ? 'rgba(232,101,26,0.06)' : 'transparent',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 12,
+                        color: l.status === 'now' ? colors.amber : colors.textSec,
+                        width: 44,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {l.t}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontFamily: 'Clash Display',
+                          fontWeight: 600,
+                          fontSize: 16,
+                          color: l.status === 'now' ? colors.amber : colors.text,
+                        }}
+                      >
+                        {l.name}
+                      </div>
+                    </div>
+                    {l.status === 'now' && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          color: colors.amber,
+                          letterSpacing: '0.16em',
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: 3,
+                            background: colors.amber,
+                            animation: 'hof-pulse 1.4s ease-in-out infinite',
+                          }}
+                        />
+                        Now
+                      </span>
+                    )}
+                    {l.status === 'next' && (
+                      <span
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          color: colors.textSec,
+                          letterSpacing: '0.16em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Up next
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div
+                  style={{
+                    padding: '14px',
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.textSec,
+                  }}
+                >
+                  Lineup not announced yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* At the venue */}
+          <div style={{ padding: '24px 16px 0' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 10,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  color: colors.amber,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                At the venue
+              </div>
+              <button
+                className="hof-btn"
+                onClick={() => setMapOpen(true)}
+                style={{
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: colors.amber,
+                  fontWeight: 500,
+                }}
+              >
+                View on map →
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {venueInfo.map(([t, ic, sub]) => (
+                <div
+                  key={t}
+                  style={{
+                    padding: '12px 14px',
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Icon name={ic} size={16} color={colors.amber} />
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontWeight: 500,
+                      fontSize: 13,
+                      color: colors.text,
+                      marginTop: 8,
+                    }}
+                  >
+                    {t}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      color: colors.textSec,
+                      marginTop: 2,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {sub}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Emergency strip */}
+          <div style={{ padding: '24px 16px 0' }}>
+            <button
+              className="hof-btn hof-press"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                textAlign: 'left',
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  background: 'rgba(232,74,26,0.12)',
+                  border: '1px solid rgba(232,74,26,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="bolt" size={14} color={colors.error} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: colors.text }}
+                >
+                  Reach Crew or report something
+                </div>
+                <div
+                  style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, marginTop: 1 }}
+                >
+                  Crew is in the room. Discreet help button.
+                </div>
+              </div>
+              <Icon name="chev" size={14} color={colors.textSec} />
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {postsLoading ? (
-              <>
-                <Skeleton height={72}/>
-                <Skeleton height={72}/>
-                <Skeleton height={72}/>
-              </>
-            ) : posts.length > 0 ? (
-              posts.map((p, i) => (
-                <div key={i} style={{
-                  display: 'flex', gap: 10, alignItems: 'flex-start',
-                  padding: '10px 12px',
-                  background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10,
-                }}>
-                  <Avatar initials={p.i} userRole={p.role} size={28}/>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 12, color: colors.text }}>{p.n}</span>
-                      {p.role === 'crew' && <HofPill tone="crew" size="sm">Crew</HofPill>}
-                      <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: colors.textSec }}>· {p.t}</span>
-                    </div>
-                    <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.text, lineHeight: 1.4 }}>{p.b}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{
-                padding: '14px 12px',
-                background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10,
-                fontFamily: 'Inter', fontSize: 13, color: colors.textSec,
-              }}>Nothing yet — be the first to post.</div>
-            )}
-          </div>
+          {/* Bottom spacer for nav */}
+          <div style={{ height: 120 }} />
         </div>
 
-        {/* Set times */}
-        <div style={{ padding: '24px 16px 0' }}>
-          <div style={{
-            fontFamily: 'Inter', fontSize: 10, color: colors.amber,
-            letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 10,
-          }}>Now playing · Set times</div>
-          <div style={{
-            background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12,
-            overflow: 'hidden',
-          }}>
-            {lineupLoading ? (
-              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Skeleton height={44}/>
-                <Skeleton height={44}/>
-                <Skeleton height={44}/>
-              </div>
-            ) : setTimes.length > 0 ? (
-              setTimes.map((l, i, a) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
-                  borderBottom: i < a.length - 1 ? `1px solid ${colors.border}` : 'none',
-                  opacity: l.status === 'past' ? 0.4 : 1,
-                  background: l.status === 'now' ? 'rgba(232,101,26,0.06)' : 'transparent',
-                }}>
-                  <div style={{
-                    fontFamily: 'JetBrains Mono', fontSize: 12,
-                    color: l.status === 'now' ? colors.amber : colors.textSec,
-                    width: 44, fontVariantNumeric: 'tabular-nums',
-                  }}>{l.t}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontFamily: 'Clash Display', fontWeight: 600, fontSize: 16,
-                      color: l.status === 'now' ? colors.amber : colors.text,
-                    }}>{l.name}</div>
-                  </div>
-                  {l.status === 'now' && (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      fontFamily: 'Inter', fontSize: 10, color: colors.amber,
-                      letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600,
-                    }}>
-                      <span style={{
-                        width: 5, height: 5, borderRadius: 3, background: colors.amber,
-                        animation: 'hof-pulse 1.4s ease-in-out infinite',
-                      }}/>
-                      Now
-                    </span>
-                  )}
-                  {l.status === 'next' && (
-                    <span style={{
-                      fontFamily: 'Inter', fontSize: 10, color: colors.textSec,
-                      letterSpacing: '0.16em', textTransform: 'uppercase',
-                    }}>Up next</span>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div style={{
-                padding: '14px', fontFamily: 'Inter', fontSize: 13, color: colors.textSec,
-              }}>Lineup not announced yet.</div>
-            )}
-          </div>
-        </div>
-
-        {/* At the venue */}
-        <div style={{ padding: '24px 16px 0' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10,
-          }}>
-            <div style={{
-              fontFamily: 'Inter', fontSize: 10, color: colors.amber,
-              letterSpacing: '0.22em', textTransform: 'uppercase',
-            }}>At the venue</div>
-            <button
-              className="hof-btn"
-              onClick={() => setMapOpen(true)}
-              style={{
-                fontFamily: 'Inter', fontSize: 12, color: colors.amber, fontWeight: 500,
-              }}
-            >View on map →</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {venueInfo.map(([t, ic, sub]) => (
-              <div key={t} style={{
-                padding: '12px 14px',
-                background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10,
-              }}>
-                <Icon name={ic} size={16} color={colors.amber}/>
-                <div style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: colors.text, marginTop: 8 }}>{t}</div>
-                <div style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Emergency strip */}
-        <div style={{ padding: '24px 16px 0' }}>
-          <button className="hof-btn hof-press" style={{
-            width: '100%', padding: '12px 14px', textAlign: 'left',
-            background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10,
-            display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 16,
-              background: 'rgba(232,74,26,0.12)',
-              border: '1px solid rgba(232,74,26,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Icon name="bolt" size={14} color={colors.error}/>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: colors.text }}>
-                Reach Crew or report something
-              </div>
-              <div style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, marginTop: 1 }}>
-                Crew is in the room. Discreet help button.
-              </div>
-            </div>
-            <Icon name="chev" size={14} color={colors.textSec}/>
-          </button>
-        </div>
-
-        {/* Bottom spacer for nav */}
-        <div style={{ height: 120 }}/>
+        <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
       </div>
-
-      <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
-    </div>
     </HofAppShell>
   );
 }

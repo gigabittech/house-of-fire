@@ -4,8 +4,8 @@ import { colors } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { CHANNELS } from '../data/posts.js';
-import { createClient } from '../lib/supabase.js';
+import { CHANNELS } from '../data/posts';
+import { createClient } from '../lib/supabase';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -60,13 +60,7 @@ function OnboardInput(props: OnboardInputProps) {
   );
 }
 
-function PhoneRow({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function PhoneRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div
       style={{
@@ -459,13 +453,7 @@ function StepChannels({
 
 // ─── Step 3: welcome ─────────────────────────────────────────────────────────
 
-function StepWelcome({
-  data,
-  onComplete,
-}: {
-  data: FormData;
-  onComplete: () => void;
-}) {
+function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => void }) {
   return (
     <div style={{ padding: '40px 20px 24px', textAlign: 'center' }}>
       <div
@@ -591,7 +579,7 @@ export default function OnboardingScreen() {
   const { isWide } = useResponsive();
 
   const onComplete = () => router.push('/');
-  const onSignIn = () => router.push('/landing');
+  const onSignIn = () => router.push('/sign-in');
 
   async function handleStep1Next() {
     setLoading(true);
@@ -599,7 +587,7 @@ export default function OnboardingScreen() {
     const { error: authErr } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
         data: {
           first_name: data.first,
           last_name: data.last,

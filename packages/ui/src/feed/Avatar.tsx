@@ -1,5 +1,5 @@
 import { colors, fontFamilies } from '@hof/design-tokens';
-import type { UserRole } from './types.js';
+import type { UserRole } from './types';
 
 export interface AvatarProps {
   initials: string;

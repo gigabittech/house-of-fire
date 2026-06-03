@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { Icon } from './Icon.js';
-import type { IconName } from './Icon.js';
+import type { ReactNode } from 'react';
+import type { IconName } from './Icon';
+import { Icon } from './Icon';
 
 export type ToastKind = 'success' | 'info' | 'warn' | 'error';
 

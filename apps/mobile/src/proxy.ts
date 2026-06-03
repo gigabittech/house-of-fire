@@ -1,25 +1,49 @@
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/', '/landing', '/onboarding', '/event', '/archive', '/live', '/accept-transfer'];
+// Routes that should be reachable without a session.
+// Note: `/` is intentionally NOT public (it's the member dashboard).
+const PUBLIC_ROUTES = [
+  '/landing',
+  '/sign-in',
+  '/onboarding',
+  '/auth/callback',
+  '/auth/callback/client',
+  '/event',
+  '/archive',
+  '/live',
+  '/accept-transfer',
+];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? (() => { if (process.env.NODE_ENV === 'production') throw new Error('NEXT_PUBLIC_SUPABASE_URL is required'); return 'http://localhost:54321'; })(),
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? (() => { if (process.env.NODE_ENV === 'production') throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required'); return 'local-anon-key'; })(),
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+      (() => {
+        if (process.env.NODE_ENV === 'production')
+          throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+        return 'http://localhost:54321';
+      })(),
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      (() => {
+        if (process.env.NODE_ENV === 'production')
+          throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
+        return 'local-anon-key';
+      })(),
     {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
         },
       },
     },
@@ -41,12 +65,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/community') ||
     pathname.startsWith('/dev/login'); // dev-only impersonation route (guarded by NODE_ENV)
 
-  if (
-    !user &&
-    !isPublic &&
-    !pathname.startsWith('/api') &&
-    !pathname.startsWith('/_next')
-  ) {
+  if (!user && !isPublic && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
     const url = request.nextUrl.clone();
     url.pathname = '/landing';
     return NextResponse.redirect(url);

@@ -1,13 +1,13 @@
-import type { CSSProperties } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { HofPill } from '../HofPill.js';
-import { HofPhoto } from '../HofPhoto.js';
-import { Icon } from '../Icon.js';
-import { PhotoPlaceholder } from '../PhotoPlaceholder.js';
-import { Avatar } from './Avatar.js';
-import { ChannelTag } from './ChannelTag.js';
-import { ReactionStrip } from './ReactionStrip.js';
-import type { Post } from './types.js';
+import type { CSSProperties } from 'react';
+import { HofPhoto } from '../HofPhoto';
+import { HofPill } from '../HofPill';
+import { Icon } from '../Icon';
+import { PhotoPlaceholder } from '../PhotoPlaceholder';
+import { Avatar } from './Avatar';
+import { ChannelTag } from './ChannelTag';
+import { ReactionStrip } from './ReactionStrip';
+import type { Post } from './types';
 
 export interface FeedPostProps {
   post: Post;

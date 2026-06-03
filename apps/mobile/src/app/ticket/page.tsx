@@ -1,5 +1,10 @@
-import TicketScreen from '../../screens/TicketScreen.js';
+import { Suspense } from 'react';
+import TicketScreen from '../../screens/TicketScreen';
 
 export default function Page() {
-  return <TicketScreen />;
+  return (
+    <Suspense>
+      <TicketScreen />
+    </Suspense>
+  );
 }

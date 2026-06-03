@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createAdminSupabaseClient } from '../../../../lib/supabase.admin.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '../../../../lib/supabase.admin';
 
 export async function GET() {
   const supabase = createAdminSupabaseClient();

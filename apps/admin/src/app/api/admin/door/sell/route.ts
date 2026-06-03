@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 interface SellRequestBody {
   tier_id: string;
@@ -24,11 +24,10 @@ function isSellBody(v: unknown): v is SellRequestBody {
   );
 }
 
-
 export async function POST(request: NextRequest) {
   let body: unknown;
   try {
-    body = await request.json() as unknown;
+    body = (await request.json()) as unknown;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
@@ -60,7 +59,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Find or create profile by email
-  const handle = email.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') ?? 'guest';
+  const handle =
+    email
+      .split('@')[0]
+      ?.toLowerCase()
+      .replace(/[^a-z0-9_]/g, '') ?? 'guest';
   const displayName = `${first_name} ${last_name}`.trim();
 
   // listUsers supports a search filter by email
@@ -85,20 +88,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (createError !== null || newAuthUser.user === null) {
-      return NextResponse.json({ error: createError?.message ?? 'Failed to create user' }, { status: 500 });
+      return NextResponse.json(
+        { error: createError?.message ?? 'Failed to create user' },
+        { status: 500 },
+      );
     }
 
     holderId = newAuthUser.user.id;
 
     // Upsert profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: holderId,
-        handle,
-        display_name: displayName,
-        role: 'member',
-      });
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: holderId,
+      handle,
+      display_name: displayName,
+      role: 'member',
+    });
 
     if (profileError !== null) {
       return NextResponse.json({ error: profileError.message }, { status: 500 });

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,9 +102,7 @@ function AcceptTransferContent() {
     return (
       <div style={pageStyle}>
         <div style={cardStyle}>
-          <p style={{ color: colors.textSec, fontFamily: 'Inter', fontSize: 14 }}>
-            Loading...
-          </p>
+          <p style={{ color: colors.textSec, fontFamily: 'Inter', fontSize: 14 }}>Loading...</p>
         </div>
       </div>
     );
@@ -131,17 +129,12 @@ function AcceptTransferContent() {
       <div style={pageStyle}>
         <div style={cardStyle}>
           <p style={labelStyle}>Ticket accepted</p>
-          <h1 style={headingStyle}>
-            You&apos;re in.
-          </h1>
+          <h1 style={headingStyle}>You&apos;re in.</h1>
           <p style={{ color: colors.textSec, fontFamily: 'Inter', fontSize: 15, marginBottom: 32 }}>
             Your ticket for Edition {transfer?.ticket.event.edition_number} has been added to your
             account.
           </p>
-          <a
-            href="/ticket"
-            style={buttonStyle}
-          >
+          <a href="/ticket" style={buttonStyle}>
             View my ticket
           </a>
         </div>
@@ -151,8 +144,7 @@ function AcceptTransferContent() {
 
   if (!transfer) return null;
 
-  const isExpired =
-    transfer.status !== 'pending' || new Date(transfer.expires_at) < new Date();
+  const isExpired = transfer.status !== 'pending' || new Date(transfer.expires_at) < new Date();
 
   return (
     <div style={pageStyle}>
@@ -182,7 +174,9 @@ function AcceptTransferContent() {
           </p>
         ) : isLoggedIn ? (
           <button
-            style={accepting ? { ...buttonStyle, opacity: 0.6, cursor: 'not-allowed' } : buttonStyle}
+            style={
+              accepting ? { ...buttonStyle, opacity: 0.6, cursor: 'not-allowed' } : buttonStyle
+            }
             onClick={handleAccept}
             disabled={accepting}
             type="button"

@@ -1,6 +1,9 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient, createServiceRoleClient } from '../../../../lib/supabase.server.js';
-import { resend } from '../../../../lib/resend.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { resend } from '../../../../lib/resend';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../lib/supabase.server';
 
 async function requireAdminOrCrew(_request: NextRequest) {
   // createServerSupabaseClient reads the session cookie to identify the user
@@ -127,5 +130,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, notified: { email: entry.email, position: entry.position } });
+  return NextResponse.json({
+    ok: true,
+    notified: { email: entry.email, position: entry.position },
+  });
 }

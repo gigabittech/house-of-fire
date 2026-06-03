@@ -1,5 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient, createServiceRoleClient } from '../../../../lib/supabase.server.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../lib/supabase.server';
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient();

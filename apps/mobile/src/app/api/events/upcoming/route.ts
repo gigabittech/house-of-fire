@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
-import type { Database } from '../../../../lib/database.types.js';
+import { NextResponse } from 'next/server';
+import type { Database } from '../../../../lib/database.types';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 
