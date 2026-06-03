@@ -1,6 +1,6 @@
 import { loadEnvConfig } from '@next/env';
-import path from 'path';
 import type { NextConfig } from 'next';
+import path from 'node:path';
 
 const monorepoRoot = path.join(__dirname, '../..');
 // Next.js caches env from the app dir first (no .env there). forceReload loads monorepo root.
@@ -16,12 +16,8 @@ const nextConfig: NextConfig = {
   // Workspace packages ship built ESM; transpile them through Next for safety.
   transpilePackages: ['@hof/ui', '@hof/design-tokens'],
 
-  // We use Biome for linting, not ESLint — disable Next's built-in ESLint step.
-  eslint: { ignoreDuringBuilds: true },
-
-  // next/image: allow local assets (empty domains) and Supabase storage.
+  // next/image: Supabase storage.
   images: {
-    domains: [],
     remotePatterns: [
       {
         protocol: 'https',
@@ -29,20 +25,6 @@ const nextConfig: NextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
-  },
-
-  // Allow '.js' extension imports to resolve to '.ts' / '.tsx' source files.
-  // This matches TypeScript's Bundler moduleResolution semantics so local
-  // imports can use the ESM-correct '.js' suffix throughout the codebase.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  webpack(config: any) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    config.resolve.extensionAlias = {
-      '.js': ['.tsx', '.ts', '.js'],
-      '.jsx': ['.tsx', '.ts', '.jsx'],
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return config;
   },
 };
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation.js';
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
+import { useRouter } from 'next/navigation';
 
 export default function ArtistsPage() {
   const router = useRouter();

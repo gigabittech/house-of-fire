@@ -1,8 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
-import { stripe } from '../../../../lib/stripe.js';
-import { rateLimitCheck } from '../../../../lib/rateLimit.js';
-import type { Database } from '../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../../lib/database.types';
+import { rateLimitCheck } from '../../../../lib/rateLimit';
+import { stripe } from '../../../../lib/stripe';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 const HOF_FEE_RATE = 0.07; // 7% platform fee
 

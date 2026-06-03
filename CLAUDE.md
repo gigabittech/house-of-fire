@@ -6,12 +6,13 @@ Conventions for any agent (or human) working in this repo. Keep this short and e
 
 ## Toolchain
 
-- **Package manager:** pnpm 9 (workspaces). See `pnpm-workspace.yaml`.
+- **Package manager:** pnpm 10 (workspaces). See `pnpm-workspace.yaml` and root `packageManager` field.
 - **Task runner:** Turborepo (`turbo.json`). Run `pnpm dev`, `pnpm build`, `pnpm lint`, etc. — never `cd` into a package to run scripts unless you know what you're doing.
-- **TypeScript:** strict mode, `noUncheckedIndexedAccess` on. Extend `tsconfig.base.json` from every package.
-- **Formatter + linter:** Biome (`biome.json`). `pnpm format` to fix, `pnpm format:check` in CI.
+- **TypeScript:** 5.9.x, strict mode, `noUncheckedIndexedAccess` on. Extend `tsconfig.base.json` from every package.
+- **Formatter + linter:** Biome 2 (`biome.json`). `pnpm format` to fix, `pnpm format:check` in CI.
 - **Versioning:** Changesets (`.changeset/`). After changing a published package, run `pnpm changeset` and commit the generated file with your PR.
-- **Node:** pinned via `.nvmrc` (20.18.0). Use `nvm use` or volta.
+- **Node:** pinned via `.nvmrc` (24.x Active LTS). Use `nvm use` or volta.
+- **Next.js:** 16.x (Active LTS) for `apps/mobile` and `apps/admin`. Auth/session refresh uses `src/proxy.ts` (Next 16 network boundary).
 
 ## Repository map
 
@@ -46,8 +47,9 @@ This project uses inline JSX transpiled by Babel in the browser. Each `<script t
 - **Never name a style object `styles`** — collisions will silently break everything. Use a component-prefixed name: `const homeStyles = { ... }` or use inline styles.
 - Load order in `index.html` matters. Dependencies (`hof-ui.jsx`, data files) must come before files that consume them. `app.jsx` is always last.
 
-### Pinned React + Babel versions
-Use the exact `<script>` tags currently in `index.html` (React 18.3.1, Babel 7.29.0, with `integrity` hashes). Do not upgrade casually.
+### Pinned React + Babel versions (prototype)
+
+React 19 no longer ships UMD builds. The prototype loads React 19 via an **import map** (`esm.sh`) and exposes `window.React` / `window.ReactDOM` for Babel-in-browser scripts. Babel standalone is pinned in `index.html` (`@babel/standalone@7.29.0` with `integrity` hash). Do not upgrade casually — test all prototype screens after any CDN change.
 
 ### Asset paths
 Relative to `index.html`, not to the JSX file. So:

@@ -18,18 +18,16 @@ const PRECACHE = [
 
 // On install — precache app shell pages
 self.addEventListener('install', (ev) => {
-  ev.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)),
-  );
+  ev.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
   self.skipWaiting();
 });
 
 // On activate — clean up old caches
 self.addEventListener('activate', (ev) => {
   ev.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-    ),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))),
   );
   self.clients.claim();
 });
@@ -51,13 +49,15 @@ self.addEventListener('fetch', (ev) => {
   ) {
     ev.respondWith(
       caches.match(request).then(
-        (cached) => cached ?? fetch(request).then((res) => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE).then((c) => c.put(request, clone));
-          }
-          return res;
-        }),
+        (cached) =>
+          cached ??
+          fetch(request).then((res) => {
+            if (res.ok) {
+              const clone = res.clone();
+              caches.open(CACHE).then((c) => c.put(request, clone));
+            }
+            return res;
+          }),
       ),
     );
     return;
@@ -73,7 +73,14 @@ self.addEventListener('fetch', (ev) => {
         }
         return res;
       })
-      .catch(() => caches.match(request).then(cached => cached ?? (request.destination === 'document' ? caches.match('/offline') : undefined))),
+      .catch(() =>
+        caches
+          .match(request)
+          .then(
+            (cached) =>
+              cached ?? (request.destination === 'document' ? caches.match('/offline') : undefined),
+          ),
+      ),
   );
 });
 
@@ -99,8 +106,12 @@ self.addEventListener('notificationclick', (ev) => {
   ev.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cs) => {
       const existing = cs.find((c) => c.url.includes(self.location.origin) && 'focus' in c);
-      if (existing) { existing.focus(); existing.navigate(url); return; }
+      if (existing) {
+        existing.focus();
+        existing.navigate(url);
+        return;
+      }
       if (clients.openWindow) return clients.openWindow(url);
-    })
+    }),
   );
 });

@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
+import type { CSSProperties, ReactNode } from 'react';
 
 export type ButtonVariant = 'primary' | 'ghost' | 'gold' | 'danger' | 'quiet';
 export type ButtonSize = 'lg' | 'md' | 'sm';

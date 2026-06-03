@@ -3,8 +3,8 @@
 import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, type ReactNode } from 'react';
-import { photoSrc } from '../data/photos.js';
+import type { CSSProperties, ReactNode } from 'react';
+import { photoSrc } from '../data/photos';
 
 /** Shared horizontal track — every section uses this for aligned edges. */
 function useLandingLayout() {

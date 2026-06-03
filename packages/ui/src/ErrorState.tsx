@@ -1,6 +1,6 @@
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { Icon } from './Icon.js';
-import { HofButton } from './HofButton.js';
+import { HofButton } from './HofButton';
+import { Icon } from './Icon';
 
 export interface ErrorStateProps {
   title?: string;

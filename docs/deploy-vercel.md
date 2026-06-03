@@ -6,7 +6,8 @@ One Git push can deploy both Next.js apps in parallel. Each app is its own Verce
 
 - Repository connected to Vercel
 - pnpm workspace (already configured)
-- Supabase project with API keys
+- **Node.js 24.x** on both Vercel projects (Settings → General → Node.js Version)
+- Supabase project with API keys (Postgres 17 — see [postgres-17-upgrade.md](./postgres-17-upgrade.md))
 - (Mobile) Stripe and Resend accounts for production
 
 ## 1. Create projects
@@ -28,6 +29,8 @@ Import the repo twice (or add a second project in the team).
 - Same install/output defaults as mobile
 
 Optional: enable **Turborepo** remote cache in Project Settings → General.
+
+Both apps use **Next.js 16** with Turbopack (default bundler). No `--webpack` flag is required.
 
 ## 2. Domains
 

@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 interface ScanRequestBody {
   code: string;
@@ -18,7 +18,7 @@ function isScanBody(v: unknown): v is ScanRequestBody {
 export async function POST(request: NextRequest) {
   let body: unknown;
   try {
-    body = await request.json() as unknown;
+    body = (await request.json()) as unknown;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
@@ -63,18 +63,24 @@ export async function POST(request: NextRequest) {
   }
 
   if (ticket.status === 'used') {
-    return NextResponse.json({
-      error: 'Ticket already used',
-      outcome: 'already_used',
-      used_at: ticket.used_at,
-    }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: 'Ticket already used',
+        outcome: 'already_used',
+        used_at: ticket.used_at,
+      },
+      { status: 409 },
+    );
   }
 
   if (ticket.status !== 'valid') {
-    return NextResponse.json({
-      error: `Ticket status is ${ticket.status}`,
-      outcome: 'invalid_status',
-    }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: `Ticket status is ${ticket.status}`,
+        outcome: 'invalid_status',
+      },
+      { status: 409 },
+    );
   }
 
   // Mark as used

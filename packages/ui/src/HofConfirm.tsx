@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { HofButton } from './HofButton.js';
+import { useEffect, useState } from 'react';
+import { HofButton } from './HofButton';
 
 export interface HofConfirmProps {
   open: boolean;

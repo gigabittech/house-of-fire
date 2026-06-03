@@ -39,7 +39,19 @@ pnpm typecheck    # tsc across packages
 pnpm test         # run tests
 ```
 
-The prototype is a static React + Babel HTML page. Every screen, sheet, and brand artifact lives as a standalone `.jsx` file under `design/prototypes/` and gets pulled in by `index.html`.
+The prototype is a static React 19 + Babel HTML page (see `index.html` import map). Every screen, sheet, and brand artifact lives as a standalone `.jsx` file under `design/prototypes/` and gets pulled in by `index.html`.
+
+### Stack (production monorepo)
+
+| Layer | Version |
+|-------|---------|
+| Node.js | 24.x (LTS) |
+| pnpm | 10.x |
+| Next.js | 16.x (Active LTS) |
+| React | 19.x |
+| TypeScript | 5.9.x |
+| Biome | 2.x |
+| Postgres (Supabase) | 17 |
 
 ---
 

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../lib/supabase.server.js';
-import type { Database } from '../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../lib/database.types';
+import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
 /**
  * DEV-ONLY one-click role impersonation for the admin panel.
@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/dashboard';
   const creds = ROLES[role];
   if (!creds) {
-    return NextResponse.json({ error: `Invalid role. Use one of: ${Object.keys(ROLES).join(', ')}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Invalid role. Use one of: ${Object.keys(ROLES).join(', ')}` },
+      { status: 400 },
+    );
   }
 
   const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
@@ -62,10 +65,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Could not provision test user' }, { status: 500 });
   }
 
-  await admin.from('profiles').upsert(
-    { id: userId, handle: role, display_name: creds.name, role },
-    { onConflict: 'id' },
-  );
+  await admin
+    .from('profiles')
+    .upsert({ id: userId, handle: role, display_name: creds.name, role }, { onConflict: 'id' });
 
   const supabase = await createServerSupabaseClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({

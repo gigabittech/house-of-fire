@@ -1,5 +1,5 @@
 import { colors } from '@hof/design-tokens';
-import { HofSkeleton } from './HofSkeleton.js';
+import { HofSkeleton } from './HofSkeleton';
 
 export function FeedSkeletonCard() {
   return (

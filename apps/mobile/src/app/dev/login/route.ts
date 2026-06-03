@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../lib/supabase.server.js';
-import type { Database } from '../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../lib/database.types';
+import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
 /**
  * DEV-ONLY one-click role impersonation.
@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/';
   const creds = ROLES[role];
   if (!creds) {
-    return NextResponse.json({ error: `Invalid role. Use one of: ${Object.keys(ROLES).join(', ')}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Invalid role. Use one of: ${Object.keys(ROLES).join(', ')}` },
+      { status: 400 },
+    );
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -66,10 +69,9 @@ export async function GET(request: NextRequest) {
 
   // 2. Upsert the profile with the right role. Upserting (not updating) means
   //    we don't depend on the on_auth_user_created trigger having run.
-  await admin.from('profiles').upsert(
-    { id: userId, handle: role, display_name: creds.name, role },
-    { onConflict: 'id' },
-  );
+  await admin
+    .from('profiles')
+    .upsert({ id: userId, handle: role, display_name: creds.name, role }, { onConflict: 'id' });
 
   // 3. Sign in via the cookie-writing SSR client — establishes the session.
   const supabase = await createServerSupabaseClient();

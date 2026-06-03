@@ -1,14 +1,11 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../../lib/supabase.server.js';
-import { stripe } from '../../../../../lib/stripe.js';
-import type { Database } from '../../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../../../lib/database.types';
+import { stripe } from '../../../../../lib/stripe';
+import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
   const {

@@ -157,7 +157,12 @@ export type Database = {
         Relationships: [];
       };
       post_reactions: {
-        Row: { id: string; post_id: string; user_id: string; emoji: 'fire' | 'eyes' | 'heart' | 'music' | 'pray' };
+        Row: {
+          id: string;
+          post_id: string;
+          user_id: string;
+          emoji: 'fire' | 'eyes' | 'heart' | 'music' | 'pray';
+        };
         Insert: Omit<Database['public']['Tables']['post_reactions']['Row'], 'id'> & { id?: string };
         Update: Partial<Database['public']['Tables']['post_reactions']['Insert']>;
         Relationships: [];
