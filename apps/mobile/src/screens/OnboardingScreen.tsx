@@ -591,7 +591,7 @@ export default function OnboardingScreen() {
   const { isWide } = useResponsive();
 
   const onComplete = () => router.push('/');
-  const onSignIn = () => router.push('/landing');
+  const onSignIn = () => router.push('/sign-in');
 
   async function handleStep1Next() {
     setLoading(true);
@@ -599,7 +599,7 @@ export default function OnboardingScreen() {
     const { error: authErr } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
         data: {
           first_name: data.first,
           last_name: data.last,

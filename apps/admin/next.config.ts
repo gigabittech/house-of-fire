@@ -1,5 +1,10 @@
+import { loadEnvConfig } from '@next/env';
 import path from 'path';
 import type { NextConfig } from 'next';
+
+const monorepoRoot = path.join(__dirname, '../..');
+const isDev = process.env.NODE_ENV !== 'production';
+loadEnvConfig(monorepoRoot, isDev, undefined, true);
 
 const nextConfig: NextConfig = {
   // Set the monorepo root so Next.js traces dependencies correctly and

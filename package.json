@@ -17,9 +17,12 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "db:migrate": "node scripts/run-migrations.mjs",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "turbo run build && changeset publish"
+    "release": "turbo run build && changeset publish",
+    "configure:auth-smtp": "node scripts/configure-supabase-auth-smtp.mjs",
+    "verify:auth-smtp": "node scripts/verify-supabase-auth-smtp.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

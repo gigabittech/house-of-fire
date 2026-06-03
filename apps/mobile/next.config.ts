@@ -1,5 +1,12 @@
+import { loadEnvConfig } from '@next/env';
 import path from 'path';
 import type { NextConfig } from 'next';
+
+const monorepoRoot = path.join(__dirname, '../..');
+// Next.js caches env from the app dir first (no .env there). forceReload loads monorepo root.
+// https://github.com/vercel/next.js/issues/92040
+const isDev = process.env.NODE_ENV !== 'production';
+loadEnvConfig(monorepoRoot, isDev, undefined, true);
 
 const nextConfig: NextConfig = {
   // Set the monorepo root so Next.js traces dependencies correctly and
