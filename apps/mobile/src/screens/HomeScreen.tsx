@@ -5,9 +5,19 @@ import type { NavId, Post as UiPost } from '@hof/ui';
 import { EmptyState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import {
+  countdownParts,
+  eventDoorsTimestamp,
+  formatEventDate,
+  formatVenueLine,
+  remainingTickets,
+  resolveEventHeroImage,
+  type UpcomingEvent,
+} from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
+import { parseMediaUrls } from '../lib/postMedia';
 
 type ApiPost = {
   id: string;
@@ -17,6 +27,7 @@ type ApiPost = {
   is_anonymous: boolean;
   reply_count: number;
   reaction_counts: Record<string, number>;
+  media_urls?: unknown;
   created_at: string;
   profiles: {
     handle: string;
@@ -61,6 +72,7 @@ function apiPostToUi(p: ApiPost): UiPost {
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
+    imageUrls: parseMediaUrls(p.media_urls),
     reactions,
     replyCount: p.reply_count,
   };
@@ -159,12 +171,7 @@ export default function HomeScreen() {
   const [now, setNow] = useState(Date.now());
   const [calOpen, setCalOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
-  const [upcomingEvent, setUpcomingEvent] = useState<null | {
-    edition_number: number;
-    name: string;
-    date: string;
-    ticket_tiers: Array<{ status: string; capacity: number }>;
-  }>(null);
+  const [upcomingEvent, setUpcomingEvent] = useState<UpcomingEvent | null>(null);
   const [newsEmail, setNewsEmail] = useState('');
   const [newsSent, setNewsSent] = useState(false);
   const [topPosts, setTopPosts] = useState<UiPost[]>([]);
@@ -195,16 +202,34 @@ export default function HomeScreen() {
       .finally(() => setTopPostsLoading(false));
   }, []);
 
-  const eventTs = Date.parse(
-    upcomingEvent?.date ? `${upcomingEvent.date}T20:00:00-06:00` : '2026-06-26T20:00:00-06:00',
-  );
-  const ms = Math.max(0, eventTs - now);
-  const dd = Math.floor(ms / 86400000);
-  const hh = Math.floor(ms / 3600000) % 24;
-  const mm = Math.floor(ms / 60000) % 60;
-  const ss = Math.floor(ms / 1000) % 60;
+  const left = remainingTickets(upcomingEvent?.ticket_tiers);
+  const eventTs = upcomingEvent?.date
+    ? eventDoorsTimestamp(upcomingEvent.date, upcomingEvent.doors_open)
+    : Number.NaN;
+  const countdown = countdownParts(eventTs, now);
+  const { days: dd, hours: hh, minutes: mm, seconds: ss } = countdown;
 
   const { isWide, isDesktop } = useResponsive();
+
+  const heroSrc = resolveEventHeroImage(upcomingEvent?.hero_image_url);
+
+  const pageColumn: CSSProperties = useMemo(() => {
+    const horizontalPad = isWide ? 32 : 16;
+    const contentMaxWidth = isDesktop
+      ? layoutWidth.appDesktop
+      : isWide
+        ? layoutWidth.app
+        : undefined;
+    return {
+      width: '100%',
+      maxWidth: contentMaxWidth,
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      paddingLeft: horizontalPad,
+      paddingRight: horizontalPad,
+      boxSizing: 'border-box',
+    };
+  }, [isWide, isDesktop]);
 
   return (
     <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
@@ -222,22 +247,21 @@ export default function HomeScreen() {
           style={{
             position: 'absolute',
             top: isWide ? 12 : 54,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
-            boxSizing: 'border-box',
+            left: 0,
+            right: 0,
             zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isWide ? 'flex-end' : 'space-between',
-            padding: '12px 16px',
+            padding: '12px 0',
+            boxSizing: 'border-box',
           }}
         >
+          <div
+            style={{
+              ...pageColumn,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isWide ? 'flex-end' : 'space-between',
+            }}
+          >
           {!isWide && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div
@@ -340,35 +364,36 @@ export default function HomeScreen() {
               />
             </button>
           </div>
+          </div>
         </div>
 
-        {/* Scrollable content — centered column on tablet/desktop */}
+        {/* Scrollable content — hero full bleed; body in centered column */}
         <div
           className="hof-scroll"
           style={{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
+            inset: 0,
             overflowY: 'auto',
             paddingBottom: isWide ? 40 : 80,
           }}
         >
-          {/* Hero */}
-          <div style={{ position: 'relative', height: 540, overflow: 'hidden' }}>
-            <Image
-              src="/assets/photos/p1-laser-dj.jpg"
+          {/* Hero — full-width cover image */}
+          <div
+            style={{
+              position: 'relative',
+              height: isDesktop ? 'min(62vh, 620px)' : isWide ? 580 : 540,
+              overflow: 'hidden',
+              width: '100%',
+            }}
+          >
+            <img
+              src={heroSrc}
               alt=""
-              fill
-              priority
               style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
                 objectFit: 'cover',
                 objectPosition: 'center 30%',
               }}
@@ -402,9 +427,9 @@ export default function HomeScreen() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                padding: '0 20px 20px',
               }}
             >
+              <div style={{ ...pageColumn, paddingBottom: 20 }}>
               <div
                 style={{
                   display: 'flex',
@@ -426,9 +451,9 @@ export default function HomeScreen() {
                       animation: 'hof-pulse 1.4s ease-in-out infinite',
                     }}
                   />
-                  Selling Fast · 47 left
+                  Selling Fast · {left > 0 ? `${left} left` : 'Sold out'}
                 </Pill>
-                <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? 24}</Pill>
+                <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>
               <Image
                 src="/assets/hof-logo-color.png"
@@ -454,9 +479,15 @@ export default function HomeScreen() {
                   textTransform: 'uppercase',
                 }}
               >
-                {upcomingEvent?.name ?? 'Fireversary'}
-                <br />
-                <span style={{ color: colors.glow, fontWeight: 500 }}>2-Year Anniversary</span>
+                {upcomingEvent?.name ?? 'Next edition'}
+                {upcomingEvent?.tagline ? (
+                  <>
+                    <br />
+                    <span style={{ color: colors.glow, fontWeight: 500 }}>
+                      {upcomingEvent.tagline}
+                    </span>
+                  </>
+                ) : null}
               </div>
               <div
                 style={{
@@ -467,13 +498,17 @@ export default function HomeScreen() {
                   letterSpacing: '0.04em',
                 }}
               >
-                Friday, June 26 · Junkyard Social Club · Boulder, CO
+                {upcomingEvent
+                  ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
+                  : 'Loading next edition…'}
+              </div>
               </div>
             </div>
           </div>
 
+          <div style={pageColumn}>
           {/* Countdown */}
-          <div style={{ padding: '24px 16px 8px' }}>
+          <div style={{ padding: '24px 0 8px' }}>
             <div
               style={{
                 fontFamily: 'Inter',
@@ -522,7 +557,7 @@ export default function HomeScreen() {
                       fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    {String(v).padStart(2, '0')}
+                    {countdown.valid ? String(v).padStart(2, '0') : '—'}
                   </div>
                   <div
                     style={{
@@ -544,7 +579,7 @@ export default function HomeScreen() {
           {/* CTAs */}
           <div
             style={{
-              padding: '16px 16px 8px',
+              padding: '16px 0 8px',
               display: 'flex',
               flexDirection: 'column',
               gap: 10,
@@ -560,7 +595,7 @@ export default function HomeScreen() {
           {/* Trust strip */}
           <div
             style={{
-              margin: '24px 16px 0',
+              marginTop: 24,
               padding: '16px 18px',
               background: colors.surface,
               border: `1px solid ${colors.border}`,
@@ -606,7 +641,7 @@ export default function HomeScreen() {
           </div>
 
           {/* About */}
-          <div style={{ padding: '28px 16px 8px' }}>
+          <div style={{ padding: '28px 0 8px' }}>
             <div
               style={{
                 fontFamily: 'Inter',
@@ -934,9 +969,14 @@ export default function HomeScreen() {
           </div>
 
           <div style={{ height: 24 }} />
+          </div>
         </div>
 
-        <CalendarSheet open={calOpen} onClose={() => setCalOpen(false)} />
+        <CalendarSheet
+          open={calOpen}
+          onClose={() => setCalOpen(false)}
+          event={upcomingEvent ?? undefined}
+        />
         <NotificationsSheet
           open={notifsOpen}
           onClose={() => setNotifsOpen(false)}

@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
       public_url,
       status,
       created_at,
+      events!event_photos_event_id_fkey (
+        edition_number
+      ),
       profiles!event_photos_uploader_id_fkey (
         id,
         handle,

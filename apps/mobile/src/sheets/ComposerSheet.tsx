@@ -2,15 +2,16 @@
 
 import { colors } from '@hof/design-tokens';
 import { Avatar, Icon } from '@hof/ui';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { CHANNELS } from '../data/posts';
+import { uploadPostMediaBatch } from '../lib/storageUpload';
 import { useSheet } from './useSheet';
 
 interface ComposerSheetProps {
   open: boolean;
   onClose: () => void;
   defaultChannel?: string;
-  onPost?: (channel: string, title: string, body?: string) => Promise<void>;
+  onPost?: (channel: string, title: string, body?: string, mediaUrls?: string[]) => Promise<void>;
   eventId?: string;
 }
 
@@ -26,13 +27,29 @@ export default function ComposerSheet({
   const [channel, setChannel] = useState(defaultChannel);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [hasPhotos, setHasPhotos] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [anon, setAnon] = useState(false);
   const [posting, setPosting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) setChannel(defaultChannel);
+    if (open) {
+      setChannel(defaultChannel);
+    } else {
+      setFiles([]);
+      setUploadError(null);
+    }
   }, [open, defaultChannel]);
+
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+    };
+  }, [files]);
 
   if (!mounted) return null;
 
@@ -110,11 +127,19 @@ export default function ComposerSheet({
             onClick={async () => {
               if (!title.trim() && !body.trim()) return;
               setPosting(true);
-              await onPost?.(channel, title, body || undefined);
-              setPosting(false);
-              setTitle('');
-              setBody('');
-              onClose();
+              setUploadError(null);
+              try {
+                const mediaUrls = files.length > 0 ? await uploadPostMediaBatch(files) : undefined;
+                await onPost?.(channel, title, body || undefined, mediaUrls);
+                setTitle('');
+                setBody('');
+                setFiles([]);
+                onClose();
+              } catch (e) {
+                setUploadError(e instanceof Error ? e.message : 'Upload failed');
+              } finally {
+                setPosting(false);
+              }
             }}
             style={{
               padding: '6px 14px',
@@ -233,12 +258,23 @@ export default function ComposerSheet({
             }}
           />
 
-          {/* Photo attach */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? []);
+              setFiles((prev) => [...prev, ...picked].slice(0, 3));
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
+          />
           <div style={{ marginTop: 8 }}>
-            {!hasPhotos ? (
+            {files.length === 0 ? (
               <button
                 className="hof-btn hof-press"
-                onClick={() => setHasPhotos(true)}
+                onClick={() => fileInputRef.current?.click()}
                 style={{
                   width: '100%',
                   padding: '12px 14px',
@@ -269,24 +305,18 @@ export default function ComposerSheet({
                     overflow: 'hidden',
                   }}
                 >
-                  {([0, 1, 2] as const).map((seed) => (
-                    <div
-                      key={seed}
-                      style={{
-                        background: colors.elevated,
-                        borderRadius: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon name="image" size={20} color={colors.textDis} />
-                    </div>
+                  {previewUrls.map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   ))}
                 </div>
                 <button
                   className="hof-btn hof-press"
-                  onClick={() => setHasPhotos(false)}
+                  onClick={() => setFiles([])}
                   style={{
                     position: 'absolute',
                     top: 6,
@@ -304,6 +334,18 @@ export default function ComposerSheet({
                 >
                   <Icon name="close" size={11} color={colors.text} />
                 </button>
+              </div>
+            )}
+            {uploadError && (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: colors.error,
+                }}
+              >
+                {uploadError}
               </div>
             )}
           </div>

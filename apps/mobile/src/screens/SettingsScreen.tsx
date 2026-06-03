@@ -243,12 +243,29 @@ function SettingsNotifs() {
 
 // ─── Sub-view: Payment ───────────────────────────────────────────────────────
 function SettingsPayment() {
+  const [methods, setMethods] = useState<
+    Array<{ id: string; brand: string; last4: string; exp_month?: number; exp_year?: number }>
+  >([]);
+
+  useEffect(() => {
+    fetch('/api/billing/payment-methods')
+      .then((r) => r.json())
+      .then((d: { methods?: typeof methods }) => setMethods(d.methods ?? []))
+      .catch(console.error);
+  }, []);
+
+  const primary = methods[0];
+
   return (
     <>
       <Section title="Saved cards">
         <ActionRow
-          label="Visa ···· 4242"
-          sub="Expires 08/27 · Default"
+          label={primary ? `${primary.brand} ···· ${primary.last4}` : 'No card on file'}
+          sub={
+            primary
+              ? `Expires ${primary.exp_month}/${primary.exp_year} · Default`
+              : 'Add a card at checkout'
+          }
           right={
             <div
               style={{
@@ -281,6 +298,17 @@ function SettingsPrivacy() {
   const [anon, setAnon] = useState(false);
   const [shareActivity, setShareActivity] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/user/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        const s = d.settings ?? {};
+        if (s.post_anonymously !== undefined) setAnon(s.post_anonymously);
+        if (s.share_activity !== undefined) setShareActivity(s.share_activity);
+      })
+      .catch(console.error);
+  }, []);
 
   function persist(key: string, value: boolean) {
     fetch('/api/user/settings', {
@@ -341,16 +369,38 @@ function SettingsPrivacy() {
 
 // ─── Sub-view: Help ──────────────────────────────────────────────────────────
 function SettingsHelp() {
+  const open = (url: string) => {
+    if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <>
       <Section title="Support">
-        <ActionRow label="Contact the crew" sub="crew@houseoffire.events" />
-        <ActionRow label="FAQ" />
-        <ActionRow label="Report a problem" last />
+        <ActionRow
+          label="Contact the crew"
+          sub="crew@houseoffire.events"
+          onClick={() => {
+            window.location.href = 'mailto:crew@houseoffire.events';
+          }}
+        />
+        <ActionRow label="FAQ" onClick={() => open('https://houseoffire.events/faq')} />
+        <ActionRow
+          label="Report a problem"
+          last
+          onClick={() => {
+            window.location.href = 'mailto:crew@houseoffire.events?subject=App%20issue';
+          }}
+        />
       </Section>
       <Section title="About">
-        <ActionRow label="Terms of service" />
-        <ActionRow label="Privacy policy" />
+        <ActionRow
+          label="Terms of service"
+          onClick={() => open('https://houseoffire.events/terms')}
+        />
+        <ActionRow
+          label="Privacy policy"
+          onClick={() => open('https://houseoffire.events/privacy')}
+        />
         <ActionRow label="App version" sub="1.0.0" last right={null} />
       </Section>
     </>

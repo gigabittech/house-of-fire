@@ -10,6 +10,7 @@ interface TransferSheetProps {
   onClose: () => void;
   onTransferred?: () => void;
   ticketId?: string;
+  ticketSummary?: string;
 }
 
 type Stage = 'form' | 'confirm' | 'sent';
@@ -21,6 +22,7 @@ export default function TransferSheet({
   onClose,
   onTransferred,
   ticketId,
+  ticketSummary = 'Your ticket',
 }: TransferSheetProps) {
   const [stage, setStage] = useState<Stage>('form');
   const [name, setName] = useState('');
@@ -112,7 +114,7 @@ export default function TransferSheet({
       open={open}
       onClose={onClose}
       title="Transfer your ticket"
-      sub="Fireversary · Edition 24 · GA · $28"
+      sub={ticketSummary}
     >
       {stage === 'form' && (
         <>
@@ -223,7 +225,7 @@ export default function TransferSheet({
                 marginTop: 6,
               }}
             >
-              Fireversary · GA · Ed 24
+              {ticketSummary}
             </div>
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${colors.border}` }}>
               <div

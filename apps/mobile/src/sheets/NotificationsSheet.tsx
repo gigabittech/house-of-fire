@@ -17,67 +17,6 @@ interface NotifItem {
   highlight?: boolean;
 }
 
-const FALLBACK_NOTIFS: NotifItem[] = [
-  {
-    kind: 'reply',
-    read: false,
-    initials: 'DP',
-    name: 'Devon',
-    action: 'replied to your post',
-    target: 'how strict is no-phones-on-the-floor?',
-    time: '8m',
-    postId: 'p6',
-  },
-  {
-    kind: 'react',
-    read: false,
-    initials: 'JG',
-    name: 'Jordan',
-    action: 'reacted 🔥 to your post',
-    target: 'how strict is no-phones-on-the-floor?',
-    time: '24m',
-    postId: 'p6',
-  },
-  {
-    kind: 'crew',
-    read: false,
-    initials: 'JG',
-    name: 'Jordan',
-    action: 'posted in #general',
-    target: 'Edition 24 lineup is final',
-    time: '2h',
-    postId: 'p1',
-    highlight: true,
-  },
-  {
-    kind: 'mention',
-    read: true,
-    initials: 'IW',
-    name: 'iris.w',
-    action: 'mentioned you',
-    target: '@nightowl will you be there Friday?',
-    time: '1d',
-  },
-  {
-    kind: 'photo',
-    read: true,
-    initials: 'CR',
-    name: 'Crew',
-    action: 'approved your photo for the recap',
-    target: 'Edition 23 · Photo #082',
-    time: '3d',
-  },
-  {
-    kind: 'react',
-    read: true,
-    initials: 'TR',
-    name: 'Tara',
-    action: 'and 11 others reacted to your reply',
-    target: 'Photo #047 has me crying.',
-    time: '4d',
-  },
-];
-
 const ICON_MAP: Record<NotifItem['kind'], Parameters<typeof Icon>[0]['name']> = {
   reply: 'chat',
   react: 'flame',
@@ -236,9 +175,13 @@ function apiNotifToItem(n: ApiNotif): NotifItem {
   };
 }
 
+const NOTIF_FILTERS = ['All', 'Replies', 'Reactions', 'Crew'] as const;
+type NotifFilter = (typeof NOTIF_FILTERS)[number];
+
 export default function NotificationsSheet({ open, onClose, onOpenPost }: NotificationsSheetProps) {
   const { mounted, shown } = useSheet(open);
-  const [notifs, setNotifs] = useState<NotifItem[]>(FALLBACK_NOTIFS);
+  const [notifs, setNotifs] = useState<NotifItem[]>([]);
+  const [filter, setFilter] = useState<NotifFilter>('All');
 
   useEffect(() => {
     if (!open) return;
@@ -254,6 +197,14 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
 
   if (!mounted) return null;
 
+  const visible = notifs.filter((n) => {
+    if (filter === 'All') return true;
+    if (filter === 'Replies') return n.kind === 'reply' || n.kind === 'mention';
+    if (filter === 'Reactions') return n.kind === 'react';
+    if (filter === 'Crew') return n.kind === 'crew';
+    return true;
+  });
+
   const overlay: CSSProperties = {
     position: 'absolute',
     inset: 0,
@@ -264,8 +215,6 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
     display: 'flex',
     flexDirection: 'column',
   };
-
-  const FILTERS = ['All', 'Replies', 'Reactions', 'Crew'] as const;
 
   return (
     <div style={overlay}>
@@ -328,18 +277,20 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
       <div className="hof-scroll" style={{ flex: 1, overflowY: 'auto' }}>
         {/* Filter row */}
         <div style={{ padding: '12px 16px 0', display: 'flex', gap: 6 }}>
-          {FILTERS.map((f, i) => (
+          {NOTIF_FILTERS.map((f) => (
             <button
               key={f}
+              type="button"
               className="hof-btn hof-press"
+              onClick={() => setFilter(f)}
               style={{
                 padding: '6px 12px',
                 borderRadius: 6,
-                background: i === 0 ? colors.elevated : 'transparent',
-                border: `1px solid ${i === 0 ? colors.border : 'transparent'}`,
+                background: f === filter ? colors.elevated : 'transparent',
+                border: `1px solid ${f === filter ? colors.border : 'transparent'}`,
                 fontFamily: 'Inter',
                 fontSize: 12,
-                color: i === 0 ? colors.text : colors.textSec,
+                color: f === filter ? colors.text : colors.textSec,
                 fontWeight: 500,
               }}
             >
@@ -365,12 +316,12 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
         </div>
 
         <NotifGroup label="Today">
-          {notifs.slice(0, 3).map((n, i) => (
+          {visible.slice(0, 3).map((n, i) => (
             <NotifRow key={i} n={n} onOpenPost={onOpenPost} />
           ))}
         </NotifGroup>
         <NotifGroup label="Earlier this week">
-          {notifs.slice(3).map((n, i) => (
+          {visible.slice(3).map((n, i) => (
             <NotifRow key={i} n={n} onOpenPost={onOpenPost} />
           ))}
         </NotifGroup>

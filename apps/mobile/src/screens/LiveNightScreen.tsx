@@ -2,7 +2,16 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import type { IconName, NavId } from '@hof/ui';
-import { Avatar, FakeQR, HofAppShell, HofPill, Icon, useResponsive } from '@hof/ui';
+import {
+  Avatar,
+  ErrorState,
+  FakeQR,
+  FeedSkeletonCard,
+  HofAppShell,
+  HofPill,
+  Icon,
+  useResponsive,
+} from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { navHref } from '../lib/nav';
@@ -164,8 +173,10 @@ export default function LiveNightScreen() {
   // Data state
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState(false);
 
   const [eventId, setEventId] = useState<string | null>(null);
+  const [eventName, setEventName] = useState<string | null>(null);
   const [setTimes, setSetTimes] = useState<SetTimeItem[]>([]);
   const [lineupLoading, setLineupLoading] = useState(true);
 
@@ -183,6 +194,7 @@ export default function LiveNightScreen() {
   useEffect(() => {
     let cancelled = false;
     setPostsLoading(true);
+    setPostsError(false);
     fetch('/api/posts?channel=general&limit=3')
       .then((r) => r.json() as Promise<{ posts?: ApiPost[] }>)
       .then(({ posts: raw }) => {
@@ -204,7 +216,9 @@ export default function LiveNightScreen() {
         });
         setPosts(mapped);
       })
-      .catch(console.error)
+      .catch(() => {
+        if (!cancelled) setPostsError(true);
+      })
       .finally(() => {
         if (!cancelled) setPostsLoading(false);
       });
@@ -223,6 +237,7 @@ export default function LiveNightScreen() {
       .then(({ event }) => {
         if (cancelled || !event) return;
         setEventId(event.id);
+        setEventName(event.name);
         return fetch(`/api/events/${event.id}/lineup`)
           .then((r) => r.json() as Promise<{ lineup?: ApiLineupEntry[] }>)
           .then(({ lineup }) => {
@@ -576,7 +591,7 @@ export default function LiveNightScreen() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Fireversary · open mic
+                  {eventName ? `${eventName} · open mic` : "Tonight's thread"}
                 </div>
               </div>
               <button
@@ -591,10 +606,39 @@ export default function LiveNightScreen() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {postsLoading ? (
                 <>
-                  <Skeleton height={72} />
-                  <Skeleton height={72} />
-                  <Skeleton height={72} />
+                  <FeedSkeletonCard />
+                  <FeedSkeletonCard />
                 </>
+              ) : postsError ? (
+                <ErrorState
+                  retry={() => {
+                    setPostsLoading(true);
+                    setPostsError(false);
+                    fetch('/api/posts?channel=general&limit=3')
+                      .then((r) => r.json() as Promise<{ posts?: ApiPost[] }>)
+                      .then(({ posts: raw }) => {
+                        if (!raw) return;
+                        const mapped: PostItem[] = raw.slice(0, 3).map((p) => {
+                          const profile = p.is_anonymous ? null : p.profiles;
+                          const displayName = profile?.display_name ?? 'Anonymous';
+                          const role =
+                            profile?.role === 'crew' || profile?.role === 'admin'
+                              ? ('crew' as const)
+                              : ('member' as const);
+                          return {
+                            i: initialsFrom(displayName),
+                            n: displayName,
+                            role,
+                            t: relativeTime(p.created_at),
+                            b: p.body ?? p.title,
+                          };
+                        });
+                        setPosts(mapped);
+                      })
+                      .catch(() => setPostsError(true))
+                      .finally(() => setPostsLoading(false));
+                  }}
+                />
               ) : posts.length > 0 ? (
                 posts.map((p, i) => (
                   <div

@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('posts')
     .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
+    .eq('moderation_status', 'approved')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -36,12 +37,18 @@ export async function POST(request: NextRequest) {
     body?: string;
     isAnonymous?: boolean;
     eventId?: string;
+    mediaUrls?: string[];
   };
-  const { channel, title, body: postBody, isAnonymous = false, eventId } = body;
+  const { channel, title, body: postBody, isAnonymous = false, eventId, mediaUrls } = body;
 
   if (!channel || !title) {
     return NextResponse.json({ error: 'channel and title required' }, { status: 400 });
   }
+
+  const safeMedia =
+    Array.isArray(mediaUrls) && mediaUrls.length > 0
+      ? mediaUrls.filter((u) => typeof u === 'string' && u.startsWith('http')).slice(0, 5)
+      : [];
 
   const { data: post, error } = await supabase
     .from('posts')
@@ -52,6 +59,8 @@ export async function POST(request: NextRequest) {
       body: postBody ?? null,
       is_anonymous: isAnonymous,
       event_id: eventId ?? null,
+      media_urls: safeMedia,
+      moderation_status: 'pending',
     })
     .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
     .single();

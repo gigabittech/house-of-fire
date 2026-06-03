@@ -3,9 +3,25 @@ import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const year = searchParams.get('year') ?? String(new Date().getFullYear());
-
   const supabase = await createServerSupabaseClient();
+
+  if (searchParams.get('yearsOnly') === '1') {
+    const { data, error } = await supabase
+      .from('events')
+      .select('date')
+      .eq('status', 'past')
+      .order('date', { ascending: false });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const years = [
+      ...new Set((data ?? []).map((e) => e.date.slice(0, 4))),
+    ].sort((a, b) => b.localeCompare(a));
+
+    return NextResponse.json({ years });
+  }
+
+  const year = searchParams.get('year') ?? String(new Date().getFullYear());
 
   const startOfYear = `${year}-01-01T00:00:00Z`;
   const endOfYear = `${year}-12-31T23:59:59Z`;

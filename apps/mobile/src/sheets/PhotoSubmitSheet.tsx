@@ -3,11 +3,13 @@
 import { colors } from '@hof/design-tokens';
 import { HofButton, Icon } from '@hof/ui';
 import { useEffect, useRef, useState } from 'react';
+import { uploadEventPhoto } from '../lib/storageUpload';
 import SheetShell from './SheetShell';
 
 interface PhotoSubmitSheetProps {
   open: boolean;
   onClose: () => void;
+  eventId?: string;
   edition?: number;
 }
 
@@ -46,11 +48,20 @@ function Helper({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoSubmitSheetProps) {
+export default function PhotoSubmitSheet({
+  open,
+  onClose,
+  eventId,
+  edition = 23,
+}: PhotoSubmitSheetProps) {
   const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
   const [consent, setConsent] = useState(false);
   const [stage, setStage] = useState<Stage>('form');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resolvedEventId, setResolvedEventId] = useState<string | undefined>(eventId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -59,10 +70,31 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
       setCaption('');
       setConsent(false);
       setFiles([]);
+      setError(null);
+      setUploading(false);
     }
   }, [open]);
 
-  const valid = files.length > 0 && consent;
+  useEffect(() => {
+    setResolvedEventId(eventId);
+    if (!open || eventId) return;
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d: { event?: { id: string } }) => {
+        if (d.event?.id) setResolvedEventId(d.event.id);
+      })
+      .catch(console.error);
+  }, [open, eventId]);
+
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+    };
+  }, [files]);
+
+  const valid = files.length > 0 && consent && Boolean(resolvedEventId);
 
   return (
     <SheetShell
@@ -87,9 +119,9 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
           />
           <Label>Your photos ({files.length})</Label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-            {files.map((f, i) => (
+            {previewUrls.map((src, i) => (
               <div
-                key={i}
+                key={src}
                 style={{
                   position: 'relative',
                   aspectRatio: '1/1',
@@ -99,7 +131,7 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
                 }}
               >
                 <img
-                  src={URL.createObjectURL(f)}
+                  src={src}
                   alt=""
                   style={{
                     position: 'absolute',
@@ -132,7 +164,6 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
               </div>
             ))}
 
-            {/* Add slot */}
             {files.length < 5 && (
               <button
                 className="hof-btn hof-press"
@@ -165,7 +196,7 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
             )}
           </div>
           <Helper>
-            Up to 8 per submission. JPG / HEIC / PNG. Faces of strangers will be blurred unless
+            Up to 5 per submission. JPG / HEIC / PNG. Faces of strangers will be blurred unless
             they&apos;re members who opted in.
           </Helper>
 
@@ -190,7 +221,6 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
             }}
           />
 
-          {/* Consent */}
           <button
             className="hof-btn hof-press"
             onClick={() => setConsent((c) => !c)}
@@ -236,38 +266,45 @@ export default function PhotoSubmitSheet({ open, onClose, edition = 23 }: PhotoS
             </div>
           </button>
 
+          {error && (
+            <div
+              style={{
+                marginTop: 12,
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: colors.error,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
           <div style={{ marginTop: 18 }}>
             <HofButton
               variant="primary"
               full
-              disabled={!valid}
+              disabled={!valid || uploading}
               onClick={async () => {
-                if (files.length === 0 || !consent) return;
-                setStage('sent'); // optimistic
-                for (const file of files) {
-                  try {
-                    const r = await fetch('/api/photos/upload-url', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-                    });
-                    const d = (await r.json()) as { signedUrl?: string };
-                    if (d.signedUrl) {
-                      await fetch(d.signedUrl, {
-                        method: 'PUT',
-                        body: file,
-                        headers: { 'Content-Type': file.type },
-                      });
-                    }
-                  } catch (e) {
-                    console.error(e);
+                if (!valid || !resolvedEventId) return;
+                setUploading(true);
+                setError(null);
+                try {
+                  for (const file of files) {
+                    await uploadEventPhoto(resolvedEventId, file);
                   }
+                  setStage('sent');
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Upload failed');
+                } finally {
+                  setUploading(false);
                 }
               }}
             >
-              {valid
-                ? `Submit ${files.length} photo${files.length === 1 ? '' : 's'}`
-                : 'Confirm consent'}
+              {uploading
+                ? 'Uploading…'
+                : valid
+                  ? `Submit ${files.length} photo${files.length === 1 ? '' : 's'}`
+                  : 'Confirm consent'}
             </HofButton>
           </div>
         </>

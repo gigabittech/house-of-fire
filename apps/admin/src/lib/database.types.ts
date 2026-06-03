@@ -41,6 +41,7 @@ export type Database = {
           capacity: number;
           status: 'upcoming' | 'live' | 'past' | 'cancelled';
           hero_image_url: string | null;
+          faqs: Json;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['events']['Row'], 'id' | 'created_at'> & {
@@ -113,6 +114,8 @@ export type Database = {
           body: string | null;
           is_anonymous: boolean;
           is_pinned: boolean;
+          moderation_status: 'pending' | 'approved' | 'hidden' | 'draft';
+          media_urls: Json;
           reply_count: number;
           reaction_counts: Json;
           created_at: string;
@@ -127,6 +130,8 @@ export type Database = {
           body?: string | null;
           is_anonymous?: boolean;
           is_pinned?: boolean;
+          moderation_status?: 'pending' | 'approved' | 'hidden' | 'draft';
+          media_urls?: Json;
           reply_count?: number;
           reaction_counts?: Json;
           created_at?: string;
@@ -298,6 +303,7 @@ export type Database = {
           active: boolean;
           expires_at: string | null;
           note: string | null;
+          pool: 'crew' | 'press' | 'goodwill' | null;
           created_at: string;
         };
         Insert: {
@@ -311,6 +317,7 @@ export type Database = {
           active?: boolean;
           expires_at?: string | null;
           note?: string | null;
+          pool?: 'crew' | 'press' | 'goodwill' | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -324,6 +331,28 @@ export type Database = {
           expires_at: string | null;
           note: string | null;
         }>;
+        Relationships: [];
+      };
+      content_reports: {
+        Row: {
+          id: string;
+          reporter_id: string | null;
+          post_id: string | null;
+          reply_id: string | null;
+          reason: string;
+          status: 'open' | 'dismissed' | 'resolved';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reporter_id?: string | null;
+          post_id?: string | null;
+          reply_id?: string | null;
+          reason: string;
+          status?: 'open' | 'dismissed' | 'resolved';
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['content_reports']['Insert']>;
         Relationships: [];
       };
     };

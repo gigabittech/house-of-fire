@@ -169,6 +169,8 @@ export type Database = {
           body: string | null;
           is_anonymous: boolean;
           is_pinned: boolean;
+          moderation_status: 'pending' | 'approved' | 'hidden' | 'draft';
+          media_urls: Json;
           reply_count: number;
           reaction_counts: Json;
           created_at: string;
@@ -183,6 +185,8 @@ export type Database = {
           body?: string | null;
           is_anonymous?: boolean;
           is_pinned?: boolean;
+          moderation_status?: 'pending' | 'approved' | 'hidden' | 'draft';
+          media_urls?: Json;
           reply_count?: number;
           reaction_counts?: Json;
           created_at?: string;

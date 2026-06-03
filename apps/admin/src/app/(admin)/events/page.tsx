@@ -1,78 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { EventFormModal, parseFaqsFromJson } from '@/components/EventFormModal';
 import { PaneHeader } from '@/components/PaneHeader';
 import { Pill } from '@/components/Pill';
+import type { EventFormPayload } from '@/lib/eventPayload';
+import { type EventRow, mapEventRow } from '@/lib/mapEventRow';
 
 type EventStatus = 'live' | 'draft' | 'past';
 type FilterKey = 'all' | EventStatus;
-
-interface EventRow {
-  ed: number;
-  name: string;
-  date: string;
-  status: EventStatus;
-  sold: number;
-  cap: number;
-  gross: string;
-}
-
-const EVENTS: EventRow[] = [
-  {
-    ed: 24,
-    name: 'Fireversary',
-    date: 'Jun 26, 2026',
-    status: 'live',
-    sold: 253,
-    cap: 300,
-    gross: '$7,684',
-  },
-  {
-    ed: 25,
-    name: 'Mid-Summer Burn',
-    date: 'Jul 24, 2026',
-    status: 'draft',
-    sold: 0,
-    cap: 300,
-    gross: '—',
-  },
-  {
-    ed: 23,
-    name: 'Late Bloom',
-    date: 'May 30, 2026',
-    status: 'past',
-    sold: 300,
-    cap: 300,
-    gross: '$8,940',
-  },
-  {
-    ed: 22,
-    name: 'Slow Burn',
-    date: 'Apr 25, 2026',
-    status: 'past',
-    sold: 300,
-    cap: 300,
-    gross: '$8,940',
-  },
-  {
-    ed: 21,
-    name: 'The Equinox',
-    date: 'Mar 28, 2026',
-    status: 'past',
-    sold: 286,
-    cap: 300,
-    gross: '$8,512',
-  },
-  {
-    ed: 20,
-    name: 'Year Two Open',
-    date: 'Feb 28, 2026',
-    status: 'past',
-    sold: 300,
-    cap: 300,
-    gross: '$8,400',
-  },
-];
 
 const FILTERS: Array<[FilterKey, string]> = [
   ['all', 'All'],
@@ -81,19 +17,147 @@ const FILTERS: Array<[FilterKey, string]> = [
   ['past', 'Past'],
 ];
 
+function eventToForm(ev: {
+  edition_number: number;
+  name: string;
+  tagline: string | null;
+  date: string;
+  doors_open: string;
+  doors_close: string;
+  venue_name: string;
+  venue_address: string;
+  venue_lat: number | null;
+  venue_lng: number | null;
+  capacity: number;
+  status: EventFormPayload['status'];
+  hero_image_url: string | null;
+  faqs: unknown;
+}): EventFormPayload {
+  return {
+    edition_number: ev.edition_number,
+    name: ev.name,
+    tagline: ev.tagline,
+    date: ev.date,
+    doors_open: ev.doors_open.slice(0, 5),
+    doors_close: ev.doors_close.slice(0, 5),
+    venue_name: ev.venue_name,
+    venue_address: ev.venue_address,
+    venue_lat: ev.venue_lat,
+    venue_lng: ev.venue_lng,
+    capacity: ev.capacity,
+    status: ev.status,
+    hero_image_url: ev.hero_image_url,
+    faqs: parseFaqsFromJson(ev.faqs),
+  };
+}
+
 export default function EventsPage() {
   const [filter, setFilter] = useState<FilterKey>('all');
-  const filtered = filter === 'all' ? EVENTS : EVENTS.filter((e) => e.status === filter);
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [editEventId, setEditEventId] = useState<string | undefined>();
+  const [formInitial, setFormInitial] = useState<Partial<EventFormPayload>>({});
+  const [editSold, setEditSold] = useState(0);
+  const [openingEdit, setOpeningEdit] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/events?includeStats=1');
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? 'Failed to load events');
+      }
+      const data = (await res.json()) as { events: Parameters<typeof mapEventRow>[0][] };
+      setEvents((data.events ?? []).map(mapEventRow));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filtered = filter === 'all' ? events : events.filter((e) => e.status === filter);
+  const liveCount = events.filter((e) => e.status === 'live').length;
+  const draftCount = events.filter((e) => e.status === 'draft').length;
+  const sub =
+    events.length > 0
+      ? `${events.length} editions to date · ${draftCount} draft${draftCount === 1 ? '' : 's'} · ${liveCount} live`
+      : loading
+        ? 'Loading editions…'
+        : (error ?? 'No editions');
+
+  async function duplicateLast() {
+    const last = [...events].sort((a, b) => b.ed - a.ed)[0];
+    if (!last) return;
+    await fetch('/api/admin/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duplicateFromId: last.id }),
+    });
+    void load();
+  }
+
+  function openCreateModal() {
+    const maxEd = events.reduce((m, e) => Math.max(m, e.ed), 0);
+    const nextDate = new Date();
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    setModalMode('create');
+    setEditEventId(undefined);
+    setEditSold(0);
+    setFormInitial({
+      edition_number: maxEd + 1,
+      name: '',
+      date: nextDate.toISOString().slice(0, 10),
+      venue_name: 'Junkyard Social Club',
+      venue_address: 'Boulder, CO',
+      capacity: 300,
+      status: 'upcoming',
+      doors_open: '20:00',
+      doors_close: '02:00',
+      faqs: [],
+    });
+    setModalOpen(true);
+  }
+
+  async function openEditModal(id: string) {
+    setOpeningEdit(id);
+    try {
+      const res = await fetch(`/api/admin/events/${id}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        event: Parameters<typeof eventToForm>[0];
+        sold: number;
+      };
+      setModalMode('edit');
+      setEditEventId(id);
+      setEditSold(data.sold ?? 0);
+      setFormInitial(eventToForm(data.event));
+      setModalOpen(true);
+    } finally {
+      setOpeningEdit(null);
+    }
+  }
 
   return (
     <>
       <PaneHeader
         eyebrow="Events"
         title="All editions"
-        sub="24 editions to date · 1 draft · 1 live"
+        sub={sub}
         cta={
           <div style={{ display: 'flex', gap: 8 }}>
             <button
+              type="button"
+              onClick={() => void duplicateLast()}
               style={{
                 padding: '9px 14px',
                 borderRadius: 8,
@@ -109,6 +173,8 @@ export default function EventsPage() {
               Duplicate last edition
             </button>
             <button
+              type="button"
+              onClick={openCreateModal}
               style={{
                 padding: '9px 14px',
                 borderRadius: 8,
@@ -180,105 +246,154 @@ export default function EventsPage() {
             <div>Gross</div>
             <div />
           </div>
-          {filtered.map((e, i) => (
+          {loading && (
             <div
-              key={e.ed}
               style={{
-                display: 'grid',
-                gridTemplateColumns: '60px 2fr 1fr 0.7fr 1.2fr 1fr 80px',
-                padding: '14px 18px',
-                alignItems: 'center',
-                borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
+                padding: '24px 18px',
                 fontFamily: 'Inter, system-ui',
                 fontSize: 13,
-                color: 'var(--hof-text)',
+                color: 'var(--hof-text-sec)',
               }}
             >
+              Loading editions…
+            </div>
+          )}
+          {!loading && error && (
+            <div
+              style={{
+                padding: '24px 18px',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+              }}
+            >
+              {error}
+            </div>
+          )}
+          {!loading &&
+            !error &&
+            filtered.map((e, i) => (
               <div
-                style={{
-                  fontFamily: 'Clash Display, system-ui',
-                  fontWeight: 600,
-                  fontSize: 18,
-                  color: 'var(--hof-text)',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                {e.ed}
-              </div>
-              <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 500 }}>{e.name}</div>
-              <div
-                style={{
-                  color: 'var(--hof-text-sec)',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 12,
-                }}
-              >
-                {e.date}
-              </div>
-              <div>
-                <Pill
-                  tone={
-                    e.status === 'live' ? 'amber' : e.status === 'draft' ? 'neutral' : 'success'
+                key={e.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => void openEditModal(e.id)}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    void openEditModal(e.id);
                   }
-                  size="sm"
+                }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '60px 2fr 1fr 0.7fr 1.2fr 1fr 80px',
+                  padding: '14px 18px',
+                  alignItems: 'center',
+                  borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 13,
+                  color: 'var(--hof-text)',
+                  cursor: openingEdit === e.id ? 'wait' : 'pointer',
+                  opacity: openingEdit === e.id ? 0.6 : 1,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: 'Clash Display, system-ui',
+                    fontWeight: 600,
+                    fontSize: 18,
+                    color: 'var(--hof-text)',
+                    letterSpacing: '-0.01em',
+                  }}
                 >
-                  {e.status}
-                </Pill>
-              </div>
-              <div style={{ minWidth: 0 }}>
+                  {e.ed}
+                </div>
+                <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 500 }}>{e.name}</div>
+                <div
+                  style={{
+                    color: 'var(--hof-text-sec)',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: 12,
+                  }}
+                >
+                  {e.date}
+                </div>
+                <div>
+                  <Pill
+                    tone={
+                      e.status === 'live' ? 'amber' : e.status === 'draft' ? 'neutral' : 'success'
+                    }
+                    size="sm"
+                  >
+                    {e.status}
+                  </Pill>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 12,
+                      color: 'var(--hof-text)',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {e.sold} / {e.cap}
+                  </div>
+                  <div
+                    style={{
+                      height: 4,
+                      background: 'var(--hof-elevated)',
+                      borderRadius: 2,
+                      marginTop: 4,
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${(e.sold / e.cap) * 100}%`,
+                        background:
+                          e.status === 'live' ? 'var(--hof-amber)' : 'var(--hof-border-hi)',
+                        borderRadius: 2,
+                      }}
+                    />
+                  </div>
+                </div>
                 <div
                   style={{
                     fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 12,
+                    fontSize: 13,
                     color: 'var(--hof-text)',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {e.sold} / {e.cap}
+                  {e.gross}
                 </div>
-                <div
-                  style={{
-                    height: 4,
-                    background: 'var(--hof-elevated)',
-                    borderRadius: 2,
-                    marginTop: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${(e.sold / e.cap) * 100}%`,
-                      background: e.status === 'live' ? 'var(--hof-amber)' : 'var(--hof-border-hi)',
-                      borderRadius: 2,
-                    }}
-                  />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      stroke="var(--hof-text-sec)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 6 L15 12 L9 18"
+                    />
+                  </svg>
                 </div>
               </div>
-              <div
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 13,
-                  color: 'var(--hof-text)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {e.gross}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    stroke="var(--hof-text-sec)"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 6 L15 12 L9 18"
-                  />
-                </svg>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
+
+      <EventFormModal
+        open={modalOpen}
+        mode={modalMode}
+        eventId={editEventId}
+        initial={formInitial}
+        sold={editSold}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => void load()}
+        onDeleted={() => void load()}
+      />
     </>
   );
 }
