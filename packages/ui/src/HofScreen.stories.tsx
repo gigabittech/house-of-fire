@@ -19,8 +19,8 @@ export const Scrollable: StoryObj = {
     <HofScreen>
       <HofScroll style={{ padding: 16 }}>
         {Array.from({ length: 20 }, (_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static demo list
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: static demo rows
             key={i}
             style={{ padding: 14, marginBottom: 8, background: '#141412', borderRadius: 12 }}
           >

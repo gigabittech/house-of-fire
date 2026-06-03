@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../lib/supabase.server.js';
-import type { Json } from '../../../lib/database.types.js';
+import { NextResponse } from 'next/server';
+import type { Json } from '../../../lib/database.types';
+import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -28,8 +28,7 @@ export async function GET() {
   const posts = postsRes.data ?? [];
 
   const editions = new Set(tickets.map((t: { event_id: string }) => t.event_id)).size;
-  const phone =
-    typeof user.user_metadata?.phone === 'string' ? user.user_metadata.phone : null;
+  const phone = typeof user.user_metadata?.phone === 'string' ? user.user_metadata.phone : null;
 
   const totalFire = posts.reduce(
     (sum: number, p: { reaction_counts: Json }) =>

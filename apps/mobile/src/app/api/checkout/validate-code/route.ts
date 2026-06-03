@@ -1,7 +1,7 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
-import { rateLimitCheck } from '../../../../lib/rateLimit.js';
-import type { Database } from '../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../../lib/database.types';
+import { rateLimitCheck } from '../../../../lib/rateLimit';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 type DiscountCodeRow = Database['public']['Tables']['discount_codes']['Row'];
 
@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
     kind: dc.kind,
     value: dc.value,
     discountCents,
-    label:
-      dc.kind === 'percent' ? `${dc.value}% off` : `$${(dc.value / 100).toFixed(2)} off`,
+    label: dc.kind === 'percent' ? `${dc.value}% off` : `$${(dc.value / 100).toFixed(2)} off`,
   });
 }

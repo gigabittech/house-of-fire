@@ -1,9 +1,9 @@
 'use client';
 
-import type { CSSProperties } from 'react';
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
-import SheetShell from './SheetShell.js';
+import type { CSSProperties } from 'react';
+import SheetShell from './SheetShell';
 
 interface ShareSheetProps {
   open: boolean;
@@ -21,9 +21,21 @@ interface ShareRow {
 const SHARE_ROWS: ShareRow[] = [
   { id: 'copy', label: 'Copy link', sub: 'houseoffire.events/e/24', icon: 'share', accent: false },
   { id: 'imsg', label: 'iMessage', sub: 'Open in Messages', icon: 'users', accent: false },
-  { id: 'ig', label: 'Instagram stories', sub: 'Share to your story', icon: 'image', accent: false },
+  {
+    id: 'ig',
+    label: 'Instagram stories',
+    sub: 'Share to your story',
+    icon: 'image',
+    accent: false,
+  },
   { id: 'tw', label: 'Twitter / X', sub: 'Post the link', icon: 'music', accent: false },
-  { id: 'invite', label: 'Copy invite code', sub: 'They get $5 off. You get a beer.', icon: 'ticket', accent: true },
+  {
+    id: 'invite',
+    label: 'Copy invite code',
+    sub: 'They get $5 off. You get a beer.',
+    icon: 'ticket',
+    accent: true,
+  },
 ];
 
 function handleShare(id: string) {

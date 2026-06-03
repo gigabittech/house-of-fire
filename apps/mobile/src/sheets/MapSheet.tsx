@@ -1,9 +1,9 @@
 'use client';
 
-import type { CSSProperties } from 'react';
 import { colors } from '@hof/design-tokens';
-import { Icon, HofButton } from '@hof/ui';
-import { useSheet } from './useSheet.js';
+import { HofButton, Icon } from '@hof/ui';
+import type { CSSProperties } from 'react';
+import { useSheet } from './useSheet';
 
 interface MapSheetProps {
   open: boolean;
@@ -18,10 +18,26 @@ function DarkMap() {
         <rect width="400" height="400" fill="#0d0c0a" />
         {/* fine grid */}
         {Array.from({ length: 20 }).map((_, i) => (
-          <line key={`v${i}`} x1={i * 20} y1="0" x2={i * 20} y2="400" stroke="#16140f" strokeWidth="0.5" />
+          <line
+            key={`v${i}`}
+            x1={i * 20}
+            y1="0"
+            x2={i * 20}
+            y2="400"
+            stroke="#16140f"
+            strokeWidth="0.5"
+          />
         ))}
         {Array.from({ length: 20 }).map((_, i) => (
-          <line key={`h${i}`} x1="0" y1={i * 20} x2="400" y2={i * 20} stroke="#16140f" strokeWidth="0.5" />
+          <line
+            key={`h${i}`}
+            x1="0"
+            y1={i * 20}
+            x2="400"
+            y2={i * 20}
+            stroke="#16140f"
+            strokeWidth="0.5"
+          />
         ))}
         {/* roads (Pearl St area abstracted) */}
         <path d="M0 200 L400 195" stroke="#3a3833" strokeWidth="6" />
@@ -31,7 +47,15 @@ function DarkMap() {
         <path d="M0 320 L400 315" stroke="#2a2826" strokeWidth="3" />
         <path d="M0 80 L400 85" stroke="#2a2826" strokeWidth="3" />
         {/* park (open space block) */}
-        <rect x="40" y="240" width="60" height="60" fill="#11251a" stroke="#1c3023" strokeWidth="0.5" />
+        <rect
+          x="40"
+          y="240"
+          width="60"
+          height="60"
+          fill="#11251a"
+          stroke="#1c3023"
+          strokeWidth="0.5"
+        />
         {/* random building footprints */}
         {(
           [
@@ -43,14 +67,36 @@ function DarkMap() {
             [40, 30, 60, 40],
           ] as [number, number, number, number][]
         ).map(([x, y, w, h], i) => (
-          <rect key={i} x={x} y={y} width={w} height={h} fill="#1a1813" stroke="#2a2826" strokeWidth="0.5" />
+          <rect
+            key={i}
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            fill="#1a1813"
+            stroke="#2a2826"
+            strokeWidth="0.5"
+          />
         ))}
         {/* HoF building highlight */}
-        <rect x="170" y="170" width="60" height="60" fill="#2a1006" stroke={colors.amber} strokeWidth="2" />
+        <rect
+          x="170"
+          y="170"
+          width="60"
+          height="60"
+          fill="#2a1006"
+          stroke={colors.amber}
+          strokeWidth="2"
+        />
         {/* pin pulse */}
         <circle cx="200" cy="200" r="24" fill={colors.amber} fillOpacity="0.15">
           <animate attributeName="r" values="20;36;20" dur="2.4s" repeatCount="indefinite" />
-          <animate attributeName="fill-opacity" values="0.25;0;0.25" dur="2.4s" repeatCount="indefinite" />
+          <animate
+            attributeName="fill-opacity"
+            values="0.25;0;0.25"
+            dur="2.4s"
+            repeatCount="indefinite"
+          />
         </circle>
         <circle cx="200" cy="200" r="6" fill={colors.amber} />
         <circle cx="200" cy="200" r="3" fill={colors.bg} />
@@ -117,9 +163,16 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
             onClick={() => {
               const text = 'House of Fire @ Junkyard Social Club, Boulder CO';
               if (navigator.share) {
-                navigator.share({ title: text, url: 'https://maps.google.com/?q=Junkyard+Social+Club+Boulder+CO' }).catch(console.error);
+                navigator
+                  .share({
+                    title: text,
+                    url: 'https://maps.google.com/?q=Junkyard+Social+Club+Boulder+CO',
+                  })
+                  .catch(console.error);
               } else {
-                navigator.clipboard?.writeText('2525 Pearl St, Boulder, CO 80302').catch(console.error);
+                navigator.clipboard
+                  ?.writeText('2525 Pearl St, Boulder, CO 80302')
+                  .catch(console.error);
               }
             }}
             style={{
@@ -160,7 +213,9 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
             }}
           >
             <Icon name="flame" size={14} color={colors.bg} />
-            <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13 }}>House of Fire</span>
+            <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13 }}>
+              House of Fire
+            </span>
           </div>
           <div
             style={{
@@ -236,7 +291,10 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
             full
             icon={<Icon name="pin" size={16} color={colors.bg} />}
             onClick={() => {
-              window.open('https://maps.google.com/?q=Junkyard+Social+Club+2525+Pearl+St+Boulder+CO+80302', '_blank');
+              window.open(
+                'https://maps.google.com/?q=Junkyard+Social+Club+2525+Pearl+St+Boulder+CO+80302',
+                '_blank',
+              );
             }}
           >
             Directions
@@ -247,9 +305,16 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
             onClick={() => {
               const text = 'House of Fire @ Junkyard Social Club, Boulder CO';
               if (navigator.share) {
-                navigator.share({ title: text, url: 'https://maps.google.com/?q=Junkyard+Social+Club+Boulder+CO' }).catch(console.error);
+                navigator
+                  .share({
+                    title: text,
+                    url: 'https://maps.google.com/?q=Junkyard+Social+Club+Boulder+CO',
+                  })
+                  .catch(console.error);
               } else {
-                navigator.clipboard?.writeText('2525 Pearl St, Boulder, CO 80302').catch(console.error);
+                navigator.clipboard
+                  ?.writeText('2525 Pearl St, Boulder, CO 80302')
+                  .catch(console.error);
               }
             }}
           >
@@ -271,9 +336,8 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
         >
           <Icon name="bolt" size={14} color={colors.warning} />
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: colors.text, lineHeight: 1.5 }}>
-            Use the{' '}
-            <span style={{ fontWeight: 500 }}>side entrance on 23rd Street</span>. Look for the orange
-            light. The main door is not in use.
+            Use the <span style={{ fontWeight: 500 }}>side entrance on 23rd Street</span>. Look for
+            the orange light. The main door is not in use.
           </div>
         </div>
 

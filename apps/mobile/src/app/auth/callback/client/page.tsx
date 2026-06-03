@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
 import { HofButton, HofLogoMark } from '@hof/ui';
-import { createClient } from '../../../../lib/supabase.js';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '../../../../lib/supabase';
 
 function parseHash(hash: string): Record<string, string> {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;

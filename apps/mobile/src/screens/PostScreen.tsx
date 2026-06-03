@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { colors } from '@hof/design-tokens';
-import { Icon, Avatar, FeedPost, useResponsive } from '@hof/ui';
 import type { ReactionKey, Post as UiPost } from '@hof/ui';
-import { photoSrc } from '../data/photos.js';
+import { Avatar, FeedPost, Icon, useResponsive } from '@hof/ui';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { photoSrc } from '../data/photos';
 
 interface PostScreenProps {
   postId: string;
@@ -20,7 +20,12 @@ type ApiPost = {
   reply_count: number;
   reaction_counts: Record<string, number>;
   created_at: string;
-  profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
+  profiles: {
+    handle: string;
+    display_name: string;
+    role: string;
+    avatar_url: string | null;
+  } | null;
 };
 
 type ApiReply = {
@@ -44,7 +49,13 @@ function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
   const displayName = p.is_anonymous
     ? 'Anonymous'
     : (p.profiles?.display_name ?? p.profiles?.handle ?? 'Member');
-  const initials = displayName.split(' ').map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+  const initials =
+    displayName
+      .split(' ')
+      .map((w) => w[0] ?? '')
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || '?';
   const role = (p.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
   const reactions: Partial<Record<ReactionKey, number>> = {};
   for (const [k, v] of Object.entries(p.reaction_counts)) {
@@ -52,7 +63,7 @@ function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
       (reactions as Record<string, number>)[k] = v;
     }
   }
-  const myReaction = (myReactions.find(k => k in reactions) ?? null) as ReactionKey | null;
+  const myReaction = (myReactions.find((k) => k in reactions) ?? null) as ReactionKey | null;
   return {
     id: p.id,
     channel: p.channel,
@@ -88,7 +99,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
   useEffect(() => {
     if (!postId) return;
     fetch(`/api/posts/${postId}`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((d: { post?: ApiPost; replies?: ApiReply[] }) => {
         if (d.post) setApiPost(d.post);
         if (d.replies) setReplies(d.replies);
@@ -103,11 +114,11 @@ export default function PostScreen({ postId }: PostScreenProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ emoji: key }),
     });
-    const d = await r.json() as { toggled?: boolean; reactionCounts?: Record<string, number> };
+    const d = (await r.json()) as { toggled?: boolean; reactionCounts?: Record<string, number> };
     if (d.toggled !== undefined) {
-      setMyReactions(prev => d.toggled ? [...prev, key] : prev.filter(k => k !== key));
+      setMyReactions((prev) => (d.toggled ? [...prev, key] : prev.filter((k) => k !== key)));
       if (d.reactionCounts && apiPost) {
-        setApiPost(p => p ? { ...p, reaction_counts: d.reactionCounts! } : p);
+        setApiPost((p) => (p ? { ...p, reaction_counts: d.reactionCounts! } : p));
       }
     }
   };
@@ -212,7 +223,12 @@ export default function PostScreen({ postId }: PostScreenProps) {
               justifyContent: 'center',
             }}
           >
-            <Icon name="chev" size={16} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+            <Icon
+              name="chev"
+              size={16}
+              color={colors.text}
+              style={{ transform: 'rotate(180deg)' }}
+            />
           </button>
           <div
             style={{
@@ -229,10 +245,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
         {/* Post card */}
         {post && (
           <div style={{ padding: '0 16px 8px' }}>
-            <FeedPost
-              post={post}
-              resolvePhoto={photoSrc}
-            />
+            <FeedPost post={post} resolvePhoto={photoSrc} />
           </div>
         )}
 
@@ -278,13 +291,13 @@ export default function PostScreen({ postId }: PostScreenProps) {
                 <button
                   key={key}
                   className="hof-btn hof-press"
-                  onClick={() => { void toggleReaction(key); setPickerOpen(false); }}
+                  onClick={() => {
+                    void toggleReaction(key);
+                    setPickerOpen(false);
+                  }}
                   style={{
                     padding: '6px 10px',
-                    background:
-                      myReactions.includes(key)
-                        ? `${colors.amber}22`
-                        : colors.elevated,
+                    background: myReactions.includes(key) ? `${colors.amber}22` : colors.elevated,
                     border: `1px solid ${myReactions.includes(key) ? colors.amber : colors.border}`,
                     borderRadius: 16,
                     fontSize: 16,
@@ -323,67 +336,70 @@ export default function PostScreen({ postId }: PostScreenProps) {
         {/* Replies */}
         <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
           {replies.map((r, i) => {
-            const rName = r.is_anonymous ? 'Anonymous' : (r.profiles?.display_name ?? r.profiles?.handle ?? 'Member');
-            const rInitials = rName.split(' ').map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+            const rName = r.is_anonymous
+              ? 'Anonymous'
+              : (r.profiles?.display_name ?? r.profiles?.handle ?? 'Member');
+            const rInitials =
+              rName
+                .split(' ')
+                .map((w) => w[0] ?? '')
+                .slice(0, 2)
+                .join('')
+                .toUpperCase() || '?';
             const rRole = (r.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
             return (
-            <div
-              key={r.id ?? i}
-              style={{
-                display: 'flex',
-                gap: 10,
-                padding: '12px 0',
-                borderBottom:
-                  i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
-              }}
-            >
-              <Avatar
-                initials={rInitials}
-                userRole={rRole}
-                size={30}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 6,
-                    marginBottom: 4,
-                  }}
-                >
-                  <span
+              <div
+                key={r.id ?? i}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  padding: '12px 0',
+                  borderBottom: i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
+                }}
+              >
+                <Avatar initials={rInitials} userRole={rRole} size={30} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 6,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'Inter',
+                        fontWeight: 500,
+                        fontSize: 13,
+                        color: colors.text,
+                      }}
+                    >
+                      {rName}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 10,
+                        color: colors.textDis,
+                        marginLeft: 'auto',
+                      }}
+                    >
+                      {timeAgo(r.created_at)} ago
+                    </span>
+                  </div>
+                  <div
                     style={{
                       fontFamily: 'Inter',
-                      fontWeight: 500,
                       fontSize: 13,
-                      color: colors.text,
+                      color: colors.textSec,
+                      lineHeight: 1.5,
                     }}
                   >
-                    {rName}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 10,
-                      color: colors.textDis,
-                      marginLeft: 'auto',
-                    }}
-                  >
-                    {timeAgo(r.created_at)} ago
-                  </span>
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: colors.textSec,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {r.body}
+                    {r.body}
+                  </div>
                 </div>
               </div>
-            </div>
             );
           })}
 
@@ -454,8 +470,8 @@ export default function PostScreen({ postId }: PostScreenProps) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ body: reply }),
             });
-            const d = await r.json() as { reply?: ApiReply };
-            if (d.reply) setReplies(prev => [...prev, d.reply!]);
+            const d = (await r.json()) as { reply?: ApiReply };
+            if (d.reply) setReplies((prev) => [...prev, d.reply!]);
             setReply('');
             setSending(false);
           }}

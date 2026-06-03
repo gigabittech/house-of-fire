@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
+import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -26,7 +26,10 @@ export async function GET() {
 
   // Generate a code if one doesn't exist yet
   if (!referralCode) {
-    const prefix = profile.display_name.slice(0, 2).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+    const prefix = profile.display_name
+      .slice(0, 2)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, 'X');
     const suffix = user.id.replace(/-/g, '').slice(-4).toUpperCase();
     referralCode = `HOF-${prefix}${suffix}`;
 

@@ -1,5 +1,5 @@
-import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 import { colors } from '@hof/design-tokens';
+import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 
 export interface HofCardProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;

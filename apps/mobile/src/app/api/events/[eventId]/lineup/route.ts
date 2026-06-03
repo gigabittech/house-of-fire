@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../../lib/supabase.server.js';
-import type { Database } from '../../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../../../lib/database.types';
+import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 type ArtistRow = Database['public']['Tables']['artists']['Row'];
 type LineupRow = Database['public']['Tables']['event_lineups']['Row'];

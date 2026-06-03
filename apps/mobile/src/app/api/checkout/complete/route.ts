@@ -1,7 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
-import { stripe } from '../../../../lib/stripe.js';
-import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type Stripe from 'stripe';
+import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment';
+import { stripe } from '../../../../lib/stripe';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 /**
  * Fulfill tickets after client-side payment confirmation.
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'paymentIntentId required' }, { status: 400 });
   }
 
-  let pi;
+  let pi: Stripe.PaymentIntent;
   try {
     pi = await stripe.paymentIntents.retrieve(paymentIntentId);
   } catch {

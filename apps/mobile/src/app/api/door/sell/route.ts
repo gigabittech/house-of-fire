@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
       qr_data: code,
       amount_cents: tierData.price_cents,
       fee_cents: 0,
-      status: 'used' as const,       // door sale = immediately consumed
+      status: 'used' as const, // door sale = immediately consumed
       source: 'door',
       purchased_at: now,
-      checked_in_at: now,            // door sale = immediate check-in
+      checked_in_at: now, // door sale = immediate check-in
       used_at: now,
       metadata: {
         first_name,

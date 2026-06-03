@@ -1,4 +1,4 @@
-import type { Post, ReactionKey } from './types.js';
+import type { Post, ReactionKey } from './types';
 
 export const REACTION_EMOJI: Record<ReactionKey, string> = {
   fire: '🔥',

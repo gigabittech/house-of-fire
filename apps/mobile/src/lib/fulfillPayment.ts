@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
-import { buildTicketQRData } from './qr.js';
-import { createServiceRoleClient } from './supabase.server.js';
-import type { Database } from './database.types.js';
+import type { Database } from './database.types';
+import { buildTicketQRData } from './qr';
+import { createServiceRoleClient } from './supabase.server';
 
 type TicketInsert = Database['public']['Tables']['tickets']['Insert'];
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
@@ -21,8 +21,7 @@ export type FulfillResult =
  * already exist for this PI, returns them without inserting again.
  */
 export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<FulfillResult> {
-  const { userId, tierId, eventId, quantity, subtotal, fee, holderName, holderEmail } =
-    pi.metadata;
+  const { userId, tierId, eventId, quantity, subtotal, fee, holderName, holderEmail } = pi.metadata;
 
   if (!userId || !tierId || !eventId) {
     return { ok: false, error: 'Missing payment metadata', status: 400 };

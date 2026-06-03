@@ -1,10 +1,7 @@
-import { NextResponse } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
+import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = await createServerSupabaseClient();
   const { data: artist, error } = await supabase

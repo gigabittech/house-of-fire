@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react';
 import { colors } from '@hof/design-tokens';
+import type { CSSProperties } from 'react';
 
 export interface HofSkeletonProps {
   width?: number | string;
@@ -8,12 +8,7 @@ export interface HofSkeletonProps {
   style?: CSSProperties;
 }
 
-export function HofSkeleton({
-  width = '100%',
-  height = 14,
-  radius = 4,
-  style,
-}: HofSkeletonProps) {
+export function HofSkeleton({ width = '100%', height = 14, radius = 4, style }: HofSkeletonProps) {
   return (
     <div
       style={{

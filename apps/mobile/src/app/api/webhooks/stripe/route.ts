@@ -1,6 +1,7 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { stripe } from '../../../../lib/stripe.js';
-import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type Stripe from 'stripe';
+import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment';
+import { stripe } from '../../../../lib/stripe';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
 
-  let event;
+  let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {

@@ -1,7 +1,7 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server.js';
-import { verifyTicketQRData } from '../../../../lib/qr.js';
-import type { Json } from '../../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Json } from '../../../../lib/database.types';
+import { verifyTicketQRData } from '../../../../lib/qr';
+import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 type ProfileShape = { display_name: string; handle: string };
 type TierShape = { display_name: string; name: string };
@@ -67,26 +67,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (ticket.status !== 'valid') {
-    return NextResponse.json(
-      { error: `Ticket is ${ticket.status}` },
-      { status: 409 },
-    );
+    return NextResponse.json({ error: `Ticket is ${ticket.status}` }, { status: 409 });
   }
 
   // Fetch profile and tier in parallel
   const [profileRes, tierRes] = await Promise.all([
     ticket.holder_id
-      ? supabase
-          .from('profiles')
-          .select('display_name, handle')
-          .eq('id', ticket.holder_id)
-          .single()
+      ? supabase.from('profiles').select('display_name, handle').eq('id', ticket.holder_id).single()
       : Promise.resolve({ data: null, error: null }),
-    supabase
-      .from('ticket_tiers')
-      .select('display_name, name')
-      .eq('id', ticket.tier_id)
-      .single(),
+    supabase.from('ticket_tiers').select('display_name, name').eq('id', ticket.tier_id).single(),
   ]);
 
   // Mark as checked in

@@ -1,10 +1,10 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { colors } from '@hof/design-tokens';
-import { Icon, type IconName } from './Icon.js';
-import { HofBottomNav, type NavId } from './HofBottomNav.js';
-import { useResponsive } from './useBreakpoint.js';
+import type { ReactNode } from 'react';
+import { HofBottomNav, type NavId } from './HofBottomNav';
+import { Icon, type IconName } from './Icon';
+import { useResponsive } from './useBreakpoint';
 
 interface NavItem {
   id: NavId;

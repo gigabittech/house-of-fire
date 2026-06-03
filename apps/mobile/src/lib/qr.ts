@@ -1,5 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import QRCode from 'qrcode';
-import { createHmac, timingSafeEqual } from 'crypto';
 
 const QR_HMAC_SECRET = process.env.QR_HMAC_SECRET ?? 'dev-secret-do-not-use-in-prod';
 

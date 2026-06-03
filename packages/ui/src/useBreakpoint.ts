@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { breakpoints } from '@hof/design-tokens';
+import { useEffect, useState } from 'react';
 
 export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 

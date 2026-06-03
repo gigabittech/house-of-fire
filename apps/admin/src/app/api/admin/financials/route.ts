@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET() {
   const supabase = createAdminSupabaseClient();

@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { Icon } from './Icon.js';
-import type { IconName } from './Icon.js';
+import type { ReactNode } from 'react';
+import type { IconName } from './Icon';
+import { Icon } from './Icon';
 
 export interface EmptyStateProps {
   icon?: IconName;
@@ -11,13 +11,7 @@ export interface EmptyStateProps {
   secondary?: ReactNode;
 }
 
-export function EmptyState({
-  icon = 'flame',
-  title,
-  body,
-  action,
-  secondary,
-}: EmptyStateProps) {
+export function EmptyState({ icon = 'flame', title, body, action, secondary }: EmptyStateProps) {
   return (
     <div style={{ padding: '40px 24px', textAlign: 'center' }}>
       <div

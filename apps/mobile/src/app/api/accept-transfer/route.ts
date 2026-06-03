@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server.js';
-import { createServerSupabaseClient, createServiceRoleClient } from '../../../lib/supabase.server.js';
-import type { Database } from '../../../lib/database.types.js';
+import { type NextRequest, NextResponse } from 'next/server';
+import type { Database } from '../../../lib/database.types';
+import { createServerSupabaseClient, createServiceRoleClient } from '../../../lib/supabase.server';
 
 type TicketTransferRow = Database['public']['Tables']['ticket_transfers']['Row'];
 
@@ -96,18 +96,12 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (transfer.status !== 'pending') {
-    return NextResponse.json(
-      { error: `Transfer is already ${transfer.status}` },
-      { status: 409 },
-    );
+    return NextResponse.json({ error: `Transfer is already ${transfer.status}` }, { status: 409 });
   }
 
   if (new Date(transfer.expires_at) < new Date()) {
     // Mark as expired
-    await supabase
-      .from('ticket_transfers')
-      .update({ status: 'expired' })
-      .eq('id', id);
+    await supabase.from('ticket_transfers').update({ status: 'expired' }).eq('id', id);
     return NextResponse.json({ error: 'Transfer has expired' }, { status: 410 });
   }
 

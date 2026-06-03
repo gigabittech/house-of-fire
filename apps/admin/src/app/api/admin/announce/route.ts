@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase.server.js';
-import { createAdminSupabaseClient } from '@/lib/supabase.admin.js';
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase.admin';
+import { createServerSupabaseClient } from '@/lib/supabase.server';
 
 export async function POST(request: NextRequest) {
   // Verify caller is admin or crew

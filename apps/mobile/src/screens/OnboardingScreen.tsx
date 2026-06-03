@@ -4,8 +4,8 @@ import { colors } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { CHANNELS } from '../data/posts.js';
-import { createClient } from '../lib/supabase.js';
+import { CHANNELS } from '../data/posts';
+import { createClient } from '../lib/supabase';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -60,13 +60,7 @@ function OnboardInput(props: OnboardInputProps) {
   );
 }
 
-function PhoneRow({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function PhoneRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div
       style={{
@@ -459,13 +453,7 @@ function StepChannels({
 
 // ─── Step 3: welcome ─────────────────────────────────────────────────────────
 
-function StepWelcome({
-  data,
-  onComplete,
-}: {
-  data: FormData;
-  onComplete: () => void;
-}) {
+function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => void }) {
   return (
     <div style={{ padding: '40px 20px 24px', textAlign: 'center' }}>
       <div

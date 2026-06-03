@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
 import { colors, fontFamilies } from '@hof/design-tokens';
+import type { CSSProperties, ReactNode } from 'react';
 
 export type PillTone = 'neutral' | 'amber' | 'gold' | 'danger' | 'warning' | 'success' | 'crew';
 export type PillSize = 'sm' | 'md';
