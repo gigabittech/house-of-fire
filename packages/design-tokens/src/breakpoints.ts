@@ -13,6 +13,17 @@ export const breakpoints = {
 
 export type BreakpointToken = keyof typeof breakpoints;
 
+/** Content column caps — app shell vs marketing/standalone pages. */
+export const layoutWidth = {
+  /** Authenticated app screens (sidebar + main column). */
+  app: 912,
+  /** Wider cap for large desktop monitors. */
+  appDesktop: 1280,
+  /** Landing, onboarding, and similar full-bleed marketing layouts. */
+  marketingTablet: 960,
+  marketingDesktop: 1280,
+} as const;
+
 // Media-query helpers (min-width). Use in CSS-in-JS or matchMedia.
 export const mq = {
   tablet: `(min-width: ${breakpoints.tablet}px)`,

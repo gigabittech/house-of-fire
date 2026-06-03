@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { colors } from '@hof/design-tokens';
+import { colors, layoutWidth } from '@hof/design-tokens';
 import { Icon, HofAppShell, useResponsive, HofPill, FakeQR, Avatar } from '@hof/ui';
 import type { NavId, IconName } from '@hof/ui';
 import { navHref } from '../lib/nav.js';
@@ -262,7 +262,7 @@ export default function LiveNightScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const { isWide } = useResponsive();
+  const { isWide, isDesktop } = useResponsive();
 
   const hh = new Date(now).getHours();
   const mm = String(new Date(now).getMinutes()).padStart(2, '0');
@@ -284,7 +284,11 @@ export default function LiveNightScreen() {
         left: isWide ? '50%' : 0,
         right: isWide ? 'auto' : 0,
         transform: isWide ? 'translateX(-50%)' : undefined,
-        width: isWide ? 'min(100%, 912px)' : 'auto',
+        width: isWide
+          ? isDesktop
+            ? `min(100%, ${layoutWidth.appDesktop}px)`
+            : `min(100%, ${layoutWidth.app}px)`
+          : 'auto',
         boxSizing: 'border-box',
         zIndex: 10,
         padding: '10px 16px',
@@ -318,7 +322,11 @@ export default function LiveNightScreen() {
           left: isWide ? '50%' : 0,
           right: isWide ? 'auto' : 0,
           transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 912px)' : 'auto',
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
           overflowY: 'auto',
         }}
       >
