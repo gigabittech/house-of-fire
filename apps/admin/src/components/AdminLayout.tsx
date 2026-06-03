@@ -4,15 +4,8 @@ import { usePathname, useRouter } from 'next/navigation.js';
 import Link from 'next/link.js';
 import { useEffect, useState } from 'react';
 import { Icon } from '@/components/Icon.js';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/database.types.js';
+import { createClient } from '@/lib/supabase.js';
 import { breakpoints } from '@hof/design-tokens';
-
-function getBrowserClient() {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://placeholder.supabase.co';
-  const key = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? 'placeholder-anon-key';
-  return createClient<Database>(url, key);
-}
 
 const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; badge?: string }> = [
   { id: 'dashboard',  href: '/dashboard',  icon: 'chart',    label: 'Dashboard' },
@@ -77,7 +70,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   async function handleSignOut() {
-    const supabase = getBrowserClient();
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
   }
