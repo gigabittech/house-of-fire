@@ -63,9 +63,28 @@ Create under **Team Settings → Environment Variables → Shared**, then link t
 | `RESEND_API_KEY` | Email API |
 | `RESEND_FROM_EMAIL` | Verified sender |
 | `NEXT_PUBLIC_APP_URL` | Production mobile URL (e.g. `https://app.houseoffire.events`) |
+| `SUPABASE_AUTH_REDIRECT_URLS` | Optional comma-separated extra redirect URLs (localhost callbacks for dev) |
 | `QR_HMAC_SECRET` | Long random string for ticket QR signing |
 
 Do **not** add Stripe/Resend keys to the admin project unless you add features that need them.
+
+### Supabase Auth URLs (magic links)
+
+Hosted Supabase does **not** read Vercel env vars for Site URL / redirect allow list. After setting `NEXT_PUBLIC_APP_URL` on Vercel, push auth URL config once from your machine:
+
+```bash
+# In .env.local — use production URL for NEXT_PUBLIC_APP_URL
+pnpm configure:auth-urls
+pnpm verify:auth-urls
+```
+
+This sets `site_url` to `NEXT_PUBLIC_APP_URL` and allows `/auth/callback/client` and `/auth/callback` on that domain (plus localhost for local dev).
+
+Local `supabase start` uses the same vars via `supabase/config.toml`. The CLI reads `.env` (not `.env.local`) — copy or symlink from your `.env.local`:
+
+```bash
+cp .env.local .env   # or: ln -sf .env.local .env
+```
 
 ## 4. Stripe webhook (mobile)
 
