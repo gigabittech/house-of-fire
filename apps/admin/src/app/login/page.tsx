@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation.js';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/database.types.js';
-
-function getBrowserClient() {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://placeholder.supabase.co';
-  const key = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? 'placeholder-anon-key';
-  return createClient<Database>(url, key);
-}
+import { createClient } from '@/lib/supabase.js';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,11 +16,12 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const supabase = getBrowserClient();
+      const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
         setError(signInError.message);
       } else {
+        router.refresh();
         router.push('/dashboard');
       }
     } catch {

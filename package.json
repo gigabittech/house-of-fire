@@ -17,6 +17,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "db:migrate": "node scripts/run-migrations.mjs",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "turbo run build && changeset publish"
