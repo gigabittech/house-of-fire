@@ -42,6 +42,15 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatPurchasedAt(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+}
+
 export default function TicketScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -635,32 +644,6 @@ export default function TicketScreen() {
               ))}
             </div>
 
-            {/* Transfer stub — peer transfers coming in Phase 2 */}
-            <div style={{ padding: '8px 16px 0' }}>
-              <button
-                disabled
-                title="Peer transfers coming in Phase 2"
-                style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  borderRadius: 8,
-                  border: '1px solid #2A2826',
-                  background: 'transparent',
-                  color: '#4A4844',
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                Transfer <span style={{ fontSize: 10, color: '#4A4844' }}>· Coming soon</span>
-              </button>
-            </div>
-
             {/* Tell a friend */}
             <div style={{ padding: '24px 16px 0' }}>
               <button
@@ -766,11 +749,11 @@ export default function TicketScreen() {
               >
                 {(
                   [
-                    ['Order', 'HOF—24—4218'],
-                    ['Date', 'Jun 18, 2026 · 4:14 PM'],
-                    ['Card', 'Visa ···· 4242'],
-                    ['Subtotal', '$28.00'],
-                    ['Fees', '$1.96'],
+                    ['Order', ticket?.code ?? '—'],
+                    ['Date', ticket ? formatPurchasedAt(ticket.purchased_at) : '—'],
+                    ['Payment', 'Paid via Stripe'],
+                    ['Subtotal', ticket ? formatCents(ticket.amount_cents) : '—'],
+                    ['Fees', ticket ? formatCents(ticket.fee_cents) : '—'],
                   ] as [string, string][]
                 ).map(([k, v]) => (
                   <div
@@ -798,7 +781,9 @@ export default function TicketScreen() {
                   }}
                 >
                   <span>Total</span>
-                  <span>$29.96</span>
+                  <span>
+                    {ticket ? formatCents(ticket.amount_cents + ticket.fee_cents) : '—'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -830,6 +815,12 @@ export default function TicketScreen() {
       <TransferSheet
         open={transferOpen}
         onClose={() => setTransferOpen(false)}
+        ticketId={ticket?.id}
+        ticketSummary={
+          ticket
+            ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Ed ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
+            : undefined
+        }
         onTransferred={() => showToast('success', 'Ticket transferred — they have 24h to accept.')}
       />
       <RefundSheet open={refundOpen} onClose={() => setRefundOpen(false)} />

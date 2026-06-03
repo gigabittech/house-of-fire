@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { resend } from '@/lib/resend';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
@@ -54,10 +55,18 @@ export async function POST(request: NextRequest) {
     channel?: string;
     eventId?: string;
     draft?: boolean;
+    mediaUrls?: string[];
     channels?: { feed?: boolean; email?: boolean; sms?: boolean };
   };
 
-  const { title, body: postBody, channel = 'general', eventId, draft, channels } = body;
+  const { title, body: postBody, channel = 'general', eventId, draft, channels, mediaUrls } = body;
+
+  if (channels?.sms) {
+    return NextResponse.json(
+      { error: 'SMS is not configured for this environment' },
+      { status: 400 },
+    );
+  }
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 });
@@ -72,6 +81,11 @@ export async function POST(request: NextRequest) {
     ? (channel as Channel)
     : 'general';
 
+  const safeMedia =
+    Array.isArray(mediaUrls) && mediaUrls.length > 0
+      ? mediaUrls.filter((u) => typeof u === 'string' && u.startsWith('http')).slice(0, 5)
+      : [];
+
   const { data: post, error } = await admin
     .from('posts')
     .insert({
@@ -81,6 +95,7 @@ export async function POST(request: NextRequest) {
       body: postBody?.trim() ?? null,
       is_anonymous: false,
       event_id: eventId ?? null,
+      media_urls: safeMedia,
       moderation_status: draft ? 'draft' : 'approved',
     })
     .select('id, title, channel, created_at')
@@ -90,12 +105,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (channels?.email) {
-    console.log(`[announce] email queued for post=${post.id}`);
+  if (channels?.email && !draft) {
+    const { data: subscribers } = await admin
+      .from('newsletter_subscribers')
+      .select('email')
+      .limit(500);
+
+    const emails = (subscribers ?? []).map((s) => s.email).filter(Boolean);
+    if (emails.length > 0) {
+      const imagesHtml =
+        safeMedia.length > 0
+          ? safeMedia.map((url) => `<p><img src="${url}" alt="" style="max-width:100%"/></p>`).join('')
+          : '';
+      try {
+        await resend.emails.send({
+          to: emails,
+          subject: title.trim(),
+          html: `<p>${(postBody ?? '').replace(/\n/g, '<br/>')}</p>${imagesHtml}`,
+          text: postBody ?? undefined,
+        });
+      } catch (e) {
+        console.error('[announce] email send failed', e);
+      }
+    } else {
+      console.warn('[announce] no newsletter subscribers to email');
+    }
   }
-  if (channels?.sms) {
-    console.log(`[announce] sms stub post=${post.id}`);
-  }
+
   console.log(`[announce] post=${post.id} channel=${safeChannel} by=${user.id}`);
 
   return NextResponse.json({ post }, { status: 201 });

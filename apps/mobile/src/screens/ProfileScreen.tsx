@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatDoorsTime } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
+import { parseMediaUrls } from '../lib/postMedia';
 import { createClient } from '../lib/supabase';
 
 type ApiPost = {
@@ -26,6 +27,7 @@ type ApiPost = {
   is_anonymous: boolean;
   reply_count: number;
   reaction_counts: Record<string, number>;
+  media_urls?: unknown;
   created_at: string;
   profiles: {
     handle: string;
@@ -131,6 +133,7 @@ function apiPostToUi(p: ApiPost): UiPost {
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
+    imageUrls: parseMediaUrls(p.media_urls),
     reactions,
     replyCount: p.reply_count,
   };

@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { photoSrc } from '../data/photos';
 import { CHANNELS } from '../data/posts';
 import { navHref } from '../lib/nav';
+import { parseMediaUrls } from '../lib/postMedia';
 import ComposerSheet from '../sheets/ComposerSheet';
 import NotificationsSheet from '../sheets/NotificationsSheet';
 
@@ -27,6 +28,7 @@ type ApiPost = {
   is_anonymous: boolean;
   reply_count: number;
   reaction_counts: Record<string, number>;
+  media_urls?: unknown;
   created_at: string;
   profiles: {
     handle: string;
@@ -71,6 +73,7 @@ function apiPostToUi(p: ApiPost): UiPost {
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
+    imageUrls: parseMediaUrls(p.media_urls),
     reactions,
     replyCount: p.reply_count,
   };
@@ -340,11 +343,11 @@ export default function CommunityScreen() {
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
           defaultChannel={activeChannel}
-          onPost={async (channel: string, title: string, body?: string) => {
+          onPost={async (channel: string, title: string, body?: string, mediaUrls?: string[]) => {
             const r = await fetch('/api/posts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ channel, title, body }),
+              body: JSON.stringify({ channel, title, body, mediaUrls }),
             });
             const d = (await r.json()) as { post?: ApiPost };
             if (d.post) {

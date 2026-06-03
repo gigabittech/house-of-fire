@@ -25,9 +25,23 @@ export default function ArchiveScreen() {
   const [years, setYears] = useState<string[]>([String(new Date().getFullYear())]);
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadEventId, setUploadEventId] = useState<string | undefined>();
+  const [uploadEdition, setUploadEdition] = useState<number | undefined>();
   const [archives, setArchives] = useState<ApiEvent[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(true);
   const [archiveError, setArchiveError] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d: { event?: ApiEvent }) => {
+        if (d.event) {
+          setUploadEventId(d.event.id);
+          setUploadEdition(d.event.edition_number);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     fetch('/api/events/archive?yearsOnly=1')
@@ -321,7 +335,12 @@ export default function ArchiveScreen() {
           </span>
         </button>
 
-        <PhotoSubmitSheet open={uploadOpen} onClose={() => setUploadOpen(false)} edition={23} />
+        <PhotoSubmitSheet
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          eventId={uploadEventId}
+          edition={uploadEdition}
+        />
       </div>
     </HofAppShell>
   );

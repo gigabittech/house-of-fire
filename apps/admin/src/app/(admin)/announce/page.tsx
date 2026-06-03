@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pill } from '@/components/Pill';
+import { uploadAnnounceMedia } from '@/lib/storageUpload';
 
 type PostStatus = 'idle' | 'sending' | 'success' | 'error';
 
@@ -111,7 +112,9 @@ function ChannelToggle({ on, onChange, title, sub, recommended = false }: Channe
 export default function AnnouncePage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [photoAttached, setPhotoAttached] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [postTo, setPostTo] = useState({ feed: true, email: false, sms: false });
   const [status, setStatus] = useState<PostStatus>('idle');
   const [statusMsg, setStatusMsg] = useState('');
@@ -151,6 +154,14 @@ export default function AnnouncePage() {
     void loadHistory();
   }, [loadHistory]);
 
+  useEffect(() => {
+    const urls = photoFiles.map((f) => URL.createObjectURL(f));
+    setPhotoPreviews(urls);
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+    };
+  }, [photoFiles]);
+
   const canPublish = title.trim().length > 0 && body.trim().length > 0 && status !== 'sending';
 
   async function submitPost(draft: boolean) {
@@ -158,6 +169,8 @@ export default function AnnouncePage() {
     setStatus('sending');
     setStatusMsg('');
     try {
+      const mediaUrls =
+        photoFiles.length > 0 && !draft ? await uploadAnnounceMedia(photoFiles) : [];
       const res = await fetch('/api/admin/announce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,6 +179,7 @@ export default function AnnouncePage() {
           body: body.trim(),
           channel: 'general',
           draft,
+          mediaUrls,
           channels: postTo,
         }),
       });
@@ -179,7 +193,7 @@ export default function AnnouncePage() {
         if (!draft) {
           setTitle('');
           setBody('');
-          setPhotoAttached(false);
+          setPhotoFiles([]);
         }
         await loadHistory();
         setTimeout(() => setStatus('idle'), 3000);
@@ -311,12 +325,23 @@ export default function AnnouncePage() {
             }}
           />
 
-          {/* Photo slot */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? []);
+              setPhotoFiles((prev) => [...prev, ...picked].slice(0, 3));
+              if (photoInputRef.current) photoInputRef.current.value = '';
+            }}
+          />
           <div style={{ marginTop: 12 }}>
-            {!photoAttached ? (
+            {photoFiles.length === 0 ? (
               <button
                 type="button"
-                onClick={() => setPhotoAttached(true)}
+                onClick={() => photoInputRef.current?.click()}
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -333,69 +358,44 @@ export default function AnnouncePage() {
                   cursor: 'pointer',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <rect
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    x="3"
-                    y="4"
-                    width="18"
-                    height="16"
-                    rx="2"
-                  />
-                  <circle stroke="currentColor" strokeWidth="1.5" cx="9" cy="10" r="1.5" />
-                  <path stroke="currentColor" strokeWidth="1.5" d="M3 17 L9 12 L15 17 L21 13" />
-                </svg>
-                Attach photo or recap collage
+                Attach photos (up to 3)
               </button>
             ) : (
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  background: 'var(--hof-elevated)',
-                  height: 160,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <span
+              <div style={{ position: 'relative' }}>
+                <div
                   style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 6,
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {photoPreviews.map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt=""
+                      style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhotoFiles([])}
+                  style={{
+                    marginTop: 8,
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--hof-border)',
+                    background: 'var(--hof-bg)',
                     fontFamily: 'Inter, system-ui',
                     fontSize: 12,
                     color: 'var(--hof-text-sec)',
-                  }}
-                >
-                  Photo attached
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPhotoAttached(false)}
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    background: 'rgba(10,10,8,0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--hof-border)',
                     cursor: 'pointer',
                   }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      stroke="var(--hof-text)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      d="M6 6 L18 18 M18 6 L6 18"
-                    />
-                  </svg>
+                  Remove photos
                 </button>
               </div>
             )}
@@ -416,12 +416,36 @@ export default function AnnouncePage() {
               title="Email subscribers"
               sub="1,247 people on The Smoke Signal."
             />
-            <ChannelToggle
-              on={postTo.sms}
-              onChange={(v) => setPostTo((p) => ({ ...p, sms: v }))}
-              title="SMS attendees"
-              sub="Only people holding a ticket to Edition 24."
-            />
+            <div
+              style={{
+                padding: '12px 14px',
+                background: 'var(--hof-bg)',
+                border: '1px solid var(--hof-border)',
+                borderRadius: 10,
+                opacity: 0.65,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter, system-ui',
+                  fontWeight: 500,
+                  fontSize: 13,
+                  color: 'var(--hof-text-sec)',
+                }}
+              >
+                SMS attendees
+              </div>
+              <div
+                style={{
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 11,
+                  color: 'var(--hof-text-sec)',
+                  marginTop: 4,
+                }}
+              >
+                SMS not configured — enable when a provider is wired up.
+              </div>
+            </div>
           </div>
 
           {/* Submit row */}

@@ -514,6 +514,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<'1D' | '7D' | '14D' | 'All'>('14D');
   const [salesData, setSalesData] = useState<number[]>([]);
   const [tierBars, setTierBars] = useState<Array<{ label: string; sold: number; cap: number }>>([]);
+  const [openRequests, setOpenRequests] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -563,9 +564,11 @@ export default function DashboardPage() {
         const data = (await res.json()) as {
           salesData: number[];
           tierBars: Array<{ label: string; sold: number; cap: number }>;
+          openRequests?: number;
         };
         setSalesData(data.salesData ?? []);
         setTierBars(data.tierBars ?? []);
+        setOpenRequests(data.openRequests ?? 0);
       } catch {
         /* keep prior */
       }
@@ -741,7 +744,12 @@ export default function DashboardPage() {
           delta="Doors open event night"
           tone="muted"
         />
-        <Kpi label="Open requests" value="0" delta="Nothing pending" tone="warning" />
+        <Kpi
+          label="Open requests"
+          value={loading ? '…' : String(openRequests)}
+          delta={openRequests === 0 ? 'Nothing pending' : 'Refund requests awaiting review'}
+          tone="warning"
+        />
       </div>
 
       {/* Two-col charts */}

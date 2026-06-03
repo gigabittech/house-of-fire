@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { EventFaq, EventFormPayload, EventStatus } from '@/lib/eventPayload';
 import { DEFAULT_EVENT_FORM } from '@/lib/eventPayload';
+import { uploadEventHero } from '@/lib/storageUpload';
 
 interface EventFormModalProps {
   open: boolean;
@@ -46,6 +47,10 @@ export function EventFormModal({
   onDeleted,
 }: EventFormModalProps) {
   const [form, setForm] = useState<EventFormPayload>(DEFAULT_EVENT_FORM);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroPreview, setHeroPreview] = useState<string | null>(null);
+  const [removeHero, setRemoveHero] = useState(false);
+  const heroInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +58,22 @@ export function EventFormModal({
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setHeroFile(null);
+    setRemoveHero(false);
+    setHeroPreview(initial?.hero_image_url ?? null);
     setForm({
       ...DEFAULT_EVENT_FORM,
       ...initial,
       faqs: initial?.faqs ?? [],
     });
   }, [open, initial]);
+
+  useEffect(() => {
+    if (!heroFile) return;
+    const url = URL.createObjectURL(heroFile);
+    setHeroPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [heroFile]);
 
   if (!open) return null;
 
@@ -122,7 +137,7 @@ export function EventFormModal({
       const payload = {
         ...form,
         tagline: form.tagline?.trim() || null,
-        hero_image_url: form.hero_image_url?.trim() || null,
+        hero_image_url: removeHero ? null : form.hero_image_url,
         faqs: form.faqs.filter((f) => f.q.trim() || f.a.trim()),
       };
 
@@ -136,10 +151,16 @@ export function EventFormModal({
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; event?: { id: string } };
       if (!res.ok) {
         setError(data.error ?? 'Failed to save event');
         return;
+      }
+
+      const savedId = mode === 'edit' ? eventId : data.event?.id;
+      if (savedId && heroFile) {
+        const heroUrl = await uploadEventHero(savedId, heroFile);
+        setForm((prev) => ({ ...prev, hero_image_url: heroUrl }));
       }
 
       onSaved();
@@ -397,12 +418,74 @@ export function EventFormModal({
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Hero image URL</label>
+              <label style={labelStyle}>Hero image</label>
               <input
-                style={inputStyle}
-                value={form.hero_image_url ?? ''}
-                onChange={(e) => setField('hero_image_url', e.target.value || null)}
+                ref={heroInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setHeroFile(f);
+                    setRemoveHero(false);
+                  }
+                  if (heroInputRef.current) heroInputRef.current.value = '';
+                }}
               />
+              {heroPreview && !removeHero ? (
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <img
+                    src={heroPreview}
+                    alt="Hero preview"
+                    style={{
+                      width: '100%',
+                      maxHeight: 160,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '1px solid var(--hof-border)',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeroFile(null);
+                      setHeroPreview(null);
+                      setRemoveHero(true);
+                      setField('hero_image_url', null);
+                    }}
+                    style={{
+                      marginTop: 8,
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: '1px solid var(--hof-border)',
+                      background: 'var(--hof-bg)',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 12,
+                      color: 'var(--hof-text-sec)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Remove image
+                  </button>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => heroInputRef.current?.click()}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px dashed var(--hof-border)',
+                  background: 'var(--hof-bg)',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 13,
+                  color: 'var(--hof-text-sec)',
+                  cursor: 'pointer',
+                }}
+              >
+                {heroPreview && !removeHero ? 'Replace image' : 'Upload hero image'}
+              </button>
             </div>
           </div>
 

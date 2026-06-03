@@ -488,7 +488,7 @@ function StepTickets({
       </div>
 
       {/* Itemized */}
-      <div style={{ padding: '24px 16px 0' }}>
+      <div style={{ padding: '24px 16px 12px' }}>
         <div
           style={{
             background: colors.surface,
@@ -552,18 +552,61 @@ interface Details {
   password: string;
 }
 
+type CheckoutProfile = {
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+function splitDisplayName(displayName: string): { firstName: string; lastName: string } {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0] ?? '', lastName: '' };
+  return { firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') };
+}
+
+function formatPhoneForCheckoutInput(phone: string | null | undefined): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  const ten =
+    digits.length >= 11 && digits.startsWith('1') ? digits.slice(1, 11) : digits.slice(0, 10);
+  if (ten.length <= 3) return ten;
+  if (ten.length <= 6) return `(${ten.slice(0, 3)}) ${ten.slice(3)}`;
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+}
+
+function detailsFromProfile(profile: CheckoutProfile): Partial<Details> {
+  const fromName =
+    profile.first_name || profile.last_name
+      ? {
+          firstName: profile.first_name?.trim() ?? '',
+          lastName: profile.last_name?.trim() ?? '',
+        }
+      : splitDisplayName(profile.display_name);
+  return {
+    firstName: fromName.firstName,
+    lastName: fromName.lastName,
+    email: profile.email?.trim() ?? '',
+    phone: formatPhoneForCheckoutInput(profile.phone),
+  };
+}
+
 function StepAccount({
   mode,
   setMode,
   details,
   setField,
   errors,
+  isLoggedIn = false,
 }: {
   mode: 'guest' | 'signup' | 'signin';
   setMode: (m: 'guest' | 'signup' | 'signin') => void;
   details: Details;
   setField: (k: keyof Details, v: string) => void;
   errors: { email?: boolean; phone?: boolean };
+  isLoggedIn?: boolean;
 }) {
   const isSignIn = mode === 'signin';
   return (
@@ -690,9 +733,11 @@ function StepAccount({
           />
           <HelperText>For ticket SMS and door lookup. We won&apos;t text you otherwise.</HelperText>
 
-          <SaveToggle on={mode === 'signup'} onChange={(on) => setMode(on ? 'signup' : 'guest')} />
+          {!isLoggedIn && (
+            <SaveToggle on={mode === 'signup'} onChange={(on) => setMode(on ? 'signup' : 'guest')} />
+          )}
 
-          {mode === 'signup' && (
+          {mode === 'signup' && !isLoggedIn && (
             <div style={{ marginTop: 12 }}>
               <FieldLabel>Choose a password</FieldLabel>
               <TextInput
@@ -704,6 +749,7 @@ function StepAccount({
             </div>
           )}
 
+          {!isLoggedIn && (
           <button
             className="hof-btn"
             onClick={() => setMode('signin')}
@@ -716,6 +762,7 @@ function StepAccount({
           >
             Already a member? <span style={{ color: colors.amber }}>Sign in →</span>
           </button>
+          )}
         </>
       )}
     </div>
@@ -1198,6 +1245,7 @@ export default function CheckoutScreen() {
     return tierParam || draft?.tier || '';
   });
   const [accountMode, setAccountMode] = useState<'guest' | 'signup' | 'signin'>('guest');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [details, setDetails] = useState<Details>({
     firstName: '',
     lastName: '',
@@ -1226,6 +1274,35 @@ export default function CheckoutScreen() {
     UpcomingEvent,
     'name' | 'date' | 'venue_name'
   > | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile')
+      .then(async (r) => {
+        if (!r.ok) {
+          if (!cancelled) setIsLoggedIn(false);
+          return;
+        }
+        const d = (await r.json()) as { profile?: CheckoutProfile };
+        if (cancelled || !d.profile) return;
+        setIsLoggedIn(true);
+        setAccountMode('guest');
+        const prefilled = detailsFromProfile(d.profile);
+        setDetails((prev) => ({
+          ...prev,
+          firstName: prev.firstName || prefilled.firstName || '',
+          lastName: prev.lastName || prefilled.lastName || '',
+          email: prev.email || prefilled.email || '',
+          phone: prev.phone || prefilled.phone || '',
+        }));
+      })
+      .catch(() => {
+        if (!cancelled) setIsLoggedIn(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -1307,7 +1384,7 @@ export default function CheckoutScreen() {
   const step2Valid =
     accountMode === 'signin'
       ? emailOk && details.password.length >= 1
-      : nameOk && emailOk && phoneOk && passwordOk;
+      : nameOk && emailOk && phoneOk && (isLoggedIn || passwordOk);
 
   async function applyPromoCode() {
     const code = promoCode.trim().toUpperCase();
@@ -1382,6 +1459,16 @@ export default function CheckoutScreen() {
   // Display total for the sticky CTA bar (uses discounted total on step 3, base total elsewhere)
   const ctaTotal = step === 3 ? displayTotalCents / 100 : total;
 
+  const topBarHeight = 62;
+  const contentInsetX = isWide ? 24 : 16;
+  const scrollPaddingTop = isWide
+    ? topBarHeight + 20
+    : `calc(${topBarHeight + 20}px + env(safe-area-inset-top, 0px))`;
+  const scrollPaddingBottom =
+    step === 3
+      ? 'calc(32px + env(safe-area-inset-bottom, 0px))'
+      : 'calc(168px + env(safe-area-inset-bottom, 0px))';
+
   return (
     <div
       style={{
@@ -1396,7 +1483,7 @@ export default function CheckoutScreen() {
       <div
         style={{
           position: 'absolute',
-          top: isWide ? 0 : 54,
+          top: 0,
           left: isWide ? '50%' : 0,
           right: isWide ? 'auto' : 0,
           transform: isWide ? 'translateX(-50%)' : undefined,
@@ -1406,7 +1493,9 @@ export default function CheckoutScreen() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 16px',
+          padding: isWide
+            ? '12px 16px'
+            : 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
           background: 'rgba(10,10,8,0.94)',
           backdropFilter: 'blur(16px)',
           borderBottom: `1px solid ${colors.border}`,
@@ -1453,13 +1542,13 @@ export default function CheckoutScreen() {
           transform: isWide ? 'translateX(-50%)' : undefined,
           width: isWide ? 'min(100%, 760px)' : 'auto',
           overflowY: 'auto',
-          paddingBottom: 110,
+          paddingTop: scrollPaddingTop,
+          paddingBottom: scrollPaddingBottom,
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ height: isWide ? 60 : 102 }} />
-
         {/* Step indicator */}
-        <div style={{ padding: '8px 16px 16px' }}>
+        <div style={{ padding: `12px ${contentInsetX}px 20px` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {stepNames.map((n, i) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -1512,7 +1601,7 @@ export default function CheckoutScreen() {
         </div>
 
         {/* Summary chip */}
-        <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ padding: `0 ${contentInsetX}px 16px` }}>
           <div
             style={{
               display: 'flex',
@@ -1584,6 +1673,7 @@ export default function CheckoutScreen() {
               email: details.email.length > 0 ? !emailOk : undefined,
               phone: details.phone.length > 0 ? !phoneOk : undefined,
             }}
+            isLoggedIn={isLoggedIn}
           />
         )}
         {step === 3 && (
@@ -1604,6 +1694,8 @@ export default function CheckoutScreen() {
             onSuccess={() => router.push('/ticket?purchased=1')}
           />
         )}
+
+        <div style={{ height: 20, flexShrink: 0 }} aria-hidden="true" />
       </div>
 
       {/* Sticky CTA — hidden on step 3 (payment is handled inside Stripe Elements) */}
@@ -1621,7 +1713,7 @@ export default function CheckoutScreen() {
             background: 'rgba(20,20,18,0.94)',
             backdropFilter: 'blur(20px)',
             borderTop: `1px solid ${colors.border}`,
-            padding: '14px 16px 34px',
+            padding: `16px ${contentInsetX}px calc(24px + env(safe-area-inset-bottom, 0px))`,
           }}
         >
           <div

@@ -6,6 +6,7 @@ import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } f
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { photoSrc } from '../data/photos';
+import { parseMediaUrls } from '../lib/postMedia';
 
 interface PostScreenProps {
   postId: string;
@@ -19,6 +20,7 @@ type ApiPost = {
   is_anonymous: boolean;
   reply_count: number;
   reaction_counts: Record<string, number>;
+  media_urls?: unknown;
   created_at: string;
   profiles: {
     handle: string;
@@ -72,6 +74,7 @@ function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
+    imageUrls: parseMediaUrls(p.media_urls),
     reactions,
     myReaction,
     replyCount: p.reply_count,

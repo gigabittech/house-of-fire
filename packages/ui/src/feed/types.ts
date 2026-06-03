@@ -21,6 +21,7 @@ export interface Post {
   title?: string;
   body?: string;
   photoSeeds?: number[];
+  imageUrls?: string[];
   reactions?: Partial<Record<ReactionKey, number>>;
   myReaction?: ReactionKey | null;
   replyCount: number;
