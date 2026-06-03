@@ -138,6 +138,7 @@ function StepSignup({
   loading: boolean;
   error: string;
 }) {
+  const supabase = createClient();
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
   const phoneOk = data.phone.replace(/\D/g, '').length >= 10;
   const valid = data.first.trim().length > 0 && data.last.trim().length > 0 && emailOk && phoneOk;
@@ -178,6 +179,14 @@ function StepSignup({
           full
           size="lg"
           icon={<Icon name="apple" size={18} color={colors.text} />}
+          onClick={() => {
+            void supabase.auth.signInWithOAuth({
+              provider: 'apple',
+              options: {
+                redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
+              },
+            });
+          }}
         >
           Continue with Apple
         </HofButton>
@@ -668,7 +677,14 @@ export default function OnboardingScreen() {
             data={data}
             setField={setField}
             onBack={() => setStep(1)}
-            onNext={() => setStep(3)}
+            onNext={() => {
+              fetch('/api/user/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ home_channels: data.channels }),
+              }).catch(console.error);
+              setStep(3);
+            }}
           />
         )}
         {step === 3 && <StepWelcome data={data} onComplete={onComplete} />}

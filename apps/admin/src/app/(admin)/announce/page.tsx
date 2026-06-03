@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pill } from '@/components/Pill';
 
 type PostStatus = 'idle' | 'sending' | 'success' | 'error';
@@ -15,35 +15,13 @@ interface HistoryItem {
   tone: 'amber' | 'neutral';
 }
 
-const HISTORY: HistoryItem[] = [
-  {
-    id: 'h1',
-    kind: 'announcement',
-    title: 'Edition 24 lineup is final',
-    body: 'Headliner reveal: HEX. Doors 8 PM sharp — we open the floor at 9.',
-    meta: 'Jordan · yesterday',
-    stats: '52 🔥 · 7 replies',
-    tone: 'amber',
-  },
-  {
-    id: 'h2',
-    kind: 'recap',
-    title: 'Edition 23 recap is up',
-    body: '127 photos from the night. Tag yourself.',
-    meta: 'Crew · 3 days ago',
-    stats: '184 🔥 · 21 replies',
-    tone: 'amber',
-  },
-  {
-    id: 'h3',
-    kind: 'quick',
-    title: 'Coat check is $3 cash tonight',
-    body: "See you at 9. Don't be late.",
-    meta: 'Jordan · last week',
-    stats: '12 🔥 · 3 replies',
-    tone: 'neutral',
-  },
-];
+function historyAge(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return 'today';
+  if (days === 1) return 'yesterday';
+  return `${days} days ago`;
+}
 
 interface ChannelToggleProps {
   on: boolean;
@@ -137,18 +115,59 @@ export default function AnnouncePage() {
   const [postTo, setPostTo] = useState({ feed: true, email: false, sms: false });
   const [status, setStatus] = useState<PostStatus>('idle');
   const [statusMsg, setStatusMsg] = useState('');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/announce');
+      const data = (await res.json()) as {
+        history?: Array<{
+          id: string;
+          channel: string;
+          title: string;
+          body: string | null;
+          created_at: string;
+          reply_count: number;
+          profiles: { display_name: string; handle: string } | null;
+        }>;
+      };
+      setHistory(
+        (data.history ?? []).map((h) => ({
+          id: h.id,
+          kind: h.channel,
+          title: h.title,
+          body: h.body ?? '',
+          meta: `${h.profiles?.display_name ?? h.profiles?.handle ?? 'Crew'} · ${historyAge(h.created_at)}`,
+          stats: `${h.reply_count} replies`,
+          tone: (h.channel === 'general' ? 'amber' : 'neutral') as 'amber' | 'neutral',
+        })),
+      );
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
 
   const canPublish = title.trim().length > 0 && body.trim().length > 0 && status !== 'sending';
 
-  async function handlePublish() {
-    if (!canPublish) return;
+  async function submitPost(draft: boolean) {
+    if (!title.trim()) return;
     setStatus('sending');
     setStatusMsg('');
     try {
       const res = await fetch('/api/admin/announce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), body: body.trim(), channel: 'general' }),
+        body: JSON.stringify({
+          title: title.trim(),
+          body: body.trim(),
+          channel: 'general',
+          draft,
+          channels: postTo,
+        }),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -156,16 +175,24 @@ export default function AnnouncePage() {
         setStatusMsg(json.error ?? 'Publish failed');
       } else {
         setStatus('success');
-        setStatusMsg('Posted to feed.');
-        setTitle('');
-        setBody('');
-        setPhotoAttached(false);
+        setStatusMsg(draft ? 'Draft saved.' : 'Posted to feed.');
+        if (!draft) {
+          setTitle('');
+          setBody('');
+          setPhotoAttached(false);
+        }
+        await loadHistory();
         setTimeout(() => setStatus('idle'), 3000);
       }
     } catch {
       setStatus('error');
       setStatusMsg('Network error — try again.');
     }
+  }
+
+  async function handlePublish() {
+    if (!canPublish) return;
+    await submitPost(false);
   }
 
   return (
@@ -424,6 +451,7 @@ export default function AnnouncePage() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
+                onClick={() => void submitPost(true)}
                 style={{
                   padding: '9px 16px',
                   borderRadius: 8,
@@ -497,7 +525,7 @@ export default function AnnouncePage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {HISTORY.map((item) => (
+            {history.map((item) => (
               <div
                 key={item.id}
                 style={{

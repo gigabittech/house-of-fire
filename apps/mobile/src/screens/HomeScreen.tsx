@@ -6,6 +6,12 @@ import { EmptyState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsiv
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  formatEventDate,
+  formatVenueLine,
+  remainingTickets,
+  type UpcomingEvent,
+} from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
 
@@ -159,12 +165,7 @@ export default function HomeScreen() {
   const [now, setNow] = useState(Date.now());
   const [calOpen, setCalOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
-  const [upcomingEvent, setUpcomingEvent] = useState<null | {
-    edition_number: number;
-    name: string;
-    date: string;
-    ticket_tiers: Array<{ status: string; capacity: number }>;
-  }>(null);
+  const [upcomingEvent, setUpcomingEvent] = useState<UpcomingEvent | null>(null);
   const [newsEmail, setNewsEmail] = useState('');
   const [newsSent, setNewsSent] = useState(false);
   const [topPosts, setTopPosts] = useState<UiPost[]>([]);
@@ -195,8 +196,11 @@ export default function HomeScreen() {
       .finally(() => setTopPostsLoading(false));
   }, []);
 
+  const left = remainingTickets(upcomingEvent?.ticket_tiers);
   const eventTs = Date.parse(
-    upcomingEvent?.date ? `${upcomingEvent.date}T20:00:00-06:00` : '2026-06-26T20:00:00-06:00',
+    upcomingEvent?.date
+      ? `${upcomingEvent.date}T${upcomingEvent.doors_open ?? '20:00'}:00-06:00`
+      : Date.now().toString(),
   );
   const ms = Math.max(0, eventTs - now);
   const dd = Math.floor(ms / 86400000);
@@ -426,9 +430,9 @@ export default function HomeScreen() {
                       animation: 'hof-pulse 1.4s ease-in-out infinite',
                     }}
                   />
-                  Selling Fast · 47 left
+                  Selling Fast · {left > 0 ? `${left} left` : 'Sold out'}
                 </Pill>
-                <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? 24}</Pill>
+                <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>
               <Image
                 src="/assets/hof-logo-color.png"
@@ -467,7 +471,9 @@ export default function HomeScreen() {
                   letterSpacing: '0.04em',
                 }}
               >
-                Friday, June 26 · Junkyard Social Club · Boulder, CO
+                {upcomingEvent
+                  ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
+                  : 'Loading next edition…'}
               </div>
             </div>
           </div>

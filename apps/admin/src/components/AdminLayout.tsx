@@ -13,9 +13,9 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
     { id: 'events', href: '/events', icon: 'calendar', label: 'Events' },
     { id: 'guests', href: '/guests', icon: 'users', label: 'Guest list' },
     { id: 'door', href: '/door', icon: 'qr', label: 'Door' },
-    { id: 'media', href: '/media', icon: 'image', label: 'Photo review', badge: '4' },
+    { id: 'media', href: '/media', icon: 'image', label: 'Photo review' },
     { id: 'members', href: '/members', icon: 'user', label: 'Members' },
-    { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation', badge: '2' },
+    { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation' },
     { id: 'announce', href: '/announce', icon: 'bell', label: 'Announcements' },
     { id: 'codes', href: '/codes', icon: 'tag', label: 'Codes & comps' },
     { id: 'financials', href: '/financials', icon: 'wallet', label: 'Financials' },
@@ -61,6 +61,55 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const sidebarMode = useSidebarMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mediaBadge, setMediaBadge] = useState<string | undefined>();
+  const [modBadge, setModBadge] = useState<string | undefined>();
+  const [userName, setUserName] = useState('Admin');
+  const [userInitials, setUserInitials] = useState('AD');
+  const [userRole, setUserRole] = useState('Crew');
+
+  useEffect(() => {
+    async function loadCounts() {
+      try {
+        const res = await fetch('/api/admin/nav-counts');
+        if (!res.ok) return;
+        const data = (await res.json()) as { mediaPending: number; modPending: number };
+        if (data.mediaPending > 0) setMediaBadge(String(data.mediaPending));
+        if (data.modPending > 0) setModBadge(String(data.modPending));
+      } catch {
+        /* silent */
+      }
+    }
+    void loadCounts();
+  }, []);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, role')
+        .eq('id', user.id)
+        .maybeSingle();
+      const name = profile?.display_name ?? user.email?.split('@')[0] ?? 'Admin';
+      setUserName(name);
+      setUserInitials(
+        name
+          .split(' ')
+          .map((p) => p[0] ?? '')
+          .join('')
+          .slice(0, 2)
+          .toUpperCase(),
+      );
+      const roleLabel =
+        profile?.role === 'admin' ? 'Owner' : profile?.role === 'crew' ? 'Crew' : 'Member';
+      setUserRole(roleLabel);
+    }
+    void loadProfile();
+  }, []);
 
   // Close drawer whenever the route changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset drawer on pathname change
@@ -148,12 +197,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Nav items */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {NAV_ITEMS.map((item) => {
-            const active = isActive(item.href);
+            const badge =
+              item.id === 'media' ? mediaBadge : item.id === 'mod' ? modBadge : item.badge;
+            const navItem = badge ? { ...item, badge } : item;
+            const active = isActive(navItem.href);
             return (
               <Link
-                key={item.id}
-                href={item.href}
-                title={compact ? item.label : undefined}
+                key={navItem.id}
+                href={navItem.href}
+                title={compact ? navItem.label : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -170,15 +222,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 }}
               >
                 <Icon
-                  name={item.icon}
+                  name={navItem.icon}
                   size={16}
                   color={active ? 'var(--hof-amber)' : 'var(--hof-text-sec)'}
                 />
                 {!compact && (
-                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{item.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{navItem.label}</span>
                 )}
                 {/* Badge dot in compact mode */}
-                {compact && item.badge && (
+                {compact && navItem.badge && (
                   <span
                     style={{
                       position: 'absolute',
@@ -187,11 +239,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       width: 6,
                       height: 6,
                       borderRadius: 3,
-                      background: item.id === 'mod' ? 'var(--hof-warning)' : 'var(--hof-amber)',
+                      background: navItem.id === 'mod' ? 'var(--hof-warning)' : 'var(--hof-amber)',
                     }}
                   />
                 )}
-                {!compact && item.id === 'door' && (
+                {!compact && navItem.id === 'door' && (
                   <span
                     style={{
                       display: 'inline-flex',
@@ -217,7 +269,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     Live
                   </span>
                 )}
-                {!compact && item.badge && item.id !== 'door' && (
+                {!compact && navItem.badge && navItem.id !== 'door' && (
                   <span
                     style={{
                       background: item.id === 'mod' ? 'var(--hof-warning)' : 'var(--hof-amber)',
@@ -228,7 +280,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       borderRadius: 8,
                     }}
                   >
-                    {item.badge}
+                    {navItem.badge}
                   </span>
                 )}
               </Link>
@@ -264,14 +316,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               color: 'var(--hof-bg)',
             }}
           >
-            JG
+            {userInitials}
           </div>
           {!compact && (
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--hof-text)' }}>
-                Jordan Groth
+                {userName}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--hof-text-sec)' }}>Owner · Boulder</div>
+              <div style={{ fontSize: 10, color: 'var(--hof-text-sec)' }}>{userRole}</div>
             </div>
           )}
           {!compact && (

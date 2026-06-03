@@ -450,10 +450,20 @@ export default function TicketScreen() {
                   >
                     {(
                       [
-                        ['Date', 'Fri · Jun 26 · 2026'],
-                        ['Doors', '8:00 PM'],
-                        ['Venue', 'Junkyard Social Club'],
-                        ['Holder', 'Sujan Bhuiyan'],
+                        [
+                          'Date',
+                          ticket?.events?.date
+                            ? new Date(ticket.events.date).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : '—',
+                        ],
+                        ['Doors', '—'],
+                        ['Venue', ticket?.events?.venue_name ?? '—'],
+                        ['Holder', ticket?.code ?? '—'],
                       ] as [string, string][]
                     ).map(([k, v]) => (
                       <div key={k}>

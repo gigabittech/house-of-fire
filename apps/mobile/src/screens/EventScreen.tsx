@@ -2,7 +2,7 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import type { NavId, Post as UiPost } from '@hof/ui';
-import { FeedPost, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import { ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { photoSrc } from '../data/photos';
@@ -343,6 +343,8 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [mapOpen, setMapOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [eventPosts, setEventPosts] = useState<UiPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState(false);
   const [apiLineup, setApiLineup] = useState<LineupEntry[]>([]);
   const [wlName, setWlName] = useState('');
   const [wlEmail, setWlEmail] = useState('');
@@ -352,6 +354,9 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     id: string;
     edition_number: number;
     name: string;
+    date: string;
+    doors_open?: string;
+    venue_name?: string;
     ticket_tiers: Array<{
       id: string;
       name: string;
@@ -375,12 +380,16 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   useEffect(() => {
     if (!eventData?.id) return;
+    setPostsLoading(true);
+    setPostsError(false);
     fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
       .then((r) => r.json())
       .then((d: { posts?: ApiPost[] }) => {
         if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+        else setEventPosts([]);
       })
-      .catch(console.error);
+      .catch(() => setPostsError(true))
+      .finally(() => setPostsLoading(false));
   }, [eventData?.id]);
 
   useEffect(() => {
@@ -683,7 +692,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                   textTransform: 'uppercase',
                 }}
               >
-                Fireversary
+                {eventData?.name ?? 'Next edition'}
                 <br />
                 <span style={{ color: colors.amber }}>2-Year Anniversary</span>
               </div>
@@ -699,7 +708,20 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               gap: 12,
             }}
           >
-            <MetaItem icon="calendar" label="Date" value="Fri, June 26 · 2026" />
+            <MetaItem
+              icon="calendar"
+              label="Date"
+              value={
+                eventData?.date
+                  ? new Date(eventData.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : '—'
+              }
+            />
             <MetaItem icon="clock" label="Doors" value="8 PM — 1 AM" />
             <MetaItem icon="pin" label="Venue" value="Junkyard Social Club" />
             <MetaItem icon="users" label="Capacity" value="300 · sold out 23/24" />
@@ -1265,15 +1287,40 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               gap: 8,
             }}
           >
-            {eventPosts.map((p) => (
-              <FeedPost
-                key={p.id}
-                post={p}
-                compact
-                onOpen={() => router.push('/community/' + p.id)}
-                resolvePhoto={photoSrc}
+            {postsLoading && (
+              <>
+                <FeedSkeletonCard />
+                <FeedSkeletonCard />
+              </>
+            )}
+            {!postsLoading && postsError && (
+              <ErrorState
+                retry={() => {
+                  if (!eventData?.id) return;
+                  setPostsLoading(true);
+                  setPostsError(false);
+                  fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
+                    .then((r) => r.json())
+                    .then((d: { posts?: ApiPost[] }) => {
+                      if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+                      else setEventPosts([]);
+                    })
+                    .catch(() => setPostsError(true))
+                    .finally(() => setPostsLoading(false));
+                }}
               />
-            ))}
+            )}
+            {!postsLoading &&
+              !postsError &&
+              eventPosts.map((p) => (
+                <FeedPost
+                  key={p.id}
+                  post={p}
+                  compact
+                  onOpen={() => router.push('/community/' + p.id)}
+                  resolvePhoto={photoSrc}
+                />
+              ))}
             <button
               className="hof-btn hof-press"
               onClick={() => router.push('/community')}

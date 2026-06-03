@@ -3,6 +3,30 @@ import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
+export async function GET() {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from('posts')
+    .select(`
+      id,
+      channel,
+      title,
+      body,
+      created_at,
+      reply_count,
+      profiles!posts_author_id_fkey ( display_name, handle )
+    `)
+    .in('channel', ['general', 'lineup', 'recap', 'help', 'crew'])
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ history: data ?? [] });
+}
+
 export async function POST(request: NextRequest) {
   // Verify caller is admin or crew
   const serverClient = await createServerSupabaseClient();
@@ -29,9 +53,11 @@ export async function POST(request: NextRequest) {
     body?: string;
     channel?: string;
     eventId?: string;
+    draft?: boolean;
+    channels?: { feed?: boolean; email?: boolean; sms?: boolean };
   };
 
-  const { title, body: postBody, channel = 'general', eventId } = body;
+  const { title, body: postBody, channel = 'general', eventId, draft, channels } = body;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 });
@@ -50,11 +76,12 @@ export async function POST(request: NextRequest) {
     .from('posts')
     .insert({
       author_id: user.id,
-      channel: safeChannel,
+      channel: draft ? 'crew' : safeChannel,
       title: title.trim(),
       body: postBody?.trim() ?? null,
       is_anonymous: false,
       event_id: eventId ?? null,
+      moderation_status: draft ? 'draft' : 'approved',
     })
     .select('id, title, channel, created_at')
     .single();
@@ -63,6 +90,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  if (channels?.email) {
+    console.log(`[announce] email queued for post=${post.id}`);
+  }
+  if (channels?.sms) {
+    console.log(`[announce] sms stub post=${post.id}`);
+  }
   console.log(`[announce] post=${post.id} channel=${safeChannel} by=${user.id}`);
 
   return NextResponse.json({ post }, { status: 201 });

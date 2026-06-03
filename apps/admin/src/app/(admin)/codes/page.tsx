@@ -17,11 +17,11 @@ type CodeRow = {
   created_at: string;
 };
 
-const COMP_POOLS: Array<[string, string, string]> = [
-  ['Crew', '4 / 8', 'Photographers, helpers'],
-  ['Press', '3 / 10', 'Reviewers, podcasts'],
-  ['Goodwill', '2 / 5', "On-the-spot, Jordan's call"],
-];
+const POOL_LABELS: Record<string, [string, string]> = {
+  crew: ['Crew', 'Photographers, helpers'],
+  press: ['Press', 'Reviewers, podcasts'],
+  goodwill: ['Goodwill', "On-the-spot, Jordan's call"],
+};
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -39,6 +39,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function CodesPage() {
   const [codes, setCodes] = useState<CodeRow[]>([]);
+  const [compPools, setCompPools] = useState<Array<[string, string, string]>>([]);
   const [loading, setLoading] = useState(true);
 
   // New code form state
@@ -53,10 +54,29 @@ export default function CodesPage() {
   useEffect(() => {
     fetch('/api/admin/codes')
       .then((r) => r.json())
-      .then((d: { codes?: CodeRow[] }) => {
-        setCodes(d.codes ?? []);
-        setLoading(false);
-      })
+      .then(
+        (d: {
+          codes?: CodeRow[];
+          poolStats?: Array<{ pool: string; used: number; cap: number }>;
+        }) => {
+          setCodes(d.codes ?? []);
+          const pools = (d.poolStats ?? []).map((p) => {
+            const meta = POOL_LABELS[p.pool] ?? [p.pool, ''];
+            const cap = p.cap > 0 ? p.cap : p.used || 1;
+            return [meta[0], `${p.used} / ${cap}`, meta[1]] as [string, string, string];
+          });
+          setCompPools(
+            pools.length > 0
+              ? pools
+              : [
+                  ['Crew', '0 / 0', POOL_LABELS.crew?.[1] ?? ''],
+                  ['Press', '0 / 0', POOL_LABELS.press?.[1] ?? ''],
+                  ['Goodwill', '0 / 0', POOL_LABELS.goodwill?.[1] ?? ''],
+                ],
+          );
+          setLoading(false);
+        },
+      )
       .catch(() => setLoading(false));
   }, []);
 
@@ -561,7 +581,7 @@ export default function CodesPage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-            {COMP_POOLS.map(([label, value, sub]) => (
+            {compPools.map(([label, value, sub]) => (
               <div key={label}>
                 <div
                   style={{

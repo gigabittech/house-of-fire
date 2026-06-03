@@ -3,7 +3,8 @@
 import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
+import { formatEventDate, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 
 /** Shared horizontal track — every section uses this for aligned edges. */
@@ -44,6 +45,16 @@ function LandingSection({
 export default function LandingScreen() {
   const router = useRouter();
   const { isWide, isDesktop, pageColumn } = useLandingLayout();
+  const [upcoming, setUpcoming] = useState<UpcomingEvent | null>(null);
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.event) setUpcoming(d.event);
+      })
+      .catch(console.error);
+  }, []);
 
   const onGetStarted = () => router.push('/onboarding');
   const onSignIn = () => router.push('/sign-in');
@@ -423,7 +434,7 @@ export default function LandingScreen() {
                 letterSpacing: '-0.01em',
               }}
             >
-              Fireversary — Edition 24
+              {upcoming ? `${upcoming.name} — Edition ${upcoming.edition_number}` : 'Next edition'}
             </div>
             <div
               style={{
@@ -433,7 +444,9 @@ export default function LandingScreen() {
                 marginTop: 6,
               }}
             >
-              Friday, June 26 · Junkyard · 47 GA tickets left
+              {upcoming
+                ? `${formatEventDate(upcoming.date)} · ${upcoming.venue_name} · ${remainingTickets(upcoming.ticket_tiers)} tickets left`
+                : 'Loading…'}
             </div>
             <div style={{ marginTop: 16 }}>
               <HofButton

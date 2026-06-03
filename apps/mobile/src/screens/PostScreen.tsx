@@ -2,9 +2,9 @@
 
 import { colors } from '@hof/design-tokens';
 import type { ReactionKey, Post as UiPost } from '@hof/ui';
-import { Avatar, FeedPost, Icon, useResponsive } from '@hof/ui';
+import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { photoSrc } from '../data/photos';
 
 interface PostScreenProps {
@@ -94,19 +94,27 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [myReactions, setMyReactions] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [reply, setReply] = useState('');
+  const [fetchDone, setFetchDone] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const { isWide } = useResponsive();
 
-  useEffect(() => {
+  const loadPost = useCallback(() => {
     if (!postId) return;
+    setFetchDone(false);
+    setFetchError(false);
     fetch(`/api/posts/${postId}`)
       .then((r) => r.json())
       .then((d: { post?: ApiPost; replies?: ApiReply[] }) => {
         if (d.post) setApiPost(d.post);
         if (d.replies) setReplies(d.replies);
       })
-      .catch(console.error)
+      .catch(() => setFetchError(true))
       .finally(() => setFetchDone(true));
   }, [postId]);
+
+  useEffect(() => {
+    loadPost();
+  }, [loadPost]);
 
   const toggleReaction = async (key: string) => {
     const r = await fetch(`/api/posts/${postId}/reactions`, {
@@ -123,7 +131,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
     }
   };
 
-  const [fetchDone, setFetchDone] = useState(false);
   const post = apiPost ? apiPostToUi(apiPost, myReactions) : null;
 
   if (fetchDone && !post) {
@@ -243,6 +250,16 @@ export default function PostScreen({ postId }: PostScreenProps) {
         </div>
 
         {/* Post card */}
+        {!fetchDone && !fetchError && (
+          <div style={{ padding: '0 16px 8px' }}>
+            <FeedSkeletonCard />
+          </div>
+        )}
+        {fetchError && (
+          <div style={{ padding: '0 16px 8px' }}>
+            <ErrorState retry={loadPost} />
+          </div>
+        )}
         {post && (
           <div style={{ padding: '0 16px 8px' }}>
             <FeedPost post={post} resolvePhoto={photoSrc} />

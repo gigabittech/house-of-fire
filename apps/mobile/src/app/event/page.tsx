@@ -1,5 +1,9 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
 import EventScreen from '../../screens/EventScreen';
 
 export default function Page() {
-  return <EventScreen />;
+  const router = useRouter();
+  return <EventScreen onOpenArtist={(slug) => router.push(`/artists/${slug}`)} />;
 }

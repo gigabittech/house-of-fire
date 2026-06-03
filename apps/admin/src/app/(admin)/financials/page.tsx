@@ -20,21 +20,36 @@ interface EditionBar {
   active?: boolean;
 }
 
+interface RefundRow {
+  id: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  tickets: { code: string; amount_cents: number } | null;
+  profiles: { display_name: string; handle: string } | null;
+}
+
 export default function FinancialsPage() {
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
+  const [pendingRefunds, setPendingRefunds] = useState<RefundRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/admin/financials');
-        const data = (await res.json()) as { financials?: FinancialRow[]; error?: string };
+        const [finRes, refRes] = await Promise.all([
+          fetch('/api/admin/financials'),
+          fetch('/api/admin/refunds'),
+        ]);
+        const data = (await finRes.json()) as { financials?: FinancialRow[]; error?: string };
+        const refData = (await refRes.json()) as { pending?: RefundRow[]; error?: string };
         if (data.error) {
           setError(data.error);
         } else {
           setFinancials(data.financials ?? []);
         }
+        setPendingRefunds(refData.pending ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load financials');
       } finally {
@@ -43,6 +58,15 @@ export default function FinancialsPage() {
     }
     void load();
   }, []);
+
+  async function handleRefundAction(id: string, status: 'approved' | 'rejected') {
+    await fetch('/api/admin/refunds', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    setPendingRefunds((prev) => prev.filter((r) => r.id !== id));
+  }
 
   // Use last 6 editions for the bar chart
   const sorted = [...financials].sort((a, b) => a.edition_number - b.edition_number);
@@ -155,7 +179,12 @@ export default function FinancialsPage() {
             delta="All time"
             tone="amber"
           />
-          <Kpi label="Open refund req." value="0" delta="No pending refunds" tone="warning" />
+          <Kpi
+            label="Open refund req."
+            value={String(pendingRefunds.length)}
+            delta={pendingRefunds.length === 0 ? 'No pending refunds' : 'Awaiting review'}
+            tone="warning"
+          />
         </div>
       </div>
 
@@ -433,22 +462,93 @@ export default function FinancialsPage() {
                   marginTop: 4,
                 }}
               >
-                0 pending
+                {pendingRefunds.length} pending
               </div>
             </div>
           </div>
 
-          <div
-            style={{
-              padding: '16px',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 13,
-              color: 'var(--hof-text-sec)',
-              textAlign: 'center',
-            }}
-          >
-            No pending refund requests.
-          </div>
+          {pendingRefunds.length === 0 ? (
+            <div
+              style={{
+                padding: '16px',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+                textAlign: 'center',
+              }}
+            >
+              No pending refund requests.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {pendingRefunds.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    padding: 12,
+                    background: 'var(--hof-bg)',
+                    border: '1px solid var(--hof-border)',
+                    borderRadius: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 13,
+                      color: 'var(--hof-text)',
+                    }}
+                  >
+                    {r.profiles?.display_name ?? r.profiles?.handle ?? 'Member'} ·{' '}
+                    {r.tickets?.code ?? 'ticket'}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      color: 'var(--hof-text-sec)',
+                      marginTop: 4,
+                    }}
+                  >
+                    {r.reason ?? 'No reason given'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => void handleRefundAction(r.id, 'approved')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        background: 'var(--hof-success)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, system-ui',
+                        fontSize: 12,
+                        color: 'var(--hof-bg)',
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRefundAction(r.id, 'rejected')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        background: 'transparent',
+                        border: '1px solid var(--hof-border)',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, system-ui',
+                        fontSize: 12,
+                        color: 'var(--hof-text-sec)',
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

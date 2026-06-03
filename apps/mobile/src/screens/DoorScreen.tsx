@@ -42,21 +42,6 @@ function formatPhone(raw: string): string {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-// ─── Mock initial activity ────────────────────────────────────────────────────
-
-const MOCK_ACTIVITY: ActivityEntry[] = [
-  { t: '10:41', name: 'Sujan Bhuiyan', meta: 'VIP · scanned in', tone: 'success', kind: 'scan' },
-  {
-    t: '10:40',
-    name: 'Walk-up · M. Castellanos',
-    meta: 'GA · Tap to Pay · $28',
-    tone: 'amber',
-    kind: 'sale',
-  },
-  { t: '10:38', name: 'Devon Park · +1', meta: 'GA · scanned in', tone: 'success', kind: 'scan' },
-  { t: '10:30', name: 'Doors opened', meta: 'Scanner armed', tone: 'neutral', kind: 'system' },
-];
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DoorLabel({
@@ -1069,11 +1054,30 @@ const DOOR_MAX_WIDTH = 760;
 
 export default function DoorScreen() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [activity, setActivity] = useState<ActivityEntry[]>(MOCK_ACTIVITY);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [scanToast, setScanToast] = useState<{ ok: boolean; message: string; sub?: string } | null>(
     null,
   );
   const { isWide } = useResponsive();
+  const [editionName, setEditionName] = useState('Tonight');
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.event?.name) setEditionName(d.event.name);
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/door/activity')
+      .then((r) => r.json())
+      .then((d: { activity?: ActivityEntry[] }) => {
+        if (d.activity?.length) setActivity(d.activity);
+      })
+      .catch(console.error);
+  }, []);
 
   function handleScanned(result: ScanResult, code: string) {
     if ('ok' in result && result.ok) {
@@ -1159,7 +1163,7 @@ export default function DoorScreen() {
               marginTop: 2,
             }}
           >
-            Fireversary
+            {editionName}
           </div>
         </div>
         {/* Live pill */}
