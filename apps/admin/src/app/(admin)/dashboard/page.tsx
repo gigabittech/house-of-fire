@@ -44,10 +44,10 @@ interface PhotoRow {
   profiles: { handle: string; display_name: string; avatar_url: string | null } | null;
 }
 
-function SalesChart() {
-  const data = [4, 6, 5, 9, 12, 18, 10, 14, 22, 31, 28, 20, 26, 18];
-  const max = Math.max(...data);
-  const cumulative = data.reduce<number[]>((acc, v) => {
+function SalesChart({ data }: { data: number[] }) {
+  const chartData = data.length > 0 ? data : [0];
+  const max = Math.max(...chartData, 1);
+  const cumulative = chartData.reduce<number[]>((acc, v) => {
     const last = acc[acc.length - 1] ?? 0;
     acc.push(last + v);
     return acc;
@@ -77,8 +77,8 @@ function SalesChart() {
           strokeWidth="1"
         />
       ))}
-      {data.map((v, i) => {
-        const w = 400 / data.length;
+      {chartData.map((v, i) => {
+        const w = 400 / chartData.length;
         const h = (v / max) * 130;
         return (
           <rect
@@ -94,7 +94,7 @@ function SalesChart() {
       })}
       {(() => {
         const pts = cumulative
-          .map((v, i) => `${(i + 0.5) * (400 / data.length)},${170 - (v / cumMax) * 150}`)
+          .map((v, i) => `${(i + 0.5) * (400 / chartData.length)},${170 - (v / cumMax) * 150}`)
           .join(' ');
         const fillPath = `M 0,170 L ${pts} L 400,170 Z`;
         const linePath = `M ${pts.replace(/ /g, ' L ')}`;
@@ -105,7 +105,7 @@ function SalesChart() {
             {cumulative.map((v, i) => (
               <circle
                 key={i}
-                cx={(i + 0.5) * (400 / data.length)}
+                cx={(i + 0.5) * (400 / chartData.length)}
                 cy={170 - (v / cumMax) * 150}
                 r="2.5"
                 fill="var(--hof-text)"
@@ -118,8 +118,26 @@ function SalesChart() {
   );
 }
 
-function GuestListWidget({ guests, loading }: { guests: GuestRow[]; loading: boolean }) {
-  const displayGuests = guests.slice(0, 6);
+function GuestListWidget({
+  guests,
+  loading,
+  searchQuery,
+  onSearchChange,
+}: {
+  guests: GuestRow[];
+  loading: boolean;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+}) {
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? guests.filter((g) => {
+        const name = (g.profiles?.display_name ?? g.profiles?.handle ?? '').toLowerCase();
+        const handle = (g.profiles?.handle ?? '').toLowerCase();
+        return name.includes(q) || handle.includes(q) || g.code.toLowerCase().includes(q);
+      })
+    : guests;
+  const displayGuests = filtered.slice(0, 6);
 
   return (
     <div
@@ -162,7 +180,7 @@ function GuestListWidget({ guests, loading }: { guests: GuestRow[]; loading: boo
           >
             {loading
               ? '…'
-              : `${guests.length} confirmed · ${displayGuests.length} of ${guests.length}`}
+              : `${filtered.length} confirmed · ${displayGuests.length} of ${filtered.length}`}
           </div>
         </div>
         <div
@@ -188,6 +206,8 @@ function GuestListWidget({ guests, loading }: { guests: GuestRow[]; loading: boo
           </svg>
           <input
             placeholder="Search name or email…"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
             style={{
               border: 0,
               background: 'transparent',
@@ -482,12 +502,19 @@ function PhotoReviewWidget({
   );
 }
 
+const TIER_COLORS = ['var(--hof-amber)', 'var(--hof-glow)', 'var(--hof-gold)'];
+
 export default function DashboardPage() {
   const [event, setEvent] = useState<EventRow | null>(null);
   const [guests, setGuests] = useState<GuestRow[]>([]);
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [guestSearch, setGuestSearch] = useState('');
+  const [period, setPeriod] = useState<'1D' | '7D' | '14D' | 'All'>('14D');
+  const [salesData, setSalesData] = useState<number[]>([]);
+  const [tierBars, setTierBars] = useState<Array<{ label: string; sold: number; cap: number }>>([]);
+  const [openRequests, setOpenRequests] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -526,6 +553,55 @@ export default function DashboardPage() {
     }
     void load();
   }, []);
+
+  useEffect(() => {
+    const eventId = event?.id;
+    if (!eventId) return;
+    async function loadMetrics() {
+      try {
+        const res = await fetch(`/api/admin/dashboard/metrics?eventId=${eventId}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          salesData: number[];
+          tierBars: Array<{ label: string; sold: number; cap: number }>;
+          openRequests?: number;
+        };
+        setSalesData(data.salesData ?? []);
+        setTierBars(data.tierBars ?? []);
+        setOpenRequests(data.openRequests ?? 0);
+      } catch {
+        /* keep prior */
+      }
+    }
+    void loadMetrics();
+  }, [event?.id]);
+
+  function exportGuestsCsv() {
+    const header = ['code', 'name', 'handle', 'tier', 'status', 'purchased_at', 'amount_cents'];
+    const rows = guests.map((g) => [
+      g.code,
+      g.profiles?.display_name ?? '',
+      g.profiles?.handle ?? '',
+      g.ticket_tiers?.display_name ?? g.ticket_tiers?.name ?? '',
+      g.status,
+      g.purchased_at,
+      String(g.amount_cents),
+    ]);
+    const csv = [header, ...rows]
+      .map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `guests-${event?.edition_number ?? 'export'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const periodSlice =
+    period === '1D' ? 1 : period === '7D' ? 7 : period === '14D' ? 14 : salesData.length;
+  const chartData = salesData.length > 0 ? salesData.slice(-periodSlice) : salesData;
 
   async function handlePhotoAction(id: string, status: 'approved' | 'rejected') {
     try {
@@ -601,6 +677,8 @@ export default function DashboardPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
+            type="button"
+            onClick={() => exportGuestsCsv()}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -666,7 +744,12 @@ export default function DashboardPage() {
           delta="Doors open event night"
           tone="muted"
         />
-        <Kpi label="Open requests" value="0" delta="Nothing pending" tone="warning" />
+        <Kpi
+          label="Open requests"
+          value={loading ? '…' : String(openRequests)}
+          delta={openRequests === 0 ? 'Nothing pending' : 'Refund requests awaiting review'}
+          tone="warning"
+        />
       </div>
 
       {/* Two-col charts */}
@@ -720,25 +803,29 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
-              {['1D', '7D', '14D', 'All'].map((p) => (
-                <span
+              {(['1D', '7D', '14D', 'All'] as const).map((p) => (
+                <button
                   key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
                   style={{
                     fontFamily: 'Inter, system-ui',
                     fontSize: 11,
                     fontWeight: 500,
                     padding: '5px 10px',
                     borderRadius: 6,
-                    background: p === '14D' ? 'var(--hof-elevated)' : 'transparent',
-                    color: p === '14D' ? 'var(--hof-text)' : 'var(--hof-text-sec)',
+                    background: p === period ? 'var(--hof-elevated)' : 'transparent',
+                    color: p === period ? 'var(--hof-text)' : 'var(--hof-text-sec)',
+                    border: 'none',
+                    cursor: 'pointer',
                   }}
                 >
                   {p}
-                </span>
+                </button>
               ))}
             </div>
           </div>
-          <SalesChart />
+          <SalesChart data={chartData} />
         </div>
 
         {/* Tier breakdown */}
@@ -763,27 +850,20 @@ export default function DashboardPage() {
             By tier
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <TierBar
-              name="Early Bird"
-              sold={80}
-              total={80}
-              color="var(--hof-amber)"
-              sub="$1,600 · sold out"
-            />
-            <TierBar
-              name="General"
-              sold={143}
-              total={180}
-              color="var(--hof-glow)"
-              sub="$4,004 · 37 left"
-            />
-            <TierBar
-              name="VIP"
-              sold={30}
-              total={40}
-              color="var(--hof-gold)"
-              sub="$1,650 · 10 left"
-            />
+            {(tierBars.length > 0 ? tierBars : [{ label: '—', sold: 0, cap: 1 }]).map((tier, i) => {
+              const left = Math.max(0, tier.cap - tier.sold);
+              const sub = left === 0 && tier.cap > 0 ? 'sold out' : `${left} left`;
+              return (
+                <TierBar
+                  key={tier.label}
+                  name={tier.label}
+                  sold={tier.sold}
+                  total={tier.cap}
+                  color={TIER_COLORS[i % TIER_COLORS.length] ?? 'var(--hof-amber)'}
+                  sub={sub}
+                />
+              );
+            })}
           </div>
           <div
             style={{
@@ -823,7 +903,12 @@ export default function DashboardPage() {
           gap: 16,
         }}
       >
-        <GuestListWidget guests={guests} loading={loading} />
+        <GuestListWidget
+          guests={guests}
+          loading={loading}
+          searchQuery={guestSearch}
+          onSearchChange={setGuestSearch}
+        />
         <PhotoReviewWidget
           photos={photos}
           loading={loading}

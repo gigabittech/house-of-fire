@@ -8,7 +8,16 @@ export async function GET() {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ codes: data ?? [] });
+
+  const pools = ['crew', 'press', 'goodwill'] as const;
+  const poolStats = pools.map((pool) => {
+    const poolCodes = (data ?? []).filter((c) => (c as { pool?: string | null }).pool === pool);
+    const used = poolCodes.reduce((s, c) => s + (c.uses ?? 0), 0);
+    const cap = poolCodes.reduce((s, c) => s + (c.max_uses ?? 0), 0);
+    return { pool, used, cap, count: poolCodes.length };
+  });
+
+  return NextResponse.json({ codes: data ?? [], poolStats });
 }
 
 export async function POST(request: NextRequest) {
@@ -21,6 +30,7 @@ export async function POST(request: NextRequest) {
     event_id?: string | null;
     expires_at?: string | null;
     note?: string | null;
+    pool?: string | null;
   };
 
   const code = body.code?.trim().toUpperCase();
@@ -36,6 +46,10 @@ export async function POST(request: NextRequest) {
       event_id: body.event_id ?? null,
       expires_at: body.expires_at ?? null,
       note: body.note ?? null,
+      pool:
+        body.pool === 'crew' || body.pool === 'press' || body.pool === 'goodwill'
+          ? body.pool
+          : null,
     })
     .select()
     .single();

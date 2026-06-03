@@ -172,9 +172,21 @@ Enable Turborepo remote caching in each project (optional). Attach domains (e.g.
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 - `NEXT_PUBLIC_APP_URL` (production member app URL)
+- `SUPABASE_AUTH_REDIRECT_URLS` (optional; comma-separated redirect URLs for auth)
 - `QR_HMAC_SECRET`
 
 Admin does not need Stripe, Resend, or `NEXT_PUBLIC_APP_URL` in production.
+
+### Supabase Auth URLs (magic links)
+
+Push Site URL and redirect allow list to hosted Supabase once (uses `NEXT_PUBLIC_APP_URL` from `.env.local`):
+
+```bash
+pnpm configure:auth-urls
+pnpm verify:auth-urls
+```
+
+See [docs/deploy-vercel.md](./docs/deploy-vercel.md) for details.
 
 ### Stripe webhooks
 

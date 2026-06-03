@@ -27,10 +27,11 @@ export function parseEnvFile(filePath) {
   return out;
 }
 
-/** Load env from repo root `.env` and `apps/mobile/.env.local` (later files win). */
+/** Load env from repo root `.env`, `.env.local`, and legacy `apps/mobile/.env.local` (later files win). */
 export function loadProjectEnv() {
   const paths = [
     path.join(repoRoot, '.env'),
+    path.join(repoRoot, '.env.local'),
     path.join(repoRoot, 'apps/mobile/.env.local'),
   ];
   return paths.reduce((acc, p) => ({ ...acc, ...parseEnvFile(p) }), {});

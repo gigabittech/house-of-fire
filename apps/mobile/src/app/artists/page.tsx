@@ -3,9 +3,21 @@
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { formatEventDate, type UpcomingEvent } from '@/lib/eventDisplay';
 
 export default function ArtistsPage() {
   const router = useRouter();
+  const [event, setEvent] = useState<UpcomingEvent | null>(null);
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.event) setEvent(d.event);
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <div
@@ -132,7 +144,15 @@ export default function ArtistsPage() {
         >
           <Icon name="flame" size={12} color={colors.amber} />
           <span>
-            <span style={{ color: colors.amber }}>Edition 24</span> · Jun 26 · Junkyard Social Club
+            {event ? (
+              <>
+                <span style={{ color: colors.amber }}>Edition {event.edition_number}</span>
+                {' · '}
+                {formatEventDate(event.date)} · {event.venue_name}
+              </>
+            ) : (
+              <span>Loading next edition…</span>
+            )}
           </span>
         </div>
       </div>
