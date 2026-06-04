@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
 import type { Database } from '../database.types';
 import { createServiceRoleClient } from '../supabase.server';
-import { stripe } from '../stripe';
+import { getStripe } from '../stripe';
 import {
   feePercentLabel,
   formatEventDateTime,
@@ -82,7 +82,7 @@ async function buildPaymentLine(
   let pi = paymentIntent;
   if (!pi && order.stripe_payment_intent_id) {
     try {
-      pi = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id, {
+      pi = await getStripe().paymentIntents.retrieve(order.stripe_payment_intent_id, {
         expand: ['latest_charge'],
       });
     } catch {

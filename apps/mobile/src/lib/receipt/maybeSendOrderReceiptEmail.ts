@@ -1,5 +1,5 @@
 import type Stripe from 'stripe';
-import { stripe } from '../stripe';
+import { getStripe } from '../stripe';
 import { createServiceRoleClient } from '../supabase.server';
 import { sendOrderReceiptEmail } from './sendOrderReceiptEmail';
 
@@ -35,7 +35,7 @@ export async function maybeSendOrderReceiptEmail(
 
   await sendOrderReceiptEmail({ orderId: resolvedOrderId, paymentIntent });
 
-  await stripe.paymentIntents.update(paymentIntent.id, {
+  await getStripe().paymentIntents.update(paymentIntent.id, {
     metadata: {
       ...paymentIntent.metadata,
       receiptEmailSent: 'true',
