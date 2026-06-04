@@ -273,8 +273,13 @@ export default function TicketScreen() {
     setTimeout(() => setToast((t) => ({ ...t, shown: false })), 3500);
   }
 
+  function handleSavePdf() {
+    window.print();
+  }
+
   return (
     <div
+      className="hof-ticket-page"
       style={{
         position: 'relative',
         width: '100%',
@@ -285,6 +290,7 @@ export default function TicketScreen() {
     >
       {/* Top bar */}
       <div
+        className="hof-no-print"
         style={{
           position: 'absolute',
           top: isWide ? 0 : 54,
@@ -350,7 +356,7 @@ export default function TicketScreen() {
 
       {/* Scrollable content — centered column on tablet/desktop */}
       <div
-        className="hof-scroll"
+        className="hof-scroll hof-ticket-scroll"
         style={{
           position: 'absolute',
           top: 0,
@@ -363,18 +369,18 @@ export default function TicketScreen() {
           paddingBottom: 40,
         }}
       >
-        <div style={{ height: isWide ? 64 : 102 }} />
+        <div className="hof-no-print" style={{ height: isWide ? 64 : 102 }} />
 
         {loading ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <HofSkeleton width="100%" height={300} radius={16} />
           </div>
         ) : ticketError ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <EmptyState title="Could not load ticket" body="Check your connection and try again." />
           </div>
         ) : tickets.length === 0 ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <EmptyState
               title="No ticket"
               body="Get your ticket to Edition X."
@@ -404,6 +410,7 @@ export default function TicketScreen() {
           <>
             {/* Day-of contextual banner */}
             <div
+              className="hof-no-print"
               style={{
                 margin: '0 16px 16px',
                 padding: '12px 14px',
@@ -455,7 +462,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Success copy */}
-            <div style={{ padding: '12px 16px 18px' }}>
+            <div className="hof-no-print" style={{ padding: '12px 16px 18px' }}>
               <div
                 style={{
                   fontFamily: 'Clash Display',
@@ -482,7 +489,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Ticket card — swipe between tickets when qty > 1 */}
-            <div style={{ padding: '0 16px' }}>
+            <div id="hof-ticket-print" style={{ padding: '0 16px' }}>
               <div
                 onTouchStart={(e) => handleTouchStart(e.changedTouches[0]?.clientX ?? 0)}
                 onTouchEnd={(e) => handleTouchEnd(e.changedTouches[0]?.clientX ?? 0)}
@@ -576,7 +583,8 @@ export default function TicketScreen() {
                         {ticket?.ticket_tiers?.display_name ?? 'GA'}
                       </div>
                       <button
-                        className="hof-btn hof-press"
+                        type="button"
+                        className="hof-btn hof-press hof-no-print"
                         onClick={() => setUpgradeOpen(true)}
                         style={{
                           padding: '3px 8px',
@@ -733,6 +741,7 @@ export default function TicketScreen() {
 
               {tickets.length > 1 && (
                 <div
+                  className="hof-no-print"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -807,6 +816,7 @@ export default function TicketScreen() {
 
             {/* Actions */}
             <div
+              className="hof-no-print"
               style={{
                 padding: '20px 16px 0',
                 display: 'grid',
@@ -826,7 +836,7 @@ export default function TicketScreen() {
                     a.click();
                   },
                 },
-                { label: 'Save PDF', icon: 'download' as const, onClick: () => window.print() },
+                { label: 'Save PDF', icon: 'download' as const, onClick: handleSavePdf },
                 { label: 'Transfer', icon: 'share' as const, onClick: () => setTransferOpen(true) },
                 {
                   label: 'Request refund',
@@ -860,7 +870,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Tell a friend */}
-            <div style={{ padding: '24px 16px 0' }}>
+            <div className="hof-no-print" style={{ padding: '24px 16px 0' }}>
               <button
                 className="hof-btn hof-press"
                 onClick={() => setShareOpen(true)}
@@ -938,7 +948,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Receipt */}
-            <div style={{ padding: '24px 16px 0' }}>
+            <div className="hof-no-print" style={{ padding: '24px 16px 0' }}>
               <div
                 style={{
                   fontFamily: 'Inter',
@@ -1006,7 +1016,7 @@ export default function TicketScreen() {
               </div>
             </div>
 
-            <div style={{ height: 40 }} />
+            <div className="hof-no-print" style={{ height: 40 }} />
           </>
         )}
       </div>
@@ -1014,6 +1024,7 @@ export default function TicketScreen() {
       {/* Toast */}
       {toast.shown && (
         <div
+          className="hof-no-print"
           style={{
             position: 'absolute',
             top: 100,
