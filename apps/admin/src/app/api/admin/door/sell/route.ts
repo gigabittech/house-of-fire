@@ -11,6 +11,8 @@ interface SellRequestBody {
   phone?: string;
   qty: number;
   pay_method: 'cash' | 'card' | 'tap';
+  promo_code?: string;
+  code_id?: string;
 }
 
 function isSellBody(v: unknown): v is SellRequestBody {
@@ -63,6 +65,8 @@ export async function POST(request: NextRequest) {
     qty: body.qty,
     pay_method: body.pay_method,
     client_sale_id: clientSaleId,
+    promo_code: body.promo_code ?? null,
+    code_id: body.code_id ?? null,
   });
 
   if (!result.ok) {
