@@ -9,6 +9,10 @@ function ticketQty(data: OrderReceiptData): number {
 export function buildReceiptEmailHtml(data: OrderReceiptData): string {
   const qty = ticketQty(data);
   const ticketPhrase = qty === 1 ? '1 ticket' : `${qty} tickets`;
+  const qrLine =
+    qty === 1
+      ? 'Your ticket QR code is attached as a PNG (show at the door).'
+      : `Your ${qty} ticket QR codes are attached as PNGs (one per ticket — show at the door).`;
 
   return `
 <!DOCTYPE html>
@@ -20,7 +24,7 @@ export function buildReceiptEmailHtml(data: OrderReceiptData): string {
     Thank you for your purchase for ${escapeHtml(data.event.name)} · Edition ${data.event.editionNumber}
     (${ticketPhrase}, ${formatReceiptCents(data.totalCents)} total).
   </p>
-  <p style="margin:0 0 12px;">Your receipt is attached as a PDF.</p>
+  <p style="margin:0 0 12px;">Your receipt is attached as a PDF. ${escapeHtml(qrLine)}</p>
   <p style="margin:0;font-size:13px;color:#666666;">House of Fire · houseoffire.events</p>
 </body>
 </html>`;
@@ -29,6 +33,10 @@ export function buildReceiptEmailHtml(data: OrderReceiptData): string {
 export function buildReceiptEmailText(data: OrderReceiptData): string {
   const qty = ticketQty(data);
   const ticketPhrase = qty === 1 ? '1 ticket' : `${qty} tickets`;
+  const qrLine =
+    qty === 1
+      ? 'Your ticket QR code is attached as a PNG (show at the door).'
+      : `Your ${qty} ticket QR codes are attached as PNGs (one per ticket — show at the door).`;
 
   return [
     `Hi ${data.buyer.name},`,
@@ -36,6 +44,7 @@ export function buildReceiptEmailText(data: OrderReceiptData): string {
     `Thank you for your purchase for ${data.event.name} · Edition ${data.event.editionNumber} (${ticketPhrase}, ${formatReceiptCents(data.totalCents)} total).`,
     '',
     'Your receipt is attached as a PDF.',
+    qrLine,
     '',
     'House of Fire · houseoffire.events',
   ].join('\n');
