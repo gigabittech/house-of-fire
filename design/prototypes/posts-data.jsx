@@ -14,7 +14,7 @@ const HOF_POSTS = [
     id: 'p1', channel: 'general', kind: 'announcement',
     author: { name: 'Jordan',  initials: 'JG', role: 'crew' },
     time: '2h', edition: 24,
-    title: 'Edition 24 lineup is final',
+    title: 'Theme 24 lineup is final',
     body: 'Headliner reveal: HEX takes the 12:00 slot. Doors at 8 sharp — we open the floor at 9. Full set times in the event page.',
     reactions: { fire: 52, heart: 12, pray: 4 }, myReaction: null,
     replyCount: 7, pinned: true,
@@ -23,7 +23,7 @@ const HOF_POSTS = [
     id: 'p2', channel: 'recap', kind: 'recap',
     author: { name: 'Crew', initials: 'CR', role: 'crew' },
     time: '3d', edition: 23,
-    title: 'Edition 23 recap is up',
+    title: 'Theme 23 recap is up',
     body: '127 photos from the night by Mauro. Tag yourself — visible to members only.',
     photoSeeds: [0, 1, 2, 3],
     reactions: { fire: 184, heart: 41, music: 19 }, myReaction: 'fire',
@@ -133,7 +133,7 @@ function FeedPost({ post, onOpen, compact = false, showChannel = false }) {
             <ChannelTag id={post.channel}/>
             {showChannel && post.edition && <>
               <span style={{ color: HOF.textDis }}>·</span>
-              <span>Ed {post.edition}</span>
+              <span>Th {post.edition}</span>
             </>}
           </div>
         </div>

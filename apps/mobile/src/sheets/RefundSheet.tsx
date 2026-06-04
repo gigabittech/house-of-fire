@@ -234,7 +234,7 @@ export default function RefundSheet({ open, onClose, ticketId }: RefundSheetProp
               }}
             >
               Jordan reviews refund requests personally. You'll hear back within 2 business days,
-              usually same day during edition weeks.
+              usually same day during theme weeks.
             </div>
           </div>
           <div style={{ marginTop: 20 }}>

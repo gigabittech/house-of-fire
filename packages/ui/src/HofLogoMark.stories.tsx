@@ -9,4 +9,4 @@ export default meta;
 
 type Story = StoryObj<typeof HofLogoMark>;
 
-export const Default: Story = { args: { size: 48 } };
+export const Default: Story = { args: { size: 90 } };

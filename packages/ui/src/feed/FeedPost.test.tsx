@@ -9,7 +9,7 @@ const announcement: Post = {
   author: { name: 'Jordan', initials: 'JG', role: 'crew' },
   time: '2h',
   edition: 24,
-  title: 'Edition 24 lineup is final',
+  title: 'Theme 24 lineup is final',
   body: 'Headliner reveal.',
   reactions: { fire: 52 },
   replyCount: 7,
@@ -19,7 +19,7 @@ const announcement: Post = {
 describe('FeedPost', () => {
   it('renders title, channel, crew badge, and reply count', () => {
     render(<FeedPost post={announcement} />);
-    expect(screen.getByText('Edition 24 lineup is final')).toBeInTheDocument();
+    expect(screen.getByText('Theme 24 lineup is final')).toBeInTheDocument();
     expect(screen.getByText('#general')).toBeInTheDocument();
     expect(screen.getByText('Crew')).toBeInTheDocument();
     expect(screen.getByText('7 replies')).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe('FeedPost', () => {
   it('fires onOpen when tapped', () => {
     const onOpen = vi.fn();
     render(<FeedPost post={announcement} onOpen={onOpen} />);
-    fireEvent.click(screen.getByText('Edition 24 lineup is final'));
+    fireEvent.click(screen.getByText('Theme 24 lineup is final'));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 

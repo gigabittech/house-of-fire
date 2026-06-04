@@ -357,7 +357,7 @@ function SettingsPrivacy() {
       <HofConfirm
         open={deleteConfirmOpen}
         title="Delete your account?"
-        body="This removes you and your posts. Past tickets stay attached to the editions you attended."
+        body="This removes you and your posts. Past tickets stay attached to the themes you attended."
         confirmLabel="Delete my account"
         destructive
         onConfirm={() => setDeleteConfirmOpen(false)}

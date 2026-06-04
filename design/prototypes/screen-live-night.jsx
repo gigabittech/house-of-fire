@@ -53,7 +53,7 @@ function ScreenLiveNight({ nav, onOpenTicket, onOpenPost }) {
                 <div style={{
                   fontFamily: 'Inter', fontSize: 10, color: HOF.bg, opacity: 0.55,
                   letterSpacing: '0.22em', textTransform: 'uppercase',
-                }}>Your ticket · Ed 24</div>
+                }}>Your ticket · Th 24</div>
                 <span style={{
                   padding: '3px 7px', background: HOF.amber, color: HOF.bg,
                   fontFamily: 'Inter', fontSize: 9, fontWeight: 700,

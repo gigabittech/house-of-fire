@@ -3,6 +3,7 @@
 import { colors } from '@hof/design-tokens';
 import type { ReactNode } from 'react';
 import { HofBottomNav, type NavId } from './HofBottomNav';
+import { HofLogoMark } from './HofLogoMark';
 import { Icon, type IconName } from './Icon';
 import { useResponsive } from './useBreakpoint';
 
@@ -43,8 +44,8 @@ function HofSidebar({
         borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
-        padding: compact ? '20px 0' : '24px 16px',
-        gap: 4,
+        padding: compact ? '2px 0' : '2px 12px',
+        gap: 0,
       }}
     >
       {/* Brand */}
@@ -52,38 +53,18 @@ function HofSidebar({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
           justifyContent: compact ? 'center' : 'flex-start',
-          padding: compact ? '0 0 20px' : '0 8px 24px',
+          width: '100%',
+          padding: 0,
+          marginBottom: 4,
+          lineHeight: 0,
+          boxSizing: 'border-box',
         }}
       >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            background: colors.amber,
-            borderRadius: 7,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="flame" size={16} color={colors.bg} />
-        </div>
-        {!compact && (
-          <span
-            style={{
-              fontFamily: 'Clash Display, sans-serif',
-              fontWeight: 600,
-              fontSize: 14,
-              letterSpacing: '0.16em',
-              color: colors.text,
-              textTransform: 'uppercase',
-            }}
-          >
-            House of Fire
-          </span>
+        {compact ? (
+          <HofLogoMark size={24} />
+        ) : (
+          <HofLogoMark fit="wordmark" width={140} />
         )}
       </div>
 
