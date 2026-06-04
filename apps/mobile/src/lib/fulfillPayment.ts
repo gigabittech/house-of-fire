@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import type { Database } from './database.types';
 import { validateTierCapacityForFulfillment } from './checkoutValidation';
+import { fetchDiscountCodeById, validateDiscountCodeForCheckout } from './promoCodes';
 import { buildTicketQRData } from './qr';
 import { createServiceRoleClient } from './supabase.server';
 
@@ -112,6 +113,22 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
   const discount = parseInt(discountCents ?? '0', 10);
   const totalCents = pi.amount;
 
+  const metaCodeId = pi.metadata['codeId']?.trim() || null;
+  let discountCodeId: string | null = null;
+  if (metaCodeId && discount > 0) {
+    const promo = await validateDiscountCodeForCheckout(supabase, {
+      tierId,
+      subtotalCents: amountCents,
+      codeId: metaCodeId,
+    });
+    if (promo.ok) {
+      discountCodeId = promo.code.id;
+    } else {
+      const dc = await fetchDiscountCodeById(supabase, metaCodeId);
+      if (dc) discountCodeId = dc.id;
+    }
+  }
+
   const orderInsert: OrderInsert = {
     user_id: userId,
     event_id: eventId,
@@ -123,6 +140,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     total_cents: totalCents,
     stripe_payment_intent_id: pi.id,
     status: 'completed',
+    discount_code_id: discountCodeId,
   };
 
   const { data: order, error: orderError } = await supabase
@@ -194,14 +212,6 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     console.error('Failed to create tickets:', ticketError);
     await supabase.from('orders').delete().eq('id', order.id);
     return { ok: false, error: 'DB insert failed', status: 500 };
-  }
-
-  const codeId = pi.metadata['codeId'];
-  if (codeId) {
-    await supabase.rpc('increment_code_uses', { code_id: codeId }).then(
-      () => {},
-      () => {},
-    );
   }
 
   const referralCode = pi.metadata['referralCode'];

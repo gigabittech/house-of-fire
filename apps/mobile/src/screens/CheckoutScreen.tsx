@@ -813,6 +813,7 @@ function PromoCodeSection({
   setPromoResult,
   promoLoading,
   onApply,
+  onClear,
 }: {
   promoCode: string;
   setPromoCode: (v: string) => void;
@@ -820,6 +821,7 @@ function PromoCodeSection({
   setPromoResult: (r: PromoResult | null) => void;
   promoLoading: boolean;
   onApply: () => void;
+  onClear: () => void;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -908,6 +910,7 @@ function PromoCodeSection({
             onClick={() => {
               setPromoResult(null);
               setPromoCode('');
+              onClear();
             }}
             style={{
               fontFamily: 'Inter',
@@ -957,6 +960,7 @@ function StepPaymentInner({
   setPromoCode,
   promoLoading,
   onApplyPromo,
+  onClearPromo,
   onSuccess,
 }: {
   paymentIntentId: string;
@@ -971,6 +975,7 @@ function StepPaymentInner({
   setPromoCode: (v: string) => void;
   promoLoading: boolean;
   onApplyPromo: () => void;
+  onClearPromo: () => void;
   onSuccess: () => void;
 }) {
   const stripe = useStripe();
@@ -1031,6 +1036,7 @@ function StepPaymentInner({
         setPromoResult={setPromoResult}
         promoLoading={promoLoading}
         onApply={onApplyPromo}
+        onClear={onClearPromo}
       />
 
       {/* Price breakdown */}
@@ -1193,6 +1199,7 @@ function StepPayment({
   setPromoCode,
   promoLoading,
   onApplyPromo,
+  onClearPromo,
   onSuccess,
 }: {
   paymentIntentId: string;
@@ -1207,6 +1214,7 @@ function StepPayment({
   setPromoCode: (v: string) => void;
   promoLoading: boolean;
   onApplyPromo: () => void;
+  onClearPromo: () => void;
   onSuccess: () => void;
 }) {
   if (!clientSecret) {
@@ -1226,6 +1234,7 @@ function StepPayment({
   }
   return (
     <Elements
+      key={clientSecret}
       stripe={stripePromise}
       options={{
         clientSecret,
@@ -1253,6 +1262,7 @@ function StepPayment({
         setPromoCode={setPromoCode}
         promoLoading={promoLoading}
         onApplyPromo={onApplyPromo}
+        onClearPromo={onClearPromo}
         onSuccess={onSuccess}
       />
     </Elements>
@@ -1449,11 +1459,49 @@ export default function CheckoutScreen() {
       ? emailOk && details.password.length >= 1
       : nameOk && emailOk && phoneOk && (isLoggedIn || passwordOk);
 
+  async function syncPaymentIntent(opts?: { codeId?: string; promoCode?: string }) {
+    setPayLoading(true);
+    setPayError('');
+    try {
+      const r = await fetch('/api/checkout/intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tierId: tier,
+          quantity: qty,
+          codeId: opts?.codeId,
+          promoCode: opts?.promoCode,
+          paymentIntentId: paymentIntentId || undefined,
+        }),
+      });
+      const d = (await r.json()) as {
+        clientSecret?: string;
+        paymentIntentId?: string;
+        amount?: number;
+        error?: string;
+      };
+      if (!r.ok || !d.clientSecret || !d.paymentIntentId) {
+        setPayError(d.error ?? 'Could not update payment amount');
+        return false;
+      }
+      setClientSecret(d.clientSecret);
+      setPaymentIntentId(d.paymentIntentId);
+      setIntentAmount(d.amount ?? 0);
+      return true;
+    } catch {
+      setPayError('Network error updating payment');
+      return false;
+    } finally {
+      setPayLoading(false);
+    }
+  }
+
   async function applyPromoCode() {
     const code = promoCode.trim().toUpperCase();
     if (!code) return;
     setPromoLoading(true);
     setPromoResult(null);
+    setPayError('');
     try {
       const r = await fetch('/api/checkout/validate-code', {
         method: 'POST',
@@ -1465,12 +1513,37 @@ export default function CheckoutScreen() {
         }),
       });
       const d = (await r.json()) as PromoResult;
+      if (!d.valid) {
+        setPromoResult(d);
+        return;
+      }
       setPromoResult(d);
-      if (d.valid) setPromoCode(d.code ?? code);
+      setPromoCode(d.code ?? code);
+      if (step === 3) {
+        const synced = await syncPaymentIntent({
+          codeId: d.codeId,
+          promoCode: d.code ?? code,
+        });
+        if (!synced) {
+          setPromoResult({
+            valid: false,
+            error: 'Code is valid but payment could not be updated. Try again.',
+          });
+        }
+      }
     } catch {
       setPromoResult({ valid: false, error: 'Could not validate code' });
     } finally {
       setPromoLoading(false);
+    }
+  }
+
+  async function clearPromoCode() {
+    setPromoResult(null);
+    setPromoCode('');
+    setPayError('');
+    if (step === 3 && paymentIntentId) {
+      await syncPaymentIntent();
     }
   }
 
@@ -1832,6 +1905,9 @@ export default function CheckoutScreen() {
             promoLoading={promoLoading}
             onApplyPromo={() => {
               void applyPromoCode();
+            }}
+            onClearPromo={() => {
+              void clearPromoCode();
             }}
             onSuccess={() => router.push('/ticket?purchased=1')}
           />

@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react';
 import { PaneHeader } from '@/components/PaneHeader';
 import { Pill } from '@/components/Pill';
 
+type CodeAnalytics = {
+  totalUses: number;
+  remainingUses: number | null;
+  totalDiscountCents: number;
+  revenueCents: number;
+  lastUsedAt: string | null;
+};
+
 type CodeRow = {
   id: string;
   code: string;
@@ -15,6 +23,7 @@ type CodeRow = {
   note: string | null;
   expires_at: string | null;
   created_at: string;
+  analytics?: CodeAnalytics;
 };
 
 const POOL_LABELS: Record<string, [string, string]> = {
@@ -39,6 +48,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function CodesPage() {
   const [codes, setCodes] = useState<CodeRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [compPools, setCompPools] = useState<Array<[string, string, string]>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,8 +135,26 @@ export default function CodesPage() {
   }
 
   function formatUses(c: CodeRow): string {
-    return `${c.uses}${c.max_uses !== null ? ' / ' + c.max_uses : ' / ∞'}`;
+    const total = c.analytics?.totalUses ?? c.uses;
+    return `${total}${c.max_uses !== null ? ' / ' + c.max_uses : ' / ∞'}`;
   }
+
+  function formatMoney(cents: number): string {
+    return `$${(cents / 100).toFixed(2)}`;
+  }
+
+  function formatLastUsed(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
+  const selected = codes.find((c) => c.id === selectedId) ?? null;
 
   return (
     <>
@@ -422,7 +450,7 @@ export default function CodesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
+              gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr 1.6fr 100px',
               padding: '12px 18px',
               borderBottom: '1px solid var(--hof-border)',
               fontFamily: 'Inter, system-ui',
@@ -436,6 +464,7 @@ export default function CodesPage() {
             <div>Kind</div>
             <div>Value</div>
             <div>Uses</div>
+            <div>Revenue</div>
             <div>Notes</div>
             <div />
           </div>
@@ -471,9 +500,18 @@ export default function CodesPage() {
           {codes.map((c, i) => (
             <div
               key={c.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedId(c.id === selectedId ? null : c.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedId(c.id === selectedId ? null : c.id);
+                }
+              }}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1.4fr 1fr 1fr 1fr 2fr 100px',
+                gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr 1.6fr 100px',
                 padding: '14px 18px',
                 alignItems: 'center',
                 borderBottom: i < codes.length - 1 ? '1px solid var(--hof-border)' : 'none',
@@ -481,6 +519,8 @@ export default function CodesPage() {
                 fontSize: 13,
                 color: 'var(--hof-text)',
                 opacity: c.active ? 1 : 0.5,
+                cursor: 'pointer',
+                background: selectedId === c.id ? 'rgba(232,101,26,0.06)' : 'transparent',
               }}
             >
               <div
@@ -517,12 +557,22 @@ export default function CodesPage() {
               >
                 {formatUses(c)}
               </div>
+              <div
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 12,
+                  color: 'var(--hof-text-sec)',
+                }}
+              >
+                {formatMoney(c.analytics?.revenueCents ?? 0)}
+              </div>
               <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{c.note ?? '—'}</div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 {c.active && (
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       void deactivateCode(c.id);
                     }}
                     style={{
@@ -556,6 +606,76 @@ export default function CodesPage() {
             </div>
           ))}
         </div>
+
+        {selected && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: '18px 20px',
+              background: 'var(--hof-surface)',
+              border: '1px solid var(--hof-border)',
+              borderRadius: 12,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 10,
+                color: 'var(--hof-amber)',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                marginBottom: 14,
+              }}
+            >
+              {selected.code} — usage & revenue
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+              {(
+                [
+                  ['Total uses', String(selected.analytics?.totalUses ?? selected.uses)],
+                  [
+                    'Remaining',
+                    selected.analytics?.remainingUses !== null &&
+                    selected.analytics?.remainingUses !== undefined
+                      ? String(selected.analytics.remainingUses)
+                      : '∞',
+                  ],
+                  [
+                    'Discount given',
+                    formatMoney(selected.analytics?.totalDiscountCents ?? 0),
+                  ],
+                  ['Revenue', formatMoney(selected.analytics?.revenueCents ?? 0)],
+                  ['Last used', formatLastUsed(selected.analytics?.lastUsedAt)],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label}>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 10,
+                      color: 'var(--hof-text-sec)',
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Clash Display, system-ui',
+                      fontWeight: 600,
+                      fontSize: 20,
+                      color: 'var(--hof-text)',
+                      marginTop: 4,
+                    }}
+                  >
+                    {value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Comp-ticket pool */}
         <div
