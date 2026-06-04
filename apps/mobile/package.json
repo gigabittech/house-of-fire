@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "rm -f tsconfig.tsbuildinfo && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {

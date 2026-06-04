@@ -15,6 +15,10 @@ export function formatGross(cents: number): string {
   return `$${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
+export function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export function formatDoorsTime(raw: string | null | undefined): string {
   if (!raw) return '—';
   const t = raw.trim();

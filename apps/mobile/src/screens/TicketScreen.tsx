@@ -119,10 +119,11 @@ async function qrDataUrlForTicket(t: TicketData): Promise<string> {
 }
 
 function orderReceiptTotals(tickets: TicketData[], orderId: string | null | undefined) {
+  const first = tickets[0];
   const group = orderId
     ? tickets.filter((t) => t.order_id === orderId)
-    : tickets.length > 0
-      ? [tickets[0]]
+    : first
+      ? [first]
       : [];
   const subtotal = group.reduce((s, t) => s + t.amount_cents, 0);
   const fees = group.reduce((s, t) => s + t.fee_cents, 0);

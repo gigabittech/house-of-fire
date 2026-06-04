@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getStripe } from '@/lib/stripe';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
 export async function GET() {
@@ -24,8 +24,7 @@ export async function GET() {
     return NextResponse.json({ methods: [] });
   }
 
-  const stripe = new Stripe(secret, { apiVersion: '2026-05-27.dahlia' });
-  const methods = await stripe.paymentMethods.list({
+  const methods = await getStripe().paymentMethods.list({
     customer: customerId,
     type: 'card',
   });

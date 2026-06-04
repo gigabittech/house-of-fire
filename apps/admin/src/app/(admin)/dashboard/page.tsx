@@ -515,6 +515,7 @@ export default function DashboardPage() {
   const [salesData, setSalesData] = useState<number[]>([]);
   const [tierBars, setTierBars] = useState<Array<{ label: string; sold: number; cap: number }>>([]);
   const [openRequests, setOpenRequests] = useState(0);
+  const [doorSalesCount, setDoorSalesCount] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -565,10 +566,12 @@ export default function DashboardPage() {
           salesData: number[];
           tierBars: Array<{ label: string; sold: number; cap: number }>;
           openRequests?: number;
+          salesByChannel?: { online: number; door: number };
         };
         setSalesData(data.salesData ?? []);
         setTierBars(data.tierBars ?? []);
         setOpenRequests(data.openRequests ?? 0);
+        setDoorSalesCount(data.salesByChannel?.door ?? 0);
       } catch {
         /* keep prior */
       }
@@ -724,7 +727,7 @@ export default function DashboardPage() {
         style={{
           padding: '20px 28px 0',
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: 12,
         }}
       >
@@ -739,6 +742,12 @@ export default function DashboardPage() {
           value={loading ? '…' : `${ticketCount}`}
           delta="Confirmed guests"
           tone="neutral"
+        />
+        <Kpi
+          label="Door sales"
+          value={loading ? '…' : String(doorSalesCount)}
+          delta="Walk-up at the door"
+          tone="amber"
         />
         <Kpi
           label="Checked in"

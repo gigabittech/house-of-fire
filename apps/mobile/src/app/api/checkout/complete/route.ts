@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment';
-import { stripe } from '../../../../lib/stripe';
+import { getStripe } from '../../../../lib/stripe';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 /**
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   let pi: Stripe.PaymentIntent;
   try {
-    pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    pi = await getStripe().paymentIntents.retrieve(paymentIntentId);
   } catch {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }
