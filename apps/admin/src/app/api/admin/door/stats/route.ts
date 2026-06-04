@@ -1,30 +1,45 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getActiveEvent, NO_EVENTS_MESSAGE } from '@/lib/liveEvent.server';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
   const eventId = request.nextUrl.searchParams.get('eventId');
   const supabase = createAdminSupabaseClient();
 
-  let eventQuery = supabase
-    .from('events')
-    .select('id, edition_number, name, venue_name, doors_open, capacity, status')
-    .order('edition_number', { ascending: false });
+  let event: {
+    id: string;
+    edition_number: number;
+    name: string;
+    venue_name: string;
+    doors_open: string;
+    capacity: number;
+    status: string;
+  } | null = null;
 
   if (eventId) {
-    eventQuery = eventQuery.eq('id', eventId);
+    const { data, error: eventError } = await supabase
+      .from('events')
+      .select('id, edition_number, name, venue_name, doors_open, capacity, status')
+      .eq('id', eventId)
+      .maybeSingle();
+    if (eventError) {
+      return NextResponse.json({ error: eventError.message }, { status: 500 });
+    }
+    event = data;
   } else {
-    eventQuery = eventQuery.in('status', ['live', 'upcoming']).limit(1);
+    const { data, error: eventError } = await getActiveEvent(
+      supabase,
+      'id, edition_number, name, venue_name, doors_open, capacity, status',
+    );
+    if (eventError) {
+      return NextResponse.json({ error: eventError.message }, { status: 500 });
+    }
+    event = data;
   }
 
-  const { data: events, error: eventError } = await eventQuery;
-  if (eventError) {
-    return NextResponse.json({ error: eventError.message }, { status: 500 });
-  }
-
-  const event = events?.[0];
   if (!event) {
-    return NextResponse.json({ error: 'No active event' }, { status: 404 });
+    return NextResponse.json({ error: NO_EVENTS_MESSAGE }, { status: 404 });
   }
 
   const { data: tickets, error: ticketsError } = await supabase

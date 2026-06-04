@@ -19,6 +19,7 @@ import {
   eventDoorsTimestamp,
   formatEventDate,
   formatVenueLine,
+  NO_EVENTS_MESSAGE,
   remainingTickets,
   resolveEventHeroImage,
   type UpcomingEvent,
@@ -180,6 +181,7 @@ export default function HomeScreen() {
   const [calOpen, setCalOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [upcomingEvent, setUpcomingEvent] = useState<UpcomingEvent | null>(null);
+  const [eventLoaded, setEventLoaded] = useState(false);
   const [newsEmail, setNewsEmail] = useState('');
   const [newsSent, setNewsSent] = useState(false);
   const [topPosts, setTopPosts] = useState<UiPost[]>([]);
@@ -196,7 +198,8 @@ export default function HomeScreen() {
       .then((d) => {
         if (d.event) setUpcomingEvent(d.event);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -447,7 +450,7 @@ export default function HomeScreen() {
                   textTransform: 'uppercase',
                 }}
               >
-                {upcomingEvent?.name ?? 'Next edition'}
+                {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next edition')}
                 {upcomingEvent?.tagline ? (
                   <span
                     style={{
@@ -472,7 +475,9 @@ export default function HomeScreen() {
               >
                 {upcomingEvent
                   ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
-                  : 'Loading next edition…'}
+                  : eventLoaded
+                    ? ''
+                    : 'Loading next edition…'}
               </div>
               </div>
             </div>

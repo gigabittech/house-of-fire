@@ -64,6 +64,7 @@ create table public.events (
   venue_lat numeric default 40.0189,
   venue_lng numeric default -105.2747,
   capacity int not null default 300,
+  max_tickets_per_user int not null default 4 check (max_tickets_per_user >= 1 and max_tickets_per_user <= 20),
   status text default 'upcoming' not null check (status in ('upcoming', 'live', 'past', 'cancelled')),
   hero_image_url text,
   created_at timestamptz default now() not null
@@ -82,6 +83,7 @@ create table public.ticket_tiers (
   display_name text not null,
   description text,
   price_cents int not null,
+  fee_cents int not null default 0 check (fee_cents >= 0),
   capacity int not null,
   doors_start timestamptz,
   doors_end timestamptz,
@@ -105,6 +107,37 @@ returns int language sql stable as $$
   group by t.capacity;
 $$;
 
+create or replace function public.user_event_ticket_count(p_user_id uuid, p_event_id uuid)
+returns int language sql stable as $$
+  select count(*)::int
+  from public.tickets
+  where holder_id = p_user_id
+    and event_id = p_event_id
+    and status not in ('transferred', 'refunded', 'cancelled');
+$$;
+
+-- ─── Orders (one per checkout / PaymentIntent) ───────────────────────────────
+create table public.orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles not null,
+  event_id uuid references public.events not null,
+  tier_id uuid references public.ticket_tiers not null,
+  quantity int not null check (quantity >= 1 and quantity <= 4),
+  subtotal_cents int not null,
+  discount_cents int not null default 0,
+  fee_cents int not null default 0,
+  total_cents int not null,
+  stripe_payment_intent_id text unique not null,
+  status text default 'completed' not null check (status in ('pending', 'completed', 'refunded', 'cancelled')),
+  created_at timestamptz default now() not null
+);
+alter table public.orders enable row level security;
+create policy "Users can read own orders" on public.orders for select using (user_id = auth.uid());
+create policy "Crew can read all orders" on public.orders for select using (
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('crew', 'admin'))
+);
+create policy "Service role can manage orders" on public.orders for all using (true) with check (true);
+
 -- ─── Tickets ─────────────────────────────────────────────────────────────────
 create table public.tickets (
   id uuid primary key default gen_random_uuid(),
@@ -112,7 +145,8 @@ create table public.tickets (
   event_id uuid references public.events not null,
   tier_id uuid references public.ticket_tiers not null,
   holder_id uuid references public.profiles,           -- nullable for door/guest sales
-  stripe_payment_intent_id text unique,
+  order_id uuid references public.orders,
+  stripe_payment_intent_id text,
   stripe_charge_id text,
   amount_cents int not null,
   fee_cents int not null default 0,

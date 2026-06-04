@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 export async function POST(request: NextRequest) {
@@ -21,17 +22,10 @@ export async function POST(request: NextRequest) {
   const safeQty = Math.min(Math.max(1, Math.floor(qty)), 4);
   const supabase = await createServerSupabaseClient();
 
-  // Get the upcoming event
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, edition_number')
-    .eq('status', 'upcoming')
-    .order('edition_number', { ascending: false })
-    .limit(1)
-    .single();
+  const { data: event } = await getActiveEvent(supabase, 'id, edition_number');
 
   if (!event) {
-    return NextResponse.json({ error: 'No upcoming event' }, { status: 404 });
+    return NextResponse.json({ error: NO_EVENTS_MESSAGE }, { status: 404 });
   }
 
   // Get the tier — match by name (case-insensitive)

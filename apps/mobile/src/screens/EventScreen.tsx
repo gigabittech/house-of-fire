@@ -2,13 +2,14 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import type { NavId, Post as UiPost } from '@hof/ui';
-import { ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import {
   formatCapacityMeta,
   formatDoorsRange,
   formatEventDateLong,
+  NO_EVENTS_MESSAGE,
   parseEventFaqs,
   resolveEventHeroImage,
   totalTicketsSold,
@@ -363,6 +364,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlDone, setWlDone] = useState<{ position: number } | null>(null);
   const [eventData, setEventData] = useState<UpcomingEvent | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -370,7 +372,8 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .then((d) => {
         if (d.event) setEventData(d.event);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoading(false));
   }, []);
 
   useEffect(() => {
@@ -407,49 +410,30 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       return rem <= 0;
     });
 
-  const tiers: Tier[] =
-    rawTiers.length > 0
-      ? rawTiers.map((t) => ({
-          id: t.id,
-          name: t.display_name ?? t.name,
-          price: t.price_cents / 100,
-          sub: (t as { description?: string | null }).description ?? '',
-          remaining:
-            t.status === 'sold_out'
-              ? 0
-              : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0))),
-          tone: (t.status === 'sold_out'
-            ? 'soldout'
-            : t.name === 'vip'
-              ? 'gold'
-              : 'normal') as Tier['tone'],
-        }))
-      : [
-          {
-            id: 'early',
-            name: 'Early Bird',
-            price: 20,
-            sub: 'Doors 8 — 10 PM',
-            remaining: 0,
-            tone: 'soldout' as const,
-          },
-          {
-            id: 'ga',
-            name: 'General',
-            price: 28,
-            sub: 'Doors all night',
-            remaining: 47,
-            tone: 'normal' as const,
-          },
-          {
-            id: 'vip',
-            name: 'VIP',
-            price: 55,
-            sub: 'Private room · 1 drink',
-            remaining: 12,
-            tone: 'gold' as const,
-          },
-        ];
+  const tiers: Tier[] = rawTiers
+    .filter((t) => t.status !== 'hidden')
+    .map((t) => {
+      const effective =
+        (t as { effective_status?: string }).effective_status ?? t.status;
+      const remaining =
+        effective === 'sold_out'
+          ? 0
+          : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
+      const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
+      const allInCents = t.price_cents + feeCents;
+      return {
+        id: t.id,
+        name: t.display_name ?? t.name,
+        price: allInCents / 100,
+        sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
+        remaining,
+        tone: (effective === 'sold_out' || remaining <= 0
+          ? 'soldout'
+          : t.name === 'vip'
+            ? 'gold'
+            : 'normal') as Tier['tone'],
+      };
+    });
 
   useEffect(() => {
     if (tiers.length > 0 && selectedTier === '') {
@@ -512,6 +496,47 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       boxSizing: 'border-box',
     };
   }, [isWide, isDesktop]);
+
+  if (!eventLoading && !eventData) {
+    return (
+      <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            background: colors.bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <EmptyState
+            icon="calendar"
+            title={NO_EVENTS_MESSAGE}
+            action={
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: `1px solid ${colors.amber}`,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: colors.bg,
+                }}
+              >
+                Back to home
+              </button>
+            }
+          />
+        </div>
+      </HofAppShell>
+    );
+  }
 
   return (
     <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>

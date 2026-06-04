@@ -1,12 +1,17 @@
+export const NO_EVENTS_MESSAGE = 'There are currently no events available.';
+
 export interface UpcomingTier {
   id: string;
   name: string;
   display_name?: string | null;
+  description?: string | null;
   price_cents: number;
+  fee_cents?: number;
   capacity: number;
   sold?: number;
   remaining?: number;
   status?: 'available' | 'sold_out' | 'hidden';
+  effective_status?: 'available' | 'sold_out' | 'hidden';
 }
 
 export interface UpcomingEvent {
@@ -20,6 +25,9 @@ export interface UpcomingEvent {
   venue_address?: string;
   tagline?: string | null;
   capacity?: number;
+  max_tickets_per_user?: number;
+  user_ticket_count?: number;
+  user_tickets_remaining?: number;
   hero_image_url?: string | null;
   faqs?: Array<{ q: string; a: string }>;
   ticket_tiers?: UpcomingTier[];
@@ -105,7 +113,12 @@ export function formatEventDateShort(dateStr: string): string {
   });
 }
 
-export function formatVenueLine(event: Pick<UpcomingEvent, 'venue_name' | 'doors_open'>): string {
+export function formatVenueLine(
+  event: Pick<UpcomingEvent, 'venue_name' | 'doors_open' | 'doors_close'>,
+): string {
+  if (event.doors_open && event.doors_close) {
+    return `${event.venue_name} · Doors ${formatDoorsRange(event.doors_open, event.doors_close)}`;
+  }
   if (event.doors_open) {
     return `${event.venue_name} · Doors ${formatDoorsTime(event.doors_open)}`;
   }

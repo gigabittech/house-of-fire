@@ -1,10 +1,12 @@
 import type Stripe from 'stripe';
 import type { Database } from './database.types';
+import { validateTierCapacityForFulfillment } from './checkoutValidation';
 import { buildTicketQRData } from './qr';
 import { createServiceRoleClient } from './supabase.server';
 
 type TicketInsert = Database['public']['Tables']['tickets']['Insert'];
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
+type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 type EventRow = Database['public']['Tables']['events']['Row'];
 
 function generateTicketCode(edition: number, n: number): string {
@@ -13,15 +15,25 @@ function generateTicketCode(edition: number, n: number): string {
 }
 
 export type FulfillResult =
-  | { ok: true; tickets: TicketRow[]; alreadyFulfilled: boolean }
+  | { ok: true; tickets: TicketRow[]; orderId: string; alreadyFulfilled: boolean }
   | { ok: false; error: string; status: number };
 
 /**
- * Create ticket rows for a succeeded PaymentIntent. Idempotent: if tickets
- * already exist for this PI, returns them without inserting again.
+ * Create order + ticket rows for a succeeded PaymentIntent.
+ * Idempotent: keyed on orders.stripe_payment_intent_id.
  */
 export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<FulfillResult> {
-  const { userId, tierId, eventId, quantity, subtotal, fee, holderName, holderEmail } = pi.metadata;
+  const {
+    userId,
+    tierId,
+    eventId,
+    quantity,
+    subtotal,
+    fee,
+    discountCents,
+    holderName,
+    holderEmail,
+  } = pi.metadata;
 
   if (!userId || !tierId || !eventId) {
     return { ok: false, error: 'Missing payment metadata', status: 400 };
@@ -33,13 +45,50 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
 
   const supabase = await createServiceRoleClient();
 
-  const { data: existing } = await supabase
+  const { data: legacyTickets } = await supabase
     .from('tickets')
     .select('*')
     .eq('stripe_payment_intent_id', pi.id);
 
-  if (existing && existing.length > 0) {
-    return { ok: true, tickets: existing as TicketRow[], alreadyFulfilled: true };
+  if (legacyTickets && legacyTickets.length > 0) {
+    const orderId = legacyTickets[0]?.order_id ?? pi.id;
+    return {
+      ok: true,
+      tickets: legacyTickets as TicketRow[],
+      orderId,
+      alreadyFulfilled: true,
+    };
+  }
+
+  const { data: existingOrder } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('stripe_payment_intent_id', pi.id)
+    .maybeSingle();
+
+  if (existingOrder) {
+    const { data: existingTickets } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('order_id', existingOrder.id)
+      .order('code', { ascending: true });
+
+    return {
+      ok: true,
+      tickets: (existingTickets ?? []) as TicketRow[],
+      orderId: existingOrder.id,
+      alreadyFulfilled: true,
+    };
+  }
+
+  const qty = parseInt(quantity ?? '1', 10);
+  if (!Number.isFinite(qty) || qty < 1 || qty > 4) {
+    return { ok: false, error: 'Invalid quantity in payment metadata', status: 400 };
+  }
+
+  const capacityCheck = await validateTierCapacityForFulfillment(supabase, tierId, qty);
+  if (!capacityCheck.ok) {
+    return { ok: false, error: capacityCheck.error, status: capacityCheck.status };
   }
 
   const { data: evData } = await supabase
@@ -58,9 +107,57 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     .select('*', { count: 'exact', head: true })
     .eq('event_id', eventId);
 
-  const qty = parseInt(quantity ?? '1', 10);
   const amountCents = parseInt(subtotal ?? '0', 10);
   const feeCents = parseInt(fee ?? '0', 10);
+  const discount = parseInt(discountCents ?? '0', 10);
+  const totalCents = pi.amount;
+
+  const orderInsert: OrderInsert = {
+    user_id: userId,
+    event_id: eventId,
+    tier_id: tierId,
+    quantity: qty,
+    subtotal_cents: amountCents,
+    discount_cents: discount,
+    fee_cents: feeCents,
+    total_cents: totalCents,
+    stripe_payment_intent_id: pi.id,
+    status: 'completed',
+  };
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert(orderInsert)
+    .select('id')
+    .single();
+
+  if (orderError) {
+    if (orderError.code === '23505') {
+      const { data: racedOrder } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('stripe_payment_intent_id', pi.id)
+        .single();
+
+      if (racedOrder) {
+        const { data: racedTickets } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('order_id', racedOrder.id)
+          .order('code', { ascending: true });
+
+        return {
+          ok: true,
+          tickets: (racedTickets ?? []) as TicketRow[],
+          orderId: racedOrder.id,
+          alreadyFulfilled: true,
+        };
+      }
+    }
+    console.error('Failed to create order:', orderError);
+    return { ok: false, error: 'Order insert failed', status: 500 };
+  }
+
   const tickets: TicketInsert[] = [];
 
   for (let i = 0; i < qty; i++) {
@@ -73,19 +170,29 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
       event_id: eventId,
       tier_id: tierId,
       holder_id: userId,
-      stripe_payment_intent_id: i === 0 ? pi.id : null,
+      order_id: order.id,
+      stripe_payment_intent_id: null,
       stripe_charge_id: null,
       amount_cents: Math.round(amountCents / qty),
       fee_cents: Math.round(feeCents / qty),
       qr_data: qrData,
       status: 'valid',
       used_at: null,
+      metadata: {
+        holder_name: holderName?.trim() || null,
+        holder_email: holderEmail?.trim() || null,
+      },
     });
   }
 
-  const { data: inserted, error } = await supabase.from('tickets').insert(tickets).select();
-  if (error) {
-    console.error('Failed to create tickets:', error);
+  const { data: inserted, error: ticketError } = await supabase
+    .from('tickets')
+    .insert(tickets)
+    .select();
+
+  if (ticketError) {
+    console.error('Failed to create tickets:', ticketError);
+    await supabase.from('orders').delete().eq('id', order.id);
     return { ok: false, error: 'DB insert failed', status: 500 };
   }
 
@@ -129,6 +236,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
   return {
     ok: true,
     tickets: (inserted ?? []) as TicketRow[],
+    orderId: order.id,
     alreadyFulfilled: false,
   };
 }
