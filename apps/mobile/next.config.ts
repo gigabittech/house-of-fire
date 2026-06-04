@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
   // Workspace packages ship built ESM; transpile them through Next for safety.
   transpilePackages: ['@hof/ui', '@hof/design-tokens'],
 
+  // @react-pdf/renderer must run on the server without webpack bundling issues.
+  serverExternalPackages: ['@react-pdf/renderer'],
+
+  // Receipt PDF reads logo from disk — copy into serverless bundles (monorepo-aware).
+  outputFileTracingIncludes: {
+    '/api/**/*': [
+      './public/assets/hof-logo-black.png',
+      './apps/mobile/public/assets/hof-logo-black.png',
+    ],
+  },
+
   // next/image: Supabase storage.
   images: {
     remotePatterns: [

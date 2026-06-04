@@ -80,7 +80,7 @@ function TransferSheet({ open, onClose }) {
   return (
     <_SheetShell open={open} onClose={onClose}
                  title="Transfer your ticket"
-                 sub="Fireversary · Edition 24 · GA · $28">
+                 sub="Fireversary · Theme 24 · GA · $28">
       {stage === 'form' && <>
         <PlatformLabel>Who's it going to?</PlatformLabel>
         <PlatformInput value={name} onChange={e => setName(e.target.value)}
@@ -131,7 +131,7 @@ function TransferSheet({ open, onClose }) {
           <div style={{ fontFamily: 'Inter', fontSize: 11, color: HOF.amber,
                         letterSpacing: '0.18em', textTransform: 'uppercase' }}>You're transferring</div>
           <div style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 18,
-                        color: HOF.text, marginTop: 6 }}>Fireversary · GA · Ed 24</div>
+                        color: HOF.text, marginTop: 6 }}>Fireversary · GA · Th 24</div>
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${HOF.border}` }}>
             <div style={{ fontFamily: 'Inter', fontSize: 11, color: HOF.amber,
                           letterSpacing: '0.18em', textTransform: 'uppercase' }}>To</div>
@@ -267,7 +267,7 @@ function RefundSheet({ open, onClose }) {
           </div>
           <div style={{ fontFamily: 'Inter', fontSize: 13, color: HOF.textSec, marginTop: 8, lineHeight: 1.5,
                         maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
-            Jordan reviews refund requests personally. You'll hear back within 2 business days, usually same day during edition weeks.
+            Jordan reviews refund requests personally. You'll hear back within 2 business days, usually same day during theme weeks.
           </div>
         </div>
         <div style={{ marginTop: 20 }}>
@@ -291,7 +291,7 @@ function PhotoSubmitSheet({ open, onClose, edition = 23 }) {
 
   return (
     <_SheetShell open={open} onClose={onClose}
-                 title={`Submit photos · Edition ${edition}`}
+                 title={`Submit photos · Theme ${edition}`}
                  sub="Crew reviews and posts the best to the recap.">
       {stage === 'form' && <>
         <PlatformLabel>Your photos ({photos.length})</PlatformLabel>

@@ -213,11 +213,11 @@ function NotificationsScreen({ open, onClose, onOpenPost }) {
     { kind: 'react',  read: false, initials: 'JG', name: 'Jordan',
       action: 'reacted 🔥 to your post', target: 'how strict is no-phones-on-the-floor?', time: '24m', postId: 'p6' },
     { kind: 'crew',   read: false, initials: 'JG', name: 'Jordan',
-      action: 'posted in #general', target: 'Edition 24 lineup is final', time: '2h', postId: 'p1', highlight: true },
+      action: 'posted in #general', target: 'Theme 24 lineup is final', time: '2h', postId: 'p1', highlight: true },
     { kind: 'mention',read: true,  initials: 'IW', name: 'iris.w',
       action: 'mentioned you', target: '@nightowl will you be there Friday?', time: '1d' },
     { kind: 'photo',  read: true,  initials: 'CR', name: 'Crew',
-      action: 'approved your photo for the recap', target: 'Edition 23 · Photo #082', time: '3d' },
+      action: 'approved your photo for the recap', target: 'Theme 23 · Photo #082', time: '3d' },
     { kind: 'react',  read: true,  initials: 'TR', name: 'Tara',
       action: 'and 11 others reacted to your reply', target: 'Photo #047 has me crying.', time: '4d' },
   ];

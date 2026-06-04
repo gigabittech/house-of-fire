@@ -202,7 +202,7 @@ export default function MembersPage() {
             <div>Member</div>
             <div>Email</div>
             <div>Tier</div>
-            <div>Editions</div>
+            <div>Themes</div>
             <div>Last seen</div>
             <div>Posts</div>
             <div />

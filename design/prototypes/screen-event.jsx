@@ -68,7 +68,7 @@ function ScreenEvent({ nav, onBack, onOpenCheckout, onOpenPost, startCalOpen = f
           <div style={{
             position: 'absolute', left: 16, right: 16, bottom: 18,
           }}>
-            <HofPill tone="amber">Upcoming · Edition № 24</HofPill>
+            <HofPill tone="amber">Upcoming · Theme № 24</HofPill>
             <div style={{
               fontFamily: 'Clash Display', fontWeight: 700, fontSize: 38,
               lineHeight: 1, color: HOF.text, marginTop: 10, letterSpacing: '-0.02em',
@@ -247,7 +247,7 @@ function ScreenEvent({ nav, onBack, onOpenCheckout, onOpenPost, startCalOpen = f
                   }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Icon name="chat" size={16} color={HOF.amber}/>
-              Open the Edition 24 thread
+              Open the Theme 24 thread
             </span>
             <Icon name="chev" size={14} color={HOF.textSec}/>
           </button>
@@ -286,7 +286,7 @@ function ScreenEvent({ nav, onBack, onOpenCheckout, onOpenPost, startCalOpen = f
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20, color: HOF.text,
             letterSpacing: '-0.01em',
-          }}>23 sold-out editions. Browse the archive →</div>
+          }}>23 sold-out themes. Browse the archive →</div>
         </div>
 
         <HofHomeSpacer/>

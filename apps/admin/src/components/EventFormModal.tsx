@@ -211,7 +211,7 @@ export function EventFormModal({
 
   async function remove() {
     if (!eventId || sold > 0) return;
-    if (!window.confirm('Delete this edition permanently? This cannot be undone.')) return;
+    if (!window.confirm('Delete this theme permanently? This cannot be undone.')) return;
 
     setDeleting(true);
     setError(null);
@@ -280,7 +280,7 @@ export function EventFormModal({
                 textTransform: 'uppercase',
               }}
             >
-              {mode === 'create' ? 'New edition' : 'Edit edition'}
+              {mode === 'create' ? 'New theme' : 'Edit theme'}
             </div>
             <div
               style={{
@@ -324,7 +324,7 @@ export function EventFormModal({
         <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Edition #</label>
+              <label style={labelStyle}>Theme #</label>
               <input
                 type="number"
                 min={1}
@@ -627,7 +627,7 @@ export function EventFormModal({
               }}
             >
               {sold} ticket(s) sold — delete is disabled. Set status to Cancelled to retire this
-              edition.
+              theme.
             </div>
           )}
 
@@ -676,7 +676,7 @@ export function EventFormModal({
                   opacity: deleting || saving ? 0.6 : 1,
                 }}
               >
-                {deleting ? 'Deleting…' : 'Delete edition'}
+                {deleting ? 'Deleting…' : 'Delete theme'}
               </button>
             )}
           </div>
@@ -716,7 +716,7 @@ export function EventFormModal({
                 opacity: saving || !form.name.trim() ? 0.6 : 1,
               }}
             >
-              {saving ? 'Saving…' : mode === 'create' ? 'Create edition' : 'Save changes'}
+              {saving ? 'Saving…' : mode === 'create' ? 'Create theme' : 'Save changes'}
             </button>
           </div>
         </div>

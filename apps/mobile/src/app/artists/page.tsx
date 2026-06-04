@@ -124,7 +124,7 @@ export default function ArtistsPage() {
             maxWidth: 300,
           }}
         >
-          Check back after the next edition — full bios, mixes, and set times drop here each month.
+          Check back after the next theme — full bios, mixes, and set times drop here each month.
         </div>
 
         <div
@@ -146,12 +146,12 @@ export default function ArtistsPage() {
           <span>
             {event ? (
               <>
-                <span style={{ color: colors.amber }}>Edition {event.edition_number}</span>
+                <span style={{ color: colors.amber }}>Theme {event.edition_number}</span>
                 {' · '}
                 {formatEventDate(event.date)} · {event.venue_name}
               </>
             ) : (
-              <span>Loading next edition…</span>
+              <span>Loading next theme…</span>
             )}
           </span>
         </div>

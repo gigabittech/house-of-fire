@@ -100,7 +100,7 @@ export default function PhotoSubmitSheet({
     <SheetShell
       open={open}
       onClose={onClose}
-      title={`Submit photos · Edition ${edition}`}
+      title={`Submit photos · Theme ${edition}`}
       sub="Crew reviews and posts the best to the recap."
     >
       {stage === 'form' && (

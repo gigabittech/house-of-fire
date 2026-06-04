@@ -112,7 +112,7 @@ export function FeedPost({
             {showChannel && post.edition && (
               <>
                 <span style={{ color: colors.textDis }}>·</span>
-                <span>Ed {post.edition}</span>
+                <span>Th {post.edition}</span>
               </>
             )}
           </div>
