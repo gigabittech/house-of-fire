@@ -986,9 +986,14 @@ function StepPaymentInner({
     if (!stripe || !elements) return;
     setConfirming(true);
     setErr('');
+    const returnUrl = new URL('/ticket', window.location.origin);
+    returnUrl.searchParams.set('purchased', '1');
+    if (paymentIntentId) {
+      returnUrl.searchParams.set('payment_intent', paymentIntentId);
+    }
     const { error } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: `${window.location.origin}/ticket?purchased=1` },
+      confirmParams: { return_url: returnUrl.toString() },
       redirect: 'if_required',
     });
     if (error) {
@@ -1488,6 +1493,10 @@ export default function CheckoutScreen() {
               quantity: qty,
               codeId: promoResult?.valid ? promoResult.codeId : undefined,
               discountCents: promoResult?.valid ? promoResult.discountCents : 0,
+              buyerEmail: details.email.trim(),
+              buyerFirstName: details.firstName.trim(),
+              buyerLastName: details.lastName.trim(),
+              buyerPhone: details.phone.trim(),
             }),
           });
           const d = (await r.json()) as {

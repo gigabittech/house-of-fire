@@ -257,7 +257,7 @@ export default function LandingScreen() {
           >
             {(
               [
-                ['24', 'editions'],
+                ['24', 'themes'],
                 ['7,200+', 'attended'],
                 ['62%', 'return rate'],
               ] as [string, string][]
@@ -320,7 +320,7 @@ export default function LandingScreen() {
             {(
               [
                 ['01', 'Become a member', 'Free. 30 seconds. Email + phone.'],
-                ['02', 'Buy a ticket', 'Edition by edition. They go fast.'],
+                ['02', 'Buy a ticket', 'Theme by theme. They go fast.'],
                 ['03', 'Show your QR at the door', "Don't lose it. Don't share it."],
                 ['04', 'Find your people', 'Channels, recaps, photos, the whole house.'],
               ] as [string, string, string][]
@@ -368,7 +368,7 @@ export default function LandingScreen() {
         </LandingSection>
 
         <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
-          <div style={{ ...sectionLabel, marginBottom: 12 }}>From the last 3 editions</div>
+          <div style={{ ...sectionLabel, marginBottom: 12 }}>From the last 3 themes</div>
           <div
             className="hof-scroll"
             style={{
@@ -413,7 +413,7 @@ export default function LandingScreen() {
             }}
           >
             <div style={{ ...sectionLabel, marginBottom: 6 }}>
-              {upcoming ? 'Next edition' : 'House of Fire'}
+              {upcoming ? 'Next theme' : 'House of Fire'}
             </div>
             <div
               style={{
@@ -425,10 +425,10 @@ export default function LandingScreen() {
               }}
             >
               {upcoming
-                ? `${upcoming.name} — Edition ${upcoming.edition_number}`
+                ? `${upcoming.name} — Theme ${upcoming.edition_number}`
                 : eventLoaded
                   ? NO_EVENTS_MESSAGE
-                  : 'Next edition'}
+                  : 'Next theme'}
             </div>
             <div
               style={{

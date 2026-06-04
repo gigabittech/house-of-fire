@@ -829,7 +829,7 @@ export default function DoorPage() {
         tiers: DoorTierOption[];
       };
       setTiers(data.tiers ?? []);
-      setHeaderEdition(`${data.event.name} · Edition ${data.event.edition_number}`);
+      setHeaderEdition(`${data.event.name} · Theme ${data.event.edition_number}`);
       setHeaderSub(`Doors open ${formatDoorsTime(data.event.doors_open)} · ${data.event.venue_name}`);
       const pct =
         data.stats.sold > 0 ? Math.round((data.stats.scanned / data.stats.sold) * 100) : 0;

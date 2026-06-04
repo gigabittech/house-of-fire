@@ -624,11 +624,11 @@ export default function DashboardPage() {
   const checkedIn = guests.filter((g) => g.status === 'used').length;
 
   const eventTitle = event
-    ? `${event.name} · Edition ${event.edition_number}`
+    ? `${event.name} · Theme ${event.edition_number}`
     : 'There are currently no events available.';
   const eventSub = event
     ? `${new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · ${event.venue_name}`
-    : 'Mark an edition as Upcoming or Live in Events to see dashboard metrics';
+    : 'Mark a theme as Upcoming or Live in Events to see dashboard metrics';
 
   return (
     <>

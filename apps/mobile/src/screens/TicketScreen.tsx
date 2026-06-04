@@ -118,28 +118,12 @@ async function qrDataUrlForTicket(t: TicketData): Promise<string> {
   });
 }
 
-function orderReceiptTotals(tickets: TicketData[], orderId: string | null | undefined) {
-  const group = orderId
-    ? tickets.filter((t) => t.order_id === orderId)
-    : tickets.length > 0
-      ? [tickets[0]]
-      : [];
-  const subtotal = group.reduce((s, t) => s + t.amount_cents, 0);
-  const fees = group.reduce((s, t) => s + t.fee_cents, 0);
-  return { subtotal, fees, total: subtotal + fees, count: group.length };
-}
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatPurchasedAt(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
 export default function TicketScreen() {
@@ -170,7 +154,6 @@ export default function TicketScreen() {
   const holderLabel = ticketHolderName(ticket, holderFallback);
   const doorsLabel = ticketDoorsLabel(ticket);
   const qrDataUrl = ticket ? (qrByTicketId[ticket.id] ?? '') : '';
-  const receipt = orderReceiptTotals(tickets, ticket?.order_id);
 
   const reloadTickets = useCallback(async () => {
     const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
@@ -383,7 +366,7 @@ export default function TicketScreen() {
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <EmptyState
               title="No ticket"
-              body="Get your ticket to Edition X."
+              body="Get your ticket to Theme X."
               action={
                 <button
                   className="hof-btn hof-press"
@@ -528,7 +511,7 @@ export default function TicketScreen() {
                           opacity: 0.5,
                         }}
                       >
-                        Edition {ticket?.events?.edition_number ?? '—'} · Admit one
+                        Theme {ticket?.events?.edition_number ?? '—'} · Admit one
                         {tickets.length > 1
                           ? ` · ${activeIndex + 1} of ${tickets.length}`
                           : ''}
@@ -556,7 +539,7 @@ export default function TicketScreen() {
                           textTransform: 'uppercase',
                         }}
                       >
-                        {ticket?.events?.name ?? 'Edition 24 — Fireversary'}
+                        {ticket?.events?.name ?? 'Theme 24 — Fireversary'}
                       </div>
                     </div>
                     <div
@@ -947,75 +930,6 @@ export default function TicketScreen() {
               </button>
             </div>
 
-            {/* Receipt */}
-            <div className="hof-no-print" style={{ padding: '24px 16px 0' }}>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  color: colors.textSec,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  marginBottom: 10,
-                }}
-              >
-                Receipt
-              </div>
-              <div
-                style={{
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 12,
-                  padding: 14,
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {(
-                  [
-                    [
-                      'Order',
-                      receipt.count > 1
-                        ? `${receipt.count} tickets`
-                        : (ticket?.code ?? '—'),
-                    ],
-                    ['Date', ticket ? formatPurchasedAt(ticket.purchased_at) : '—'],
-                    ['Payment', 'Paid via Stripe'],
-                    ['Subtotal', formatCents(receipt.subtotal)],
-                    ['Fees', formatCents(receipt.fees)],
-                  ] as [string, string][]
-                ).map(([k, v]) => (
-                  <div
-                    key={k}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '6px 0',
-                      color: colors.textSec,
-                    }}
-                  >
-                    <span>{k}</span>
-                    <span style={{ color: colors.text }}>{v}</span>
-                  </div>
-                ))}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '10px 0 0',
-                    marginTop: 4,
-                    borderTop: `1px solid ${colors.border}`,
-                    fontWeight: 500,
-                    color: colors.text,
-                  }}
-                >
-                  <span>Total</span>
-                  <span>{formatCents(receipt.total)}</span>
-                </div>
-              </div>
-            </div>
-
             <div className="hof-no-print" style={{ height: 40 }} />
           </>
         )}
@@ -1047,7 +961,7 @@ export default function TicketScreen() {
         ticketId={ticket?.id}
         ticketSummary={
           ticket
-            ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Ed ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
+            ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Th ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
             : undefined
         }
         onTransferred={() => {

@@ -171,7 +171,7 @@ export default function ArtistPage() {
               maxWidth: 280,
             }}
           >
-            Full artist pages are launching in Phase 3. Check back after the next edition.
+            Full artist pages are launching in Phase 3. Check back after the next theme.
           </div>
         </div>
       )}

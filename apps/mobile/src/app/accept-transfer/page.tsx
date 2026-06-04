@@ -131,7 +131,7 @@ function AcceptTransferContent() {
           <p style={labelStyle}>Ticket accepted</p>
           <h1 style={headingStyle}>You&apos;re in.</h1>
           <p style={{ color: colors.textSec, fontFamily: 'Inter', fontSize: 15, marginBottom: 32 }}>
-            Your ticket for Edition {transfer?.ticket.event.edition_number} has been added to your
+            Your ticket for Theme {transfer?.ticket.event.edition_number} has been added to your
             account.
           </p>
           <a href="/ticket" style={buttonStyle}>
@@ -151,7 +151,7 @@ function AcceptTransferContent() {
       <div style={cardStyle}>
         <p style={labelStyle}>House of Fire</p>
         <h1 style={headingStyle}>
-          You&apos;ve been gifted a ticket to House of Fire Edition{' '}
+          You&apos;ve been gifted a ticket to House of Fire Theme{' '}
           {transfer.ticket.event.edition_number}
         </h1>
 
@@ -159,7 +159,7 @@ function AcceptTransferContent() {
           <div style={detailRowStyle}>
             <span style={detailLabelStyle}>Event</span>
             <span style={detailValueStyle}>
-              Edition {transfer.ticket.event.edition_number} — {transfer.ticket.event.name}
+              Theme {transfer.ticket.event.edition_number} — {transfer.ticket.event.name}
             </span>
           </div>
           <div style={detailRowStyle}>

@@ -138,7 +138,7 @@ function PrintReceipt() {
           <div style={{ fontFamily: 'Inter, Helvetica, sans-serif', fontSize: 9, color: '#666',
                         letterSpacing: '0.22em', textTransform: 'uppercase' }}>Event</div>
           <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.5, color: '#111' }}>
-            <div style={{ fontWeight: 600 }}>Fireversary · Edition 24</div>
+            <div style={{ fontWeight: 600 }}>Fireversary · Theme 24</div>
             <div>Friday, June 26, 2026 · 8:00 PM</div>
             <div>Junkyard Social Club</div>
             <div>2525 Pearl St, Boulder, CO 80302</div>
@@ -310,7 +310,7 @@ function UpgradeSheet({ open, onClose }) {
             fontFamily: 'Inter', fontSize: 13, color: HOF.bg, opacity: 0.75,
             marginTop: 10, lineHeight: 1.5, maxWidth: 300,
           }}>
-            12 of you have done this since Edition 10. They keep doing it. There's a reason.
+            12 of you have done this since Theme 10. They keep doing it. There's a reason.
           </div>
         </div>
 
@@ -377,7 +377,7 @@ function UpgradeSheet({ open, onClose }) {
               marginTop: 10, paddingTop: 10, borderTop: `1px solid ${HOF.border}`,
               fontFamily: 'Inter', fontSize: 11, color: HOF.textSec,
             }}>
-              Charges Visa ···· 4242 · 10 VIP spots left for Edition 24
+              Charges Visa ···· 4242 · 10 VIP spots left for Theme 24
             </div>
           </div>
 

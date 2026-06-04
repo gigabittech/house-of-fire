@@ -146,7 +146,7 @@ export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
               maxWidth: 300,
             }}
           >
-            12 of you have done this since Edition 10. They keep doing it. There&apos;s a reason.
+            12 of you have done this since Theme 10. They keep doing it. There&apos;s a reason.
           </div>
         </div>
 
@@ -291,7 +291,7 @@ export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
                 color: colors.textSec,
               }}
             >
-              Charges Visa ···· 4242 · 10 VIP spots left for Edition 24
+              Charges Visa ···· 4242 · 10 VIP spots left for Theme 24
             </div>
           </div>
 

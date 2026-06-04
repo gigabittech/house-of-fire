@@ -474,7 +474,7 @@ export default function LiveNightScreen() {
                         textTransform: 'uppercase',
                       }}
                     >
-                      Your ticket · Ed {eventId ? '' : '24'}
+                      Your ticket · Th {eventId ? '' : '24'}
                     </div>
                     <span
                       style={{

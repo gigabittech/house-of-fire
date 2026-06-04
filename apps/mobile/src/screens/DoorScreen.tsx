@@ -1059,13 +1059,13 @@ export default function DoorScreen() {
     null,
   );
   const { isWide } = useResponsive();
-  const [editionName, setEditionName] = useState('Tonight');
+  const [editionName, setThemeName] = useState('Tonight');
 
   useEffect(() => {
     fetch('/api/events/upcoming')
       .then((r) => r.json())
       .then((d) => {
-        if (d.event?.name) setEditionName(d.event.name);
+        if (d.event?.name) setThemeName(d.event.name);
       })
       .catch(console.error);
   }, []);
@@ -1151,7 +1151,7 @@ export default function DoorScreen() {
               textTransform: 'uppercase',
             }}
           >
-            Door · Ed. 24
+            Door · Th. 24
           </div>
           <div
             style={{

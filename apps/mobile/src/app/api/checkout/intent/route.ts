@@ -33,8 +33,21 @@ export async function POST(request: NextRequest) {
     promoCode?: string;
     codeId?: string;
     discountCents?: number;
+    buyerEmail?: string;
+    buyerFirstName?: string;
+    buyerLastName?: string;
+    buyerPhone?: string;
   };
-  const { tierId, quantity: rawQuantity = 1, codeId, discountCents = 0 } = body;
+  const {
+    tierId,
+    quantity: rawQuantity = 1,
+    codeId,
+    discountCents = 0,
+    buyerEmail,
+    buyerFirstName,
+    buyerLastName,
+    buyerPhone,
+  } = body;
 
   if (!tierId) {
     return NextResponse.json({ error: 'tierId required' }, { status: 400 });
@@ -87,6 +100,17 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
+  const trimmedBuyerEmail = buyerEmail?.trim() ?? '';
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (trimmedBuyerEmail && !emailRe.test(trimmedBuyerEmail)) {
+    return NextResponse.json({ error: 'Invalid buyer email' }, { status: 400 });
+  }
+
+  const buyerFullName = [buyerFirstName?.trim(), buyerLastName?.trim()].filter(Boolean).join(' ');
+  const holderName = buyerFullName || profile?.display_name?.trim() || '';
+  const holderEmail = trimmedBuyerEmail || user.email || '';
+  const holderPhone = buyerPhone?.trim() ?? '';
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: total,
     currency: 'usd',
@@ -100,8 +124,9 @@ export async function POST(request: NextRequest) {
       discountCents: String(discountApplied),
       fee: String(fee),
       codeId: codeId ?? '',
-      holderName: profile?.display_name ?? '',
-      holderEmail: user.email ?? '',
+      holderName,
+      holderEmail,
+      holderPhone,
     },
     description: `House of Fire — Ed ${ev?.edition_number ?? '?'} ${tierRow.display_name} × ${quantity}`,
   });

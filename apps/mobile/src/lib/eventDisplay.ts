@@ -156,7 +156,7 @@ export function parseEventFaqs(raw: unknown): Array<{ q: string; a: string }> {
 }
 
 export function editionLabel(event: Pick<UpcomingEvent, 'name' | 'edition_number'>): string {
-  return `${event.name} · Edition ${event.edition_number}`;
+  return `${event.name} · Theme ${event.edition_number}`;
 }
 
 export const DEFAULT_EVENT_HERO = '/assets/photos/p1-laser-dj.jpg';
@@ -198,7 +198,7 @@ export function buildCalendarEventData(
 
   if (!y || !mo || !d) {
     return {
-      title: `House of Fire — ${event.name} (Ed. ${event.edition_number})`,
+      title: `House of Fire — ${event.name} (Th. ${event.edition_number})`,
       starts: new Date().toISOString(),
       ends: new Date(Date.now() + 5 * 3600000).toISOString(),
       location: event.venue_name,
@@ -215,7 +215,7 @@ export function buildCalendarEventData(
     : event.venue_name;
 
   return {
-    title: `House of Fire — ${event.name} (Ed. ${event.edition_number})`,
+    title: `House of Fire — ${event.name} (Th. ${event.edition_number})`,
     starts: start.toISOString(),
     ends: end.toISOString(),
     location,

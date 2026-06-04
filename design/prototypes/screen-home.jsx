@@ -99,7 +99,7 @@ function ScreenHome({ nav, onOpenEvent, onOpenCheckout, onOpenPost }) {
                 }}/>
                 Selling Fast · 47 left
               </HofPill>
-              <HofPill tone="neutral">Edition № 24</HofPill>
+              <HofPill tone="neutral">Theme № 24</HofPill>
             </div>
             {/* Real HoF wordmark — feels like an album title */}
             <img src="assets/hof-logo-color.png" alt="House of Fire"
@@ -168,7 +168,7 @@ function ScreenHome({ nav, onOpenEvent, onOpenCheckout, onOpenPost }) {
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
         }}>
           {[
-            ['24', 'editions'],
+            ['24', 'themes'],
             ['7,200+', 'attended'],
             ['62%', 'return rate'],
           ].map(([n, l]) => (
@@ -216,7 +216,7 @@ function ScreenHome({ nav, onOpenEvent, onOpenCheckout, onOpenPost }) {
               <div style={{
                 fontFamily: 'Clash Display', fontWeight: 600, fontSize: 20,
                 color: HOF.text, marginTop: 4, letterSpacing: '-0.01em',
-              }}>Edition 23 · May 30</div>
+              }}>Theme 23 · May 30</div>
             </div>
             <span style={{
               fontFamily: 'Inter', fontSize: 13, color: HOF.amber, fontWeight: 500,
@@ -244,7 +244,7 @@ function ScreenHome({ nav, onOpenEvent, onOpenCheckout, onOpenPost }) {
           <div style={{
             fontFamily: 'Inter', fontSize: 13, color: HOF.textSec, lineHeight: 1.5,
             marginBottom: 14,
-          }}>One short message before each edition. Lineup, doors, dress code. Nothing else.</div>
+          }}>One short message before each theme. Lineup, doors, dress code. Nothing else.</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="email" placeholder="you@example.com" style={{
               flex: 1, height: 44, padding: '0 14px',

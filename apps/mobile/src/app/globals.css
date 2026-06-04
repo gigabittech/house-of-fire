@@ -126,4 +126,30 @@ a {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Receipt-only print — add class `hof-print-receipt` on <body> before print() */
+  body.hof-print-receipt #hof-ticket-print {
+    display: none !important;
+  }
+
+  body.hof-print-receipt #hof-receipt-print {
+    display: block !important;
+    width: 100% !important;
+    max-width: 612px !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.hof-print-receipt #hof-receipt-print,
+  body.hof-print-receipt #hof-receipt-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ticket Save PDF — hide receipt unless printing receipt only */
+  body:not(.hof-print-receipt) #hof-receipt-print {
+    display: none !important;
+  }
 }

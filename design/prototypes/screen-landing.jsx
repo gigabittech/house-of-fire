@@ -78,7 +78,7 @@ function ScreenLanding({ onGetStarted, onSignIn }) {
           background: HOF.surface, border: `1px solid ${HOF.border}`, borderRadius: 12,
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
         }}>
-          {[['24', 'editions'], ['7,200+', 'attended'], ['62%', 'return rate']].map(([n, l]) => (
+          {[['24', 'themes'], ['7,200+', 'attended'], ['62%', 'return rate']].map(([n, l]) => (
             <div key={l}>
               <div style={{
                 fontFamily: 'Clash Display', fontWeight: 600, fontSize: 22, color: HOF.text,
@@ -114,7 +114,7 @@ function ScreenLanding({ onGetStarted, onSignIn }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
               ['01', 'Become a member', 'Free. 30 seconds. Email + phone.'],
-              ['02', 'Buy a ticket', 'Edition by edition. They go fast.'],
+              ['02', 'Buy a ticket', 'Theme by theme. They go fast.'],
               ['03', 'Show your QR at the door', "Don't lose it. Don't share it."],
               ['04', 'Find your people', 'Channels, recaps, photos, the whole house.'],
             ].map(([n, t, s]) => (
@@ -139,7 +139,7 @@ function ScreenLanding({ onGetStarted, onSignIn }) {
             padding: '0 16px', marginBottom: 12,
             fontFamily: 'Inter', fontSize: 10, color: HOF.amber,
             letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>From the last 3 editions</div>
+          }}>From the last 3 themes</div>
           <div className="hof-scroll" style={{
             display: 'flex', gap: 6, overflowX: 'auto', padding: '0 16px',
           }}>
@@ -160,11 +160,11 @@ function ScreenLanding({ onGetStarted, onSignIn }) {
             <div style={{
               fontFamily: 'Inter', fontSize: 10, color: HOF.amber,
               letterSpacing: '0.22em', textTransform: 'uppercase',
-            }}>Next edition</div>
+            }}>Next theme</div>
             <div style={{
               fontFamily: 'Clash Display', fontWeight: 600, fontSize: 26,
               color: HOF.text, marginTop: 6, letterSpacing: '-0.01em',
-            }}>Fireversary — Edition 24</div>
+            }}>Fireversary — Theme 24</div>
             <div style={{ fontFamily: 'Inter', fontSize: 13, color: HOF.textSec, marginTop: 6 }}>
               Friday, June 26 · Junkyard · 47 GA tickets left
             </div>

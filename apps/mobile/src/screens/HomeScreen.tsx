@@ -436,7 +436,7 @@ export default function HomeScreen() {
                   />
                   Selling Fast · {left > 0 ? `${left} left` : 'Sold out'}
                 </Pill>
-                <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? '—'}</Pill>
+                <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>
               <div
                 style={{
@@ -450,7 +450,7 @@ export default function HomeScreen() {
                   textTransform: 'uppercase',
                 }}
               >
-                {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next edition')}
+                {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next theme')}
                 {upcomingEvent?.tagline ? (
                   <span
                     style={{
@@ -477,7 +477,7 @@ export default function HomeScreen() {
                   ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
                   : eventLoaded
                     ? ''
-                    : 'Loading next edition…'}
+                    : 'Loading next theme…'}
               </div>
               </div>
             </div>
@@ -584,7 +584,7 @@ export default function HomeScreen() {
           >
             {(
               [
-                ['24', 'editions'],
+                ['24', 'themes'],
                 ['7,200+', 'attended'],
                 ['62%', 'return rate'],
               ] as [string, string][]
@@ -650,7 +650,6 @@ export default function HomeScreen() {
           <div style={{ padding: '32px 0 8px' }}>
             <div
               style={{
-                padding: '0 16px',
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
@@ -698,7 +697,6 @@ export default function HomeScreen() {
 
             <div
               style={{
-                padding: '0 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,
@@ -746,7 +744,6 @@ export default function HomeScreen() {
           <div style={{ padding: '28px 0 16px' }}>
             <div
               style={{
-                padding: '0 16px',
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
@@ -775,7 +772,7 @@ export default function HomeScreen() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Edition 23 · May 30
+                  Theme 23 · May 30
                 </div>
               </div>
               <span
@@ -797,7 +794,6 @@ export default function HomeScreen() {
                 display: 'flex',
                 gap: 8,
                 overflowX: 'auto',
-                padding: '0 16px',
               }}
             >
               {[0, 1, 2, 3, 0].map((seed, idx) => (
@@ -845,7 +841,7 @@ export default function HomeScreen() {
           {/* Newsletter */}
           <div
             style={{
-              margin: '16px 16px 24px',
+              margin: '16px 0 24px',
               padding: '20px',
               background: colors.surface,
               border: `1px solid ${colors.border}`,
@@ -873,7 +869,7 @@ export default function HomeScreen() {
                 marginBottom: 14,
               }}
             >
-              One short message before each edition. Lineup, doors, dress code. Nothing else.
+              One short message before each theme. Lineup, doors, dress code. Nothing else.
             </div>
             {newsSent ? (
               <div

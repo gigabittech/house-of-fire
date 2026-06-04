@@ -22,7 +22,7 @@ function CalendarSheet({ open, onClose, event }) {
 
   // Event defaults — Fireversary
   const ev = event || {
-    title:    'House of Fire — Fireversary (Ed. 24)',
+    title:    'House of Fire — Fireversary (Th. 24)',
     starts:   '2026-06-26T20:00:00-06:00',
     ends:     '2026-06-27T01:00:00-06:00',
     location: 'Junkyard Social Club, 2525 Pearl St, Boulder, CO 80302',

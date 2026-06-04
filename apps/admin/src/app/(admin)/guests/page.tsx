@@ -115,7 +115,7 @@ export default function GuestsPage() {
               marginTop: 4,
             }}
           >
-            All editions
+            All themes
           </div>
         </div>
         <div
