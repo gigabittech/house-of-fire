@@ -1,12 +1,26 @@
 import { NextResponse } from 'next/server';
 import type { Database } from '../../../../lib/database.types';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server';
+import { getUserEventTicketCount } from '../../../../lib/ticketInventory';
+import { effectiveMaxTicketsPerUser } from '../../../../lib/ticketLimits';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../lib/supabase.server';
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 
 function normalizeDbTime(value: string): string {
   return value.length >= 5 ? value.slice(0, 5) : value;
+}
+
+function effectiveTierStatus(
+  tier: TicketTierRow,
+  remaining: number,
+): TicketTierRow['status'] {
+  if (tier.status === 'hidden') return 'hidden';
+  if (tier.status === 'sold_out' || remaining <= 0) return 'sold_out';
+  return 'available';
 }
 
 export async function GET() {
@@ -24,7 +38,8 @@ export async function GET() {
     .eq('event_id', event.id)
     .order('sort_order', { ascending: true });
 
-  const { data: tickets } = await supabase
+  const inventorySupabase = await createServiceRoleClient();
+  const { data: tickets } = await inventorySupabase
     .from('tickets')
     .select('tier_id')
     .eq('event_id', event.id)
@@ -37,14 +52,36 @@ export async function GET() {
 
   const tiersWithRemaining = (tiers ?? []).map((tier) => {
     const sold = soldByTier[tier.id] ?? 0;
+    const remaining = Math.max(0, tier.capacity - sold);
+    const feeCents = (tier as TicketTierRow & { fee_cents?: number }).fee_cents ?? 0;
     return {
       ...tier,
+      fee_cents: feeCents,
       sold,
-      remaining: Math.max(0, tier.capacity - sold),
+      remaining,
+      effective_status: effectiveTierStatus(tier, remaining),
     };
   });
 
   const faqs = (event as { faqs?: unknown }).faqs ?? [];
+  const maxTicketsPerUser = effectiveMaxTicketsPerUser(
+    (event as { max_tickets_per_user?: number }).max_tickets_per_user,
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let userTicketCount = 0;
+  let userTicketsRemaining = maxTicketsPerUser;
+
+  if (user) {
+    const userCount = await getUserEventTicketCount(inventorySupabase, user.id, event.id);
+    if (!('error' in userCount)) {
+      userTicketCount = userCount.count;
+      userTicketsRemaining = Math.max(0, maxTicketsPerUser - userTicketCount);
+    }
+  }
 
   return NextResponse.json({
     event: {
@@ -52,6 +89,9 @@ export async function GET() {
       doors_open: normalizeDbTime(event.doors_open),
       doors_close: normalizeDbTime(event.doors_close),
       faqs,
+      max_tickets_per_user: maxTicketsPerUser,
+      user_ticket_count: userTicketCount,
+      user_tickets_remaining: userTicketsRemaining,
       ticket_tiers: tiersWithRemaining as TicketTierRow[],
     },
   });

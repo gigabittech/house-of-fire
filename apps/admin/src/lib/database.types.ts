@@ -39,6 +39,7 @@ export type Database = {
           venue_lat: number | null;
           venue_lng: number | null;
           capacity: number;
+          max_tickets_per_user: number;
           status: 'upcoming' | 'live' | 'past' | 'cancelled';
           hero_image_url: string | null;
           faqs: Json;
@@ -59,6 +60,7 @@ export type Database = {
           display_name: string;
           description: string | null;
           price_cents: number;
+          fee_cents: number;
           capacity: number;
           doors_start: string | null;
           doors_end: string | null;

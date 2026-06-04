@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         venue_lat: source.venue_lat,
         venue_lng: source.venue_lng,
         capacity: body.capacity ?? source.capacity,
+        max_tickets_per_user: source.max_tickets_per_user ?? 4,
         status: 'upcoming',
         hero_image_url: source.hero_image_url,
         faqs: source.faqs ?? [],
@@ -110,6 +111,30 @@ export async function POST(request: NextRequest) {
 
     if (createErr) {
       return NextResponse.json({ error: createErr.message }, { status: 500 });
+    }
+
+    const { data: sourceTiers } = await supabase
+      .from('ticket_tiers')
+      .select('*')
+      .eq('event_id', body.duplicateFromId)
+      .order('sort_order', { ascending: true });
+
+    if (sourceTiers?.length) {
+      const tierRows = sourceTiers.map((t) => ({
+        event_id: created.id,
+        name: t.name,
+        display_name: t.display_name,
+        description: t.description,
+        price_cents: t.price_cents,
+        fee_cents: (t as { fee_cents?: number }).fee_cents ?? 0,
+        capacity: t.capacity,
+        status: t.status === 'sold_out' ? 'available' : t.status,
+        sort_order: t.sort_order,
+        doors_start: t.doors_start,
+        doors_end: t.doors_end,
+        stripe_price_id: null,
+      }));
+      await supabase.from('ticket_tiers').insert(tierRows);
     }
 
     return NextResponse.json({ event: created });

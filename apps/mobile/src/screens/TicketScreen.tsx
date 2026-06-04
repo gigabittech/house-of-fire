@@ -6,11 +6,13 @@ import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useState } from 'react';
-import { formatDoorsTime } from '@/lib/eventDisplay';
+import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
 import RefundSheet from '../sheets/RefundSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 import TransferSheet from '../sheets/TransferSheet';
 import { UpgradeSheet } from '../sheets/UpgradeSheet';
+
+type TicketHolderProfile = { display_name: string; handle?: string } | null;
 
 type TicketData = {
   id: string;
@@ -21,6 +23,7 @@ type TicketData = {
   amount_cents: number;
   fee_cents: number;
   order_id?: string | null;
+  metadata?: { holder_name?: string | null; holder_email?: string | null } | null;
   events: {
     name: string;
     date: string;
@@ -28,9 +31,57 @@ type TicketData = {
     venue_name: string;
     venue_address: string;
     doors_open?: string;
+    doors_close?: string;
   } | null;
   ticket_tiers: { display_name: string } | null;
+  profiles?: TicketHolderProfile | TicketHolderProfile[];
 };
+
+function resolveHolderProfile(
+  profiles: TicketData['profiles'],
+): TicketHolderProfile {
+  if (!profiles) return null;
+  return Array.isArray(profiles) ? (profiles[0] ?? null) : profiles;
+}
+
+function ticketEvent(ticket: TicketData | null): TicketData['events'] {
+  if (!ticket?.events) return null;
+  const e = ticket.events;
+  return Array.isArray(e) ? (e[0] ?? null) : e;
+}
+
+function parseDoorTimeFromDb(raw: string): string | null {
+  const trimmed = raw.trim();
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(trimmed);
+  if (timeMatch) return normalizeEventTime(trimmed);
+  const parsed = Date.parse(trimmed);
+  if (Number.isFinite(parsed)) {
+    const d = new Date(parsed);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function ticketHolderName(ticket: TicketData | null, fallback?: string | null): string {
+  if (!ticket) return fallback?.trim() || '—';
+  const profile = resolveHolderProfile(ticket.profiles);
+  if (profile?.display_name?.trim()) return profile.display_name.trim();
+  const meta = ticket.metadata;
+  if (meta && typeof meta.holder_name === 'string' && meta.holder_name.trim()) {
+    return meta.holder_name.trim();
+  }
+  if (fallback?.trim()) return fallback.trim();
+  return '—';
+}
+
+function ticketDoorsLabel(ticket: TicketData | null): string {
+  const ev = ticketEvent(ticket);
+  if (!ev?.doors_open) return '—';
+  const open = parseDoorTimeFromDb(ev.doors_open);
+  if (!open) return '—';
+  const close = ev.doors_close ? parseDoorTimeFromDb(ev.doors_close) : null;
+  return formatDoorsRange(open, close ?? undefined);
+}
 
 async function loadAllTickets(options: {
   paymentIntentId?: string | null;
@@ -111,9 +162,13 @@ export default function TicketScreen() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [ticketError, setTicketError] = useState(false);
+  const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const { isWide } = useResponsive();
 
   const ticket = tickets[activeIndex] ?? null;
+  const ev = ticketEvent(ticket);
+  const holderLabel = ticketHolderName(ticket, holderFallback);
+  const doorsLabel = ticketDoorsLabel(ticket);
   const qrDataUrl = ticket ? (qrByTicketId[ticket.id] ?? '') : '';
   const receipt = orderReceiptTotals(tickets, ticket?.order_id);
 
@@ -162,6 +217,20 @@ export default function TicketScreen() {
       cancelled = true;
     };
   }, [purchased, paymentIntentFromRedirect]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { profile?: { display_name?: string } } | null) => {
+        if (cancelled || !d?.profile?.display_name?.trim()) return;
+        setHolderFallback(d.profile.display_name.trim());
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const t = tickets[activeIndex];
@@ -379,7 +448,7 @@ export default function TicketScreen() {
                   }}
                 >
                   {ticket?.events?.doors_open
-                    ? `Doors open at ${formatDoorsTime(ticket.events.doors_open)}. Side entrance on 23rd.`
+                    ? `Doors ${formatDoorsRange(ticket.events.doors_open, ticket.events.doors_close)}. Side entrance on 23rd.`
                     : 'Doors open soon. Side entrance on 23rd.'}
                 </div>
               </div>
@@ -538,8 +607,8 @@ export default function TicketScreen() {
                       [
                         [
                           'Date',
-                          ticket?.events?.date
-                            ? new Date(ticket.events.date).toLocaleDateString('en-US', {
+                          ev?.date
+                            ? new Date(ev.date).toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
@@ -547,9 +616,9 @@ export default function TicketScreen() {
                               })
                             : '—',
                         ],
-                        ['Doors', '—'],
-                        ['Venue', ticket?.events?.venue_name ?? '—'],
-                        ['Holder', ticket?.code ?? '—'],
+                        ['Doors', doorsLabel],
+                        ['Venue', ev?.venue_name ?? '—'],
+                        ['Holder', holderLabel],
                       ] as [string, string][]
                     ).map(([k, v]) => (
                       <div key={k}>

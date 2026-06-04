@@ -7,9 +7,8 @@ import {
   createServerSupabaseClient,
   createServiceRoleClient,
 } from '../../../../lib/supabase.server';
+import { computeCheckoutAmounts } from '../../../../lib/ticketPricing';
 import { clampOrderQuantity } from '../../../../lib/ticketLimits';
-
-const HOF_FEE_RATE = 0.07; // 7% platform fee
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 type EventRow = Database['public']['Tables']['events']['Row'];
@@ -72,11 +71,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Tickets are not available for this event' }, { status: 400 });
   }
 
-  const subtotal = tierRow.price_cents * quantity;
-  const discountApplied = Math.min(discountCents ?? 0, subtotal);
-  const discountedSubtotal = subtotal - discountApplied;
-  const fee = Math.round(discountedSubtotal * HOF_FEE_RATE);
-  const total = discountedSubtotal + fee;
+  const tierFeeCents = (tierRow as TicketTierRow & { fee_cents?: number }).fee_cents ?? 0;
+  const amounts = computeCheckoutAmounts({
+    priceCents: tierRow.price_cents,
+    feeCents: tierFeeCents,
+    quantity,
+    discountCents: discountCents ?? 0,
+  });
+  const { subtotalCents: subtotal, discountCents: discountApplied, feeCents: fee, totalCents: total } =
+    amounts;
 
   const { data: profile } = await supabase
     .from('profiles')

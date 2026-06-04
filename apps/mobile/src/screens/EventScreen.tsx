@@ -410,49 +410,30 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       return rem <= 0;
     });
 
-  const tiers: Tier[] =
-    rawTiers.length > 0
-      ? rawTiers.map((t) => ({
-          id: t.id,
-          name: t.display_name ?? t.name,
-          price: t.price_cents / 100,
-          sub: (t as { description?: string | null }).description ?? '',
-          remaining:
-            t.status === 'sold_out'
-              ? 0
-              : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0))),
-          tone: (t.status === 'sold_out'
-            ? 'soldout'
-            : t.name === 'vip'
-              ? 'gold'
-              : 'normal') as Tier['tone'],
-        }))
-      : [
-          {
-            id: 'early',
-            name: 'Early Bird',
-            price: 20,
-            sub: 'Doors 8 — 10 PM',
-            remaining: 0,
-            tone: 'soldout' as const,
-          },
-          {
-            id: 'ga',
-            name: 'General',
-            price: 28,
-            sub: 'Doors all night',
-            remaining: 47,
-            tone: 'normal' as const,
-          },
-          {
-            id: 'vip',
-            name: 'VIP',
-            price: 55,
-            sub: 'Private room · 1 drink',
-            remaining: 12,
-            tone: 'gold' as const,
-          },
-        ];
+  const tiers: Tier[] = rawTiers
+    .filter((t) => t.status !== 'hidden')
+    .map((t) => {
+      const effective =
+        (t as { effective_status?: string }).effective_status ?? t.status;
+      const remaining =
+        effective === 'sold_out'
+          ? 0
+          : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
+      const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
+      const allInCents = t.price_cents + feeCents;
+      return {
+        id: t.id,
+        name: t.display_name ?? t.name,
+        price: allInCents / 100,
+        sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
+        remaining,
+        tone: (effective === 'sold_out' || remaining <= 0
+          ? 'soldout'
+          : t.name === 'vip'
+            ? 'gold'
+            : 'normal') as Tier['tone'],
+      };
+    });
 
   useEffect(() => {
     if (tiers.length > 0 && selectedTier === '') {

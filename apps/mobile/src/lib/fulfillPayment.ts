@@ -178,6 +178,10 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
       qr_data: qrData,
       status: 'valid',
       used_at: null,
+      metadata: {
+        holder_name: holderName?.trim() || null,
+        holder_email: holderEmail?.trim() || null,
+      },
     });
   }
 

@@ -64,6 +64,7 @@ create table public.events (
   venue_lat numeric default 40.0189,
   venue_lng numeric default -105.2747,
   capacity int not null default 300,
+  max_tickets_per_user int not null default 4 check (max_tickets_per_user >= 1 and max_tickets_per_user <= 20),
   status text default 'upcoming' not null check (status in ('upcoming', 'live', 'past', 'cancelled')),
   hero_image_url text,
   created_at timestamptz default now() not null
@@ -82,6 +83,7 @@ create table public.ticket_tiers (
   display_name text not null,
   description text,
   price_cents int not null,
+  fee_cents int not null default 0 check (fee_cents >= 0),
   capacity int not null,
   doors_start timestamptz,
   doors_end timestamptz,

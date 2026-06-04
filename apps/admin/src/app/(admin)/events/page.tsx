@@ -5,6 +5,7 @@ import { EventFormModal, parseFaqsFromJson } from '@/components/EventFormModal';
 import { PaneHeader } from '@/components/PaneHeader';
 import { Pill } from '@/components/Pill';
 import type { EventFormPayload } from '@/lib/eventPayload';
+import type { TierFormRow } from '@/lib/tierPayload';
 import { type EventRow, mapEventRow } from '@/lib/mapEventRow';
 
 type EventStatus = 'live' | 'draft' | 'past';
@@ -29,6 +30,7 @@ function eventToForm(ev: {
   venue_lat: number | null;
   venue_lng: number | null;
   capacity: number;
+  max_tickets_per_user?: number;
   status: EventFormPayload['status'];
   hero_image_url: string | null;
   faqs: unknown;
@@ -45,6 +47,7 @@ function eventToForm(ev: {
     venue_lat: ev.venue_lat,
     venue_lng: ev.venue_lng,
     capacity: ev.capacity,
+    max_tickets_per_user: ev.max_tickets_per_user ?? 4,
     status: ev.status,
     hero_image_url: ev.hero_image_url,
     faqs: parseFaqsFromJson(ev.faqs),
@@ -60,6 +63,8 @@ export default function EventsPage() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editEventId, setEditEventId] = useState<string | undefined>();
   const [formInitial, setFormInitial] = useState<Partial<EventFormPayload>>({});
+  const [initialTiers, setInitialTiers] = useState<TierFormRow[]>([]);
+  const [soldByTierId, setSoldByTierId] = useState<Record<string, number>>({});
   const [editSold, setEditSold] = useState(0);
   const [openingEdit, setOpeningEdit] = useState<string | null>(null);
 
@@ -113,18 +118,52 @@ export default function EventsPage() {
     setModalMode('create');
     setEditEventId(undefined);
     setEditSold(0);
+    setSoldByTierId({});
     setFormInitial({
       edition_number: maxEd + 1,
       name: '',
       date: nextDate.toISOString().slice(0, 10),
       venue_name: 'Junkyard Social Club',
       venue_address: 'Boulder, CO',
-      capacity: 300,
+      capacity: 0,
+      max_tickets_per_user: 4,
       status: 'upcoming',
       doors_open: '20:00',
       doors_close: '02:00',
       faqs: [],
     });
+    setInitialTiers([
+      {
+        display_name: 'Early Bird',
+        name: 'early',
+        description: 'Inclusive of fees',
+        price_cents: 2000,
+        fee_cents: 140,
+        capacity: 80,
+        status: 'available',
+        sort_order: 0,
+      },
+      {
+        display_name: 'General',
+        name: 'ga',
+        description: 'Inclusive of fees',
+        price_cents: 2800,
+        fee_cents: 196,
+        capacity: 180,
+        status: 'available',
+        sort_order: 1,
+      },
+      {
+        display_name: 'VIP',
+        name: 'vip',
+        description: 'Inclusive of fees',
+        price_cents: 5500,
+        fee_cents: 385,
+        capacity: 40,
+        status: 'available',
+        sort_order: 2,
+      },
+    ]);
     setModalOpen(true);
   }
 
@@ -136,11 +175,41 @@ export default function EventsPage() {
       const data = (await res.json()) as {
         event: Parameters<typeof eventToForm>[0];
         sold: number;
+        tiers?: Array<{
+          id: string;
+          name: string;
+          display_name: string;
+          description: string | null;
+          price_cents: number;
+          fee_cents?: number;
+          capacity: number;
+          status: TierFormRow['status'];
+          sort_order: number;
+          sold?: number;
+        }>;
       };
       setModalMode('edit');
       setEditEventId(id);
       setEditSold(data.sold ?? 0);
       setFormInitial(eventToForm(data.event));
+      const soldMap: Record<string, number> = {};
+      setInitialTiers(
+        (data.tiers ?? []).map((t) => {
+          if (t.sold) soldMap[t.id] = t.sold;
+          return {
+            id: t.id,
+            name: t.name,
+            display_name: t.display_name,
+            description: t.description,
+            price_cents: t.price_cents,
+            fee_cents: t.fee_cents ?? 0,
+            capacity: t.capacity,
+            status: t.status,
+            sort_order: t.sort_order,
+          };
+        }),
+      );
+      setSoldByTierId(soldMap);
       setModalOpen(true);
     } finally {
       setOpeningEdit(null);
@@ -389,6 +458,8 @@ export default function EventsPage() {
         mode={modalMode}
         eventId={editEventId}
         initial={formInitial}
+        initialTiers={initialTiers}
+        soldByTierId={soldByTierId}
         sold={editSold}
         onClose={() => setModalOpen(false)}
         onSaved={() => void load()}
