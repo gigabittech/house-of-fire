@@ -38,7 +38,8 @@ function buildLineItems(
   const qty = tickets.length;
   const lineSubtotalCents = tickets.reduce((sum, t) => sum + t.amount_cents, 0);
   const unitCents = qty > 0 ? Math.round(lineSubtotalCents / qty) : 0;
-  const holder = holderFromTicket(tickets[0], holderName);
+  const first = tickets[0];
+  const holder = first ? holderFromTicket(first, holderName) : holderName;
   const ticketIds = tickets.map((t) => formatReceiptCode(t.code));
 
   items.push({
@@ -135,11 +136,13 @@ export async function loadReceiptData(
   const event = ev as EventRow;
   const tierRow = tier as TierRow;
   const ticketRows = tickets as TicketRow[];
+  const primaryTicket = ticketRows[0];
+  if (!primaryTicket) return null;
 
   const piMeta = paymentIntent?.metadata ?? {};
   const buyerName =
     (typeof piMeta.holderName === 'string' && piMeta.holderName.trim()) ||
-    holderFromTicket(ticketRows[0], 'Guest');
+    holderFromTicket(primaryTicket, 'Guest');
 
   let buyerEmail =
     (typeof piMeta.holderEmail === 'string' && piMeta.holderEmail.trim()) || '';
@@ -167,9 +170,9 @@ export async function loadReceiptData(
 
   const buyerPhone =
     (typeof piMeta.holderPhone === 'string' && piMeta.holderPhone.trim()) ||
-    ((ticketRows[0].metadata as TicketMeta)?.holder_phone?.trim() ?? '');
+    ((primaryTicket.metadata as TicketMeta)?.holder_phone?.trim() ?? '');
 
-  const primaryCode = ticketRows[0].code;
+  const primaryCode = primaryTicket.code;
   const paymentLine = await buildPaymentLine(orderRow, paymentIntent);
 
   return {

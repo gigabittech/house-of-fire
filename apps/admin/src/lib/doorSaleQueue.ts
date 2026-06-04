@@ -9,6 +9,8 @@ export type QueuedDoorSale = {
   phone: string;
   qty: number;
   pay_method: 'cash' | 'card' | 'tap';
+  promo_code?: string;
+  code_id?: string;
   queued_at: string;
 };
 
@@ -79,6 +81,8 @@ export async function postDoorSale(
         phone: payload.phone,
         qty: payload.qty,
         pay_method: payload.pay_method,
+        promo_code: payload.promo_code,
+        code_id: payload.code_id,
       }),
     });
 

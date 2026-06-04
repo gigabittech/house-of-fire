@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { Database } from '../../../../../lib/database.types';
+import { maybeReleasePromoForOrder } from '../../../../../lib/promoCodes';
 import { getStripe } from '../../../../../lib/stripe';
-import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../../lib/supabase.server';
 
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
 
@@ -71,6 +75,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (ticket.order_id) {
+    const service = await createServiceRoleClient();
+    await maybeReleasePromoForOrder(service, ticket.order_id);
+  }
 
   console.log(`[refund] ticket=${id} stripe_refund=${stripeRefundId ?? 'manual'} user=${user.id}`);
   return NextResponse.json({ request: refundRequest }, { status: 201 });

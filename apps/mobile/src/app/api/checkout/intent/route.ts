@@ -7,6 +7,7 @@ import {
   createServerSupabaseClient,
   createServiceRoleClient,
 } from '../../../../lib/supabase.server';
+import { validateDiscountCodeForCheckout } from '../../../../lib/promoCodes';
 import { computeCheckoutAmounts } from '../../../../lib/ticketPricing';
 import { clampOrderQuantity } from '../../../../lib/ticketLimits';
 
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     promoCode?: string;
     codeId?: string;
     discountCents?: number;
+    paymentIntentId?: string;
     buyerEmail?: string;
     buyerFirstName?: string;
     buyerLastName?: string;
@@ -42,7 +44,9 @@ export async function POST(request: NextRequest) {
     tierId,
     quantity: rawQuantity = 1,
     codeId,
+    promoCode,
     discountCents = 0,
+    paymentIntentId: existingPaymentIntentId,
     buyerEmail,
     buyerFirstName,
     buyerLastName,
@@ -85,14 +89,34 @@ export async function POST(request: NextRequest) {
   }
 
   const tierFeeCents = (tierRow as TicketTierRow & { fee_cents?: number }).fee_cents ?? 0;
+  const subtotalBeforeDiscount = tierRow.price_cents * quantity;
+
+  let resolvedCodeId = '';
+  let discountApplied = 0;
+
+  if (codeId || promoCode?.trim()) {
+    const promo = await validateDiscountCodeForCheckout(inventorySupabase, {
+      tierId,
+      subtotalCents: subtotalBeforeDiscount,
+      codeId: codeId ?? null,
+      rawCode: promoCode ?? null,
+    });
+    if (!promo.ok) {
+      return NextResponse.json({ error: promo.error }, { status: 400 });
+    }
+    resolvedCodeId = promo.code.id;
+    discountApplied = promo.discountCents;
+  } else if (discountCents > 0) {
+    return NextResponse.json({ error: 'Promo code required for discount' }, { status: 400 });
+  }
+
   const amounts = computeCheckoutAmounts({
     priceCents: tierRow.price_cents,
     feeCents: tierFeeCents,
     quantity,
-    discountCents: discountCents ?? 0,
+    discountCents: discountApplied,
   });
-  const { subtotalCents: subtotal, discountCents: discountApplied, feeCents: fee, totalCents: total } =
-    amounts;
+  const { subtotalCents: subtotal, feeCents: fee, totalCents: total } = amounts;
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -111,25 +135,52 @@ export async function POST(request: NextRequest) {
   const holderEmail = trimmedBuyerEmail || user.email || '';
   const holderPhone = buyerPhone?.trim() ?? '';
 
-  const paymentIntent = await getStripe().paymentIntents.create({
-    amount: total,
-    currency: 'usd',
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      userId: user.id,
-      tierId,
-      eventId: tierRow.event_id,
-      quantity: String(quantity),
-      subtotal: String(subtotal),
-      discountCents: String(discountApplied),
-      fee: String(fee),
-      codeId: codeId ?? '',
-      holderName,
-      holderEmail,
-      holderPhone,
-    },
-    description: `House of Fire — Ed ${ev?.edition_number ?? '?'} ${tierRow.display_name} × ${quantity}`,
-  });
+  const metadata = {
+    userId: user.id,
+    tierId,
+    eventId: tierRow.event_id,
+    quantity: String(quantity),
+    subtotal: String(subtotal),
+    discountCents: String(discountApplied),
+    fee: String(fee),
+    codeId: resolvedCodeId,
+    holderName,
+    holderEmail,
+    holderPhone,
+  };
+
+  const description = `House of Fire — Ed ${ev?.edition_number ?? '?'} ${tierRow.display_name} × ${quantity}`;
+
+  let paymentIntent;
+  if (existingPaymentIntentId?.trim()) {
+    const existing = await getStripe().paymentIntents.retrieve(existingPaymentIntentId.trim());
+    if (existing.metadata.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (
+      existing.status !== 'requires_payment_method' &&
+      existing.status !== 'requires_confirmation' &&
+      existing.status !== 'requires_action'
+    ) {
+      return NextResponse.json(
+        { error: 'Payment session can no longer be updated. Go back and try again.' },
+        { status: 409 },
+      );
+    }
+    paymentIntent = await getStripe().paymentIntents.update(existingPaymentIntentId.trim(), {
+      amount: total,
+      metadata,
+      description,
+    });
+  } else {
+    paymentIntent = await getStripe().paymentIntents.create({
+      amount: total,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      metadata,
+      description,
+    });
+  }
 
   return NextResponse.json({
     clientSecret: paymentIntent.client_secret,
