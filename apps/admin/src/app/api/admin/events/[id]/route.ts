@@ -26,7 +26,33 @@ export async function GET(
     .eq('event_id', id)
     .in('status', ['valid', 'used']);
 
-  return NextResponse.json({ event, sold: sold ?? 0 });
+  const { data: tiers } = await supabase
+    .from('ticket_tiers')
+    .select('*')
+    .eq('event_id', id)
+    .order('sort_order', { ascending: true });
+
+  const { data: tickets } = await supabase
+    .from('tickets')
+    .select('tier_id')
+    .eq('event_id', id)
+    .in('status', ['valid', 'used']);
+
+  const soldByTier: Record<string, number> = {};
+  for (const t of tickets ?? []) {
+    soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+  }
+
+  const tiersWithStats = (tiers ?? []).map((tier) => {
+    const tierSold = soldByTier[tier.id] ?? 0;
+    return {
+      ...tier,
+      sold: tierSold,
+      remaining: Math.max(0, tier.capacity - tierSold),
+    };
+  });
+
+  return NextResponse.json({ event, sold: sold ?? 0, tiers: tiersWithStats });
 }
 
 export async function PATCH(

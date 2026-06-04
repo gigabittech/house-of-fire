@@ -515,22 +515,23 @@ export default function DashboardPage() {
   const [salesData, setSalesData] = useState<number[]>([]);
   const [tierBars, setTierBars] = useState<Array<{ label: string; sold: number; cap: number }>>([]);
   const [openRequests, setOpenRequests] = useState(0);
+  const [doorSalesCount, setDoorSalesCount] = useState(0);
 
   useEffect(() => {
     async function load() {
       try {
-        // Fetch most recent upcoming/live event
+        // Fetch active event (live, else upcoming) for dashboard metrics
         const evRes = await fetch('/api/admin/events');
         const evData = (await evRes.json()) as { events: EventRow[] };
-        const upcomingOrLive =
-          (evData.events ?? []).find((e) => e.status === 'upcoming' || e.status === 'live') ??
-          evData.events?.[0] ??
+        const activeEvent =
+          (evData.events ?? []).find((e) => e.status === 'live') ??
+          (evData.events ?? []).find((e) => e.status === 'upcoming') ??
           null;
-        setEvent(upcomingOrLive);
+        setEvent(activeEvent);
 
         // Fetch guests for that event (if found)
-        const guestUrl = upcomingOrLive
-          ? `/api/admin/guests?eventId=${upcomingOrLive.id}`
+        const guestUrl = activeEvent
+          ? `/api/admin/guests?eventId=${activeEvent.id}`
           : '/api/admin/guests';
         const gRes = await fetch(guestUrl);
         const gData = (await gRes.json()) as { guests: GuestRow[] };
@@ -565,10 +566,12 @@ export default function DashboardPage() {
           salesData: number[];
           tierBars: Array<{ label: string; sold: number; cap: number }>;
           openRequests?: number;
+          salesByChannel?: { online: number; door: number };
         };
         setSalesData(data.salesData ?? []);
         setTierBars(data.tierBars ?? []);
         setOpenRequests(data.openRequests ?? 0);
+        setDoorSalesCount(data.salesByChannel?.door ?? 0);
       } catch {
         /* keep prior */
       }
@@ -623,10 +626,12 @@ export default function DashboardPage() {
   const ticketCount = guests.length;
   const checkedIn = guests.filter((g) => g.status === 'used').length;
 
-  const eventTitle = event ? `${event.name} · Edition ${event.edition_number}` : 'Dashboard';
+  const eventTitle = event
+    ? `${event.name} · Edition ${event.edition_number}`
+    : 'There are currently no events available.';
   const eventSub = event
     ? `${new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · ${event.venue_name}`
-    : '—';
+    : 'Mark an edition as Upcoming or Live in Events to see dashboard metrics';
 
   return (
     <>
@@ -722,7 +727,7 @@ export default function DashboardPage() {
         style={{
           padding: '20px 28px 0',
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: 12,
         }}
       >
@@ -737,6 +742,12 @@ export default function DashboardPage() {
           value={loading ? '…' : `${ticketCount}`}
           delta="Confirmed guests"
           tone="neutral"
+        />
+        <Kpi
+          label="Door sales"
+          value={loading ? '…' : String(doorSalesCount)}
+          delta="Walk-up at the door"
+          tone="amber"
         />
         <Kpi
           label="Checked in"

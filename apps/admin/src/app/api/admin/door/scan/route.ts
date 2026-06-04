@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
+import { verifyTicketQRData } from '@/lib/qr';
 
 interface ScanRequestBody {
   code: string;
@@ -35,13 +36,17 @@ export async function POST(request: NextRequest) {
   let lookupCode = rawCode;
   try {
     const parsed = JSON.parse(rawCode) as unknown;
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'code' in parsed &&
-      typeof (parsed as Record<string, unknown>)['code'] === 'string'
-    ) {
-      lookupCode = (parsed as Record<string, string>)['code'] ?? rawCode;
+    if (typeof parsed === 'object' && parsed !== null && 'code' in parsed) {
+      const codeVal = (parsed as Record<string, unknown>)['code'];
+      if (typeof codeVal === 'string') {
+        lookupCode = codeVal;
+      }
+      if (!verifyTicketQRData(rawCode)) {
+        return NextResponse.json(
+          { error: 'Invalid QR signature', outcome: 'invalid_qr' },
+          { status: 400 },
+        );
+      }
     }
   } catch {
     // Not JSON — use as-is
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ticket not found', outcome: 'not_found' }, { status: 404 });
   }
 
-  if (ticket.status === 'used') {
+  if (ticket.status === 'used' || ticket.used_at) {
     return NextResponse.json(
       {
         error: 'Ticket already used',
@@ -83,15 +88,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Mark as used
   const usedAt = new Date().toISOString();
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('tickets')
-    .update({ status: 'used', used_at: usedAt })
-    .eq('id', ticket.id);
+    .update({ status: 'used', used_at: usedAt, checked_in_at: usedAt })
+    .eq('id', ticket.id)
+    .eq('status', 'valid')
+    .is('used_at', null)
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  if (!updated) {
+    return NextResponse.json(
+      { error: 'Ticket already used', outcome: 'already_used' },
+      { status: 409 },
+    );
   }
 
   return NextResponse.json({

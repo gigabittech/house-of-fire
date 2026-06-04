@@ -18,7 +18,9 @@ export interface EventFormPayload {
   venue_address: string;
   venue_lat: number | null;
   venue_lng: number | null;
+  /** Derived from tier capacities; stored on events for reporting. */
   capacity: number;
+  max_tickets_per_user: number;
   status: EventStatus;
   hero_image_url: string | null;
   faqs: EventFaq[];
@@ -128,10 +130,20 @@ export function parseEventPayload(
 
   if (b.capacity !== undefined) {
     const n = Number(b.capacity);
-    if (!Number.isInteger(n) || n < 1) return { ok: false, error: 'Invalid capacity' };
+    if (!Number.isInteger(n) || n < 0) return { ok: false, error: 'Invalid capacity' };
     out.capacity = n;
   } else if (!partial) {
-    out.capacity = 300;
+    out.capacity = 0;
+  }
+
+  if (b.max_tickets_per_user !== undefined) {
+    const n = Number(b.max_tickets_per_user);
+    if (!Number.isInteger(n) || n < 1 || n > 20) {
+      return { ok: false, error: 'Max tickets per account must be 1–20' };
+    }
+    out.max_tickets_per_user = n;
+  } else if (!partial) {
+    out.max_tickets_per_user = 4;
   }
 
   if (b.status !== undefined) {
@@ -173,6 +185,7 @@ export function eventFormPayloadToInsert(data: EventFormPayload) {
     venue_lat: data.venue_lat,
     venue_lng: data.venue_lng,
     capacity: data.capacity,
+    max_tickets_per_user: data.max_tickets_per_user,
     status: data.status,
     hero_image_url: data.hero_image_url,
     faqs: data.faqs as unknown as Json,
@@ -190,7 +203,8 @@ export const DEFAULT_EVENT_FORM: EventFormPayload = {
   venue_address: 'Boulder, CO',
   venue_lat: null,
   venue_lng: null,
-  capacity: 300,
+  capacity: 0,
+  max_tickets_per_user: 4,
   status: 'upcoming',
   hero_image_url: null,
   faqs: [],

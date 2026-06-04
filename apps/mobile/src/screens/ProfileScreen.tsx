@@ -13,7 +13,7 @@ import {
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { formatDoorsTime } from '@/lib/eventDisplay';
+import { formatDoorsRange } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';
@@ -51,6 +51,7 @@ type ProfileTicket = {
     edition_number: number;
     venue_name: string;
     doors_open: string;
+    doors_close?: string;
   } | null;
   ticket_tiers: { display_name: string; name: string } | null;
 };
@@ -1034,7 +1035,7 @@ export default function ProfileScreen() {
                           >
                             {upcomingTicket.events.venue_name}
                             {upcomingTicket.events.doors_open
-                              ? ` · Doors ${formatDoorsTime(upcomingTicket.events.doors_open)}`
+                              ? ` · Doors ${formatDoorsRange(upcomingTicket.events.doors_open, upcomingTicket.events.doors_close)}`
                               : ''}
                           </div>
                           <div

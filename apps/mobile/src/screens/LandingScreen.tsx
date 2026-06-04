@@ -4,7 +4,7 @@ import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
-import { formatEventDate, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
+import { formatEventDate, NO_EVENTS_MESSAGE, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 
 /** Shared horizontal track — every section uses this for aligned edges. */
@@ -46,6 +46,7 @@ export default function LandingScreen() {
   const router = useRouter();
   const { isWide, isDesktop, pageColumn } = useLandingLayout();
   const [upcoming, setUpcoming] = useState<UpcomingEvent | null>(null);
+  const [eventLoaded, setEventLoaded] = useState(false);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -53,7 +54,8 @@ export default function LandingScreen() {
       .then((d) => {
         if (d.event) setUpcoming(d.event);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoaded(true));
   }, []);
 
   const onGetStarted = () => router.push('/onboarding');
@@ -424,7 +426,9 @@ export default function LandingScreen() {
               background: `linear-gradient(135deg, rgba(232,101,26,0.15) 0%, ${colors.surface} 60%)`,
             }}
           >
-            <div style={{ ...sectionLabel, marginBottom: 6 }}>Next edition</div>
+            <div style={{ ...sectionLabel, marginBottom: 6 }}>
+              {upcoming ? 'Next edition' : 'House of Fire'}
+            </div>
             <div
               style={{
                 fontFamily: 'Clash Display',
@@ -434,7 +438,11 @@ export default function LandingScreen() {
                 letterSpacing: '-0.01em',
               }}
             >
-              {upcoming ? `${upcoming.name} — Edition ${upcoming.edition_number}` : 'Next edition'}
+              {upcoming
+                ? `${upcoming.name} — Edition ${upcoming.edition_number}`
+                : eventLoaded
+                  ? NO_EVENTS_MESSAGE
+                  : 'Next edition'}
             </div>
             <div
               style={{
@@ -446,8 +454,11 @@ export default function LandingScreen() {
             >
               {upcoming
                 ? `${formatEventDate(upcoming.date)} · ${upcoming.venue_name} · ${remainingTickets(upcoming.ticket_tiers)} tickets left`
-                : 'Loading…'}
+                : eventLoaded
+                  ? ''
+                  : 'Loading…'}
             </div>
+            {upcoming ? (
             <div style={{ marginTop: 16 }}>
               <HofButton
                 variant="primary"
@@ -455,9 +466,16 @@ export default function LandingScreen() {
                 onClick={onGetStarted}
                 icon={<Icon name="ticket" size={16} color={colors.bg} />}
               >
-                Sign up &amp; get tickets
+                Sign up & get tickets
               </HofButton>
             </div>
+            ) : eventLoaded ? null : (
+            <div style={{ marginTop: 16 }}>
+              <HofButton variant="primary" full onClick={onGetStarted}>
+                Get started
+              </HofButton>
+            </div>
+            )}
           </div>
         </LandingSection>
 

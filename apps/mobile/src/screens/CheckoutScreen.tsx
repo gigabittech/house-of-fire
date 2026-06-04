@@ -1,12 +1,19 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { Icon, useResponsive } from '@hof/ui';
+import { EmptyState, Icon, useResponsive } from '@hof/ui';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { formatEventDateShort, type UpcomingEvent } from '@/lib/eventDisplay';
+import {
+  formatDoorsRange,
+  formatEventDateShort,
+  NO_EVENTS_MESSAGE,
+  type UpcomingEvent,
+} from '@/lib/eventDisplay';
+import { computeCheckoutAmounts, tierAllInCents } from '@/lib/ticketPricing';
+import { MAX_TICKETS_PER_ORDER } from '@/lib/ticketLimits';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
@@ -275,7 +282,11 @@ function SaveToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => 
 
 interface TierData {
   name: string;
-  price: number;
+  priceCents: number;
+  feeCents: number;
+  description: string | null;
+  remaining: number;
+  soldOut: boolean;
 }
 
 function StepTickets({
@@ -286,6 +297,8 @@ function StepTickets({
   tierData,
   subtotal,
   fees,
+  maxQty,
+  maxPerOrder,
 }: {
   tier: string;
   setTier: (t: string) => void;
@@ -294,6 +307,8 @@ function StepTickets({
   tierData: Record<string, TierData>;
   subtotal: number;
   fees: number;
+  maxQty: number;
+  maxPerOrder: number;
 }) {
   return (
     <div>
@@ -329,11 +344,16 @@ function StepTickets({
           gap: 10,
         }}
       >
-        {Object.entries(tierData).map(([id, t]) => (
+        {Object.entries(tierData).map(([id, t]) => {
+          const disabled = t.soldOut;
+          const allIn = tierAllInCents(t.priceCents, t.feeCents) / 100;
+          return (
           <button
             key={id}
+            type="button"
             className="hof-btn hof-press"
-            onClick={() => setTier(id)}
+            disabled={disabled}
+            onClick={() => !disabled && setTier(id)}
             style={{
               textAlign: 'left',
               padding: '14px 16px',
@@ -343,6 +363,8 @@ function StepTickets({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              opacity: disabled ? 0.45 : 1,
+              cursor: disabled ? 'not-allowed' : 'pointer',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -387,7 +409,9 @@ function StepTickets({
                     color: colors.textSec,
                   }}
                 >
-                  Inclusive of fees
+                  {disabled
+                    ? 'Sold out'
+                    : t.description?.trim() || 'Inclusive of fees'}
                 </div>
               </div>
             </div>
@@ -399,10 +423,11 @@ function StepTickets({
                 color: colors.text,
               }}
             >
-              ${t.price}
+              ${allIn.toFixed(0)}
             </div>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Quantity */}
@@ -417,7 +442,7 @@ function StepTickets({
             marginBottom: 12,
           }}
         >
-          Quantity · max 4 per order
+          Quantity · max {maxPerOrder} per order
         </div>
         <div
           style={{
@@ -470,7 +495,8 @@ function StepTickets({
             </span>
             <button
               className="hof-btn hof-press"
-              onClick={() => setQty(Math.min(4, qty + 1))}
+              onClick={() => setQty(Math.min(maxQty, qty + 1))}
+              disabled={qty >= maxQty}
               style={{
                 width: 36,
                 height: 36,
@@ -924,6 +950,7 @@ function StepPaymentInner({
   intentAmount,
   subtotalCents,
   discountCents,
+  feeCents: feeCentsProp,
   promoResult,
   setPromoResult,
   promoCode,
@@ -937,6 +964,7 @@ function StepPaymentInner({
   intentAmount: number;
   subtotalCents: number;
   discountCents: number;
+  feeCents: number;
   promoResult: PromoResult | null;
   setPromoResult: (r: PromoResult | null) => void;
   promoCode: string;
@@ -951,8 +979,8 @@ function StepPaymentInner({
   const [err, setErr] = useState('');
 
   const discountedSubtotal = subtotalCents - discountCents;
-  const feeCents = Math.round(discountedSubtotal * 0.07);
-  const displayTotal = discountedSubtotal + feeCents;
+  const feeCents = feeCentsProp;
+  const displayTotal = intentAmount;
 
   const handleConfirm = async () => {
     if (!stripe || !elements) return;
@@ -1075,7 +1103,7 @@ function StepPaymentInner({
               color: colors.textSec,
             }}
           >
-            <span>HOF fee (7%)</span>
+            <span>Service fee</span>
             <span>{formatCurrency(feeCents)}</span>
           </div>
 
@@ -1158,6 +1186,7 @@ function StepPayment({
   intentAmount,
   subtotalCents,
   discountCents,
+  feeCents,
   promoResult,
   setPromoResult,
   promoCode,
@@ -1171,6 +1200,7 @@ function StepPayment({
   intentAmount: number;
   subtotalCents: number;
   discountCents: number;
+  feeCents: number;
   promoResult: PromoResult | null;
   setPromoResult: (r: PromoResult | null) => void;
   promoCode: string;
@@ -1216,6 +1246,7 @@ function StepPayment({
         intentAmount={intentAmount}
         subtotalCents={subtotalCents}
         discountCents={discountCents}
+        feeCents={feeCents}
         promoResult={promoResult}
         setPromoResult={setPromoResult}
         promoCode={promoCode}
@@ -1266,14 +1297,13 @@ export default function CheckoutScreen() {
 
   const setField = (k: keyof Details, v: string) => setDetails((d) => ({ ...d, [k]: v }));
 
-  const [tierData, setTierData] = useState<Record<string, TierData>>({
-    ga: { name: 'General', price: 28 },
-    vip: { name: 'VIP', price: 55 },
-  });
+  const [tierData, setTierData] = useState<Record<string, TierData>>({});
   const [checkoutEvent, setCheckoutEvent] = useState<Pick<
     UpcomingEvent,
-    'name' | 'date' | 'venue_name'
+    'name' | 'date' | 'venue_name' | 'doors_open' | 'doors_close'
   > | null>(null);
+  const [maxQtyCheckout, setMaxQtyCheckout] = useState(MAX_TICKETS_PER_ORDER);
+  const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -1316,32 +1346,55 @@ export default function CheckoutScreen() {
               name: d.event.name,
               date: d.event.date,
               venue_name: d.event.venue_name,
+              doors_open: d.event.doors_open,
+              doors_close: d.event.doors_close,
             });
+            const userRemaining = d.event.user_tickets_remaining ?? MAX_TICKETS_PER_ORDER;
+            setMaxQtyCheckout(
+              Math.min(MAX_TICKETS_PER_ORDER, Math.max(1, userRemaining)),
+            );
           }
           if (!d.event?.ticket_tiers) return;
           const built: Record<string, TierData> = {};
           for (const t of d.event.ticket_tiers) {
             if (t.status === 'hidden') continue;
-            const priceNum = t.price_cents / 100;
+            const effective = t.effective_status ?? t.status;
+            const remaining = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
+            const soldOut = effective === 'sold_out' || remaining <= 0;
             const tierName = t.display_name || t.name;
-            built[t.id] = { name: tierName, price: priceNum };
-            // Key by id only — keying by slug too duplicated every tier in the
-            // render list AND set `tier` to a slug the checkout API rejects.
+            built[t.id] = {
+              name: tierName,
+              priceCents: t.price_cents,
+              feeCents: t.fee_cents ?? 0,
+              description: t.description ?? null,
+              remaining,
+              soldOut,
+            };
           }
-          if (Object.keys(built).length > 0) setTierData(built);
+          setTierData(built);
         },
       )
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoading(false));
   }, []);
 
   // Ensure selected tier is a valid API tier id (UUID), not a stale slug
   useEffect(() => {
-    const keys = Object.keys(tierData);
+    const keys = Object.keys(tierData).filter((id) => !tierData[id]?.soldOut);
     if (keys.length === 0) return;
-    if (tier && tierData[tier]) return;
-    const next = (tierParam && tierData[tierParam] ? tierParam : undefined) ?? keys[0];
+    if (tier && tierData[tier] && !tierData[tier].soldOut) return;
+    const fromParam =
+      tierParam && tierData[tierParam] && !tierData[tierParam].soldOut ? tierParam : undefined;
+    const next = fromParam ?? keys[0];
     if (next) setTier(next);
   }, [tierData, tier, tierParam]);
+
+  useEffect(() => {
+    const current = tierData[tier];
+    if (!current) return;
+    const tierCap = Math.min(maxQtyCheckout, current.remaining || maxQtyCheckout);
+    if (qty > tierCap) setQty(Math.max(1, tierCap));
+  }, [tier, tierData, maxQtyCheckout, qty]);
 
   useEffect(() => {
     if (tier) saveCheckoutDraft({ tier, qty });
@@ -1364,17 +1417,27 @@ export default function CheckoutScreen() {
     setPromoResult(null);
   }, [tier, qty]);
 
-  const currentTier = tierData[tier] ?? Object.values(tierData).find(Boolean);
-  const subtotal = (currentTier?.price ?? 0) * qty;
-  // subtotalCents for promo validation and price display
-  const subtotalCents = Math.round(subtotal * 100);
-  const discountCents = promoResult?.valid ? (promoResult.discountCents ?? 0) : 0;
-  const discountedSubtotal = subtotalCents - discountCents;
-  const feeCents = Math.round(discountedSubtotal * 0.07);
-  const displayTotalCents = discountedSubtotal + feeCents;
-  // Legacy fee/total for step 1 display (no promo on that step)
-  const fees = Math.round(subtotal * 0.07 * 100) / 100;
-  const total = subtotal + fees;
+  const currentTier = tierData[tier] ?? Object.values(tierData).find((t) => t && !t.soldOut);
+  const tierMaxQty = currentTier
+    ? Math.min(maxQtyCheckout, currentTier.remaining || maxQtyCheckout)
+    : maxQtyCheckout;
+
+  const checkoutAmounts = currentTier
+    ? computeCheckoutAmounts({
+        priceCents: currentTier.priceCents,
+        feeCents: currentTier.feeCents,
+        quantity: qty,
+        discountCents: promoResult?.valid ? (promoResult.discountCents ?? 0) : 0,
+      })
+    : null;
+
+  const subtotalCents = checkoutAmounts?.subtotalCents ?? 0;
+  const discountCents = checkoutAmounts?.discountCents ?? 0;
+  const feeCents = checkoutAmounts?.feeCents ?? 0;
+  const displayTotalCents = checkoutAmounts?.totalCents ?? 0;
+  const subtotal = subtotalCents / 100;
+  const fees = feeCents / 100;
+  const total = displayTotalCents / 100;
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim());
   const phoneDigits = details.phone.replace(/\D/g, '');
@@ -1468,6 +1531,79 @@ export default function CheckoutScreen() {
     step === 3
       ? 'calc(32px + env(safe-area-inset-bottom, 0px))'
       : 'calc(168px + env(safe-area-inset-bottom, 0px))';
+
+  if (!eventLoading && !checkoutEvent) {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          background: colors.bg,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: isWide
+              ? '12px 16px'
+              : 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
+            background: 'rgba(10,10,8,0.94)',
+            borderBottom: `1px solid ${colors.border}`,
+          }}
+        >
+          <button
+            className="hof-btn hof-press"
+            onClick={() => router.back()}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+          <span style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 16, color: colors.text }}>
+            Checkout
+          </span>
+          <div style={{ width: 38 }} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <EmptyState
+            icon="ticket"
+            title={NO_EVENTS_MESSAGE}
+            action={
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/event')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: `1px solid ${colors.amber}`,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: colors.bg,
+                }}
+              >
+                View events
+              </button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1636,6 +1772,9 @@ export default function CheckoutScreen() {
                   }}
                 >
                   {checkoutEvent?.venue_name ?? '—'}
+                  {checkoutEvent?.doors_open
+                    ? ` · Doors ${formatDoorsRange(checkoutEvent.doors_open, checkoutEvent.doors_close)}`
+                    : ''}
                 </div>
               </div>
             </div>
@@ -1661,6 +1800,8 @@ export default function CheckoutScreen() {
             tierData={tierData}
             subtotal={subtotal}
             fees={fees}
+            maxQty={tierMaxQty}
+            maxPerOrder={MAX_TICKETS_PER_ORDER}
           />
         )}
         {step === 2 && (
@@ -1683,6 +1824,7 @@ export default function CheckoutScreen() {
             intentAmount={intentAmount}
             subtotalCents={subtotalCents}
             discountCents={discountCents}
+            feeCents={feeCents}
             promoResult={promoResult}
             setPromoResult={setPromoResult}
             promoCode={promoCode}

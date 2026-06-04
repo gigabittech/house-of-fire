@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { fulfillPaymentIntent } from '../../../../lib/fulfillPayment';
-import { stripe } from '../../../../lib/stripe';
+import { getStripe } from '../../../../lib/stripe';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 /**
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   let pi: Stripe.PaymentIntent;
   try {
-    pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    pi = await getStripe().paymentIntents.retrieve(paymentIntentId);
   } catch {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }
@@ -41,8 +41,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
+  let ticketsQuery = supabase
+    .from('tickets')
+    .select(
+      '*, events(*), ticket_tiers(*), profiles!tickets_holder_id_fkey(display_name, handle)',
+    )
+    .order('code', { ascending: true });
+
+  if (result.orderId && result.orderId !== paymentIntentId) {
+    ticketsQuery = ticketsQuery.eq('order_id', result.orderId);
+  } else {
+    ticketsQuery = ticketsQuery.eq('stripe_payment_intent_id', paymentIntentId);
+  }
+
+  const { data: ticketsWithRelations } = await ticketsQuery;
+
   return NextResponse.json({
-    tickets: result.tickets,
+    tickets: ticketsWithRelations ?? result.tickets,
+    orderId: result.orderId,
     alreadyFulfilled: result.alreadyFulfilled,
   });
 }

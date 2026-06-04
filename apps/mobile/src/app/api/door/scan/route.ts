@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { Json } from '../../../../lib/database.types';
+import { checkInTicketById } from '../../../../lib/checkInTicket';
 import { verifyTicketQRData } from '../../../../lib/qr';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
@@ -59,9 +60,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
   }
 
-  if (ticket.checked_in_at) {
+  if (ticket.checked_in_at || ticket.status === 'used') {
     return NextResponse.json(
-      { error: 'Already checked in', checkedInAt: ticket.checked_in_at },
+      { error: 'Already checked in', checkedInAt: ticket.checked_in_at ?? ticket.used_at },
       { status: 409 },
     );
   }
@@ -70,24 +71,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Ticket is ${ticket.status}` }, { status: 409 });
   }
 
-  // Fetch profile and tier in parallel
+  const checkIn = await checkInTicketById(supabase, ticket.id);
+  if (!checkIn.ok) {
+    return NextResponse.json(
+      { error: checkIn.error, checkedInAt: checkIn.checkedInAt },
+      { status: checkIn.status },
+    );
+  }
+
   const [profileRes, tierRes] = await Promise.all([
     ticket.holder_id
       ? supabase.from('profiles').select('display_name, handle').eq('id', ticket.holder_id).single()
       : Promise.resolve({ data: null, error: null }),
     supabase.from('ticket_tiers').select('display_name, name').eq('id', ticket.tier_id).single(),
   ]);
-
-  // Mark as checked in
-  const now = new Date().toISOString();
-  const { error: updateError } = await supabase
-    .from('tickets')
-    .update({ checked_in_at: now, used_at: now, status: 'used' })
-    .eq('id', ticket.id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
-  }
 
   // Determine holder name: prefer profile, fall back to metadata
   const profile = profileRes.data as ProfileShape | null;
