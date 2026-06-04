@@ -6,11 +6,13 @@ import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useState } from 'react';
-import { formatDoorsTime } from '@/lib/eventDisplay';
+import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
 import RefundSheet from '../sheets/RefundSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 import TransferSheet from '../sheets/TransferSheet';
 import { UpgradeSheet } from '../sheets/UpgradeSheet';
+
+type TicketHolderProfile = { display_name: string; handle?: string } | null;
 
 type TicketData = {
   id: string;
@@ -20,6 +22,8 @@ type TicketData = {
   purchased_at: string;
   amount_cents: number;
   fee_cents: number;
+  order_id?: string | null;
+  metadata?: { holder_name?: string | null; holder_email?: string | null } | null;
   events: {
     name: string;
     date: string;
@@ -27,15 +31,103 @@ type TicketData = {
     venue_name: string;
     venue_address: string;
     doors_open?: string;
+    doors_close?: string;
   } | null;
   ticket_tiers: { display_name: string } | null;
+  profiles?: TicketHolderProfile | TicketHolderProfile[];
 };
 
-async function loadTicketFromApi(): Promise<TicketData | null> {
+function resolveHolderProfile(
+  profiles: TicketData['profiles'],
+): TicketHolderProfile {
+  if (!profiles) return null;
+  return Array.isArray(profiles) ? (profiles[0] ?? null) : profiles;
+}
+
+function ticketEvent(ticket: TicketData | null): TicketData['events'] {
+  if (!ticket?.events) return null;
+  const e = ticket.events;
+  return Array.isArray(e) ? (e[0] ?? null) : e;
+}
+
+function parseDoorTimeFromDb(raw: string): string | null {
+  const trimmed = raw.trim();
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(trimmed);
+  if (timeMatch) return normalizeEventTime(trimmed);
+  const parsed = Date.parse(trimmed);
+  if (Number.isFinite(parsed)) {
+    const d = new Date(parsed);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function ticketHolderName(ticket: TicketData | null, fallback?: string | null): string {
+  if (!ticket) return fallback?.trim() || '—';
+  const profile = resolveHolderProfile(ticket.profiles);
+  if (profile?.display_name?.trim()) return profile.display_name.trim();
+  const meta = ticket.metadata;
+  if (meta && typeof meta.holder_name === 'string' && meta.holder_name.trim()) {
+    return meta.holder_name.trim();
+  }
+  if (fallback?.trim()) return fallback.trim();
+  return '—';
+}
+
+function ticketDoorsLabel(ticket: TicketData | null): string {
+  const ev = ticketEvent(ticket);
+  if (!ev?.doors_open) return '—';
+  const open = parseDoorTimeFromDb(ev.doors_open);
+  if (!open) return '—';
+  const close = ev.doors_close ? parseDoorTimeFromDb(ev.doors_close) : null;
+  return formatDoorsRange(open, close ?? undefined);
+}
+
+async function loadAllTickets(options: {
+  paymentIntentId?: string | null;
+}): Promise<TicketData[]> {
+  if (options.paymentIntentId) {
+    try {
+      const r = await fetch('/api/checkout/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: options.paymentIntentId }),
+      });
+      if (r.ok) {
+        const d = (await r.json()) as { tickets?: TicketData[] };
+        const fulfilled = (d.tickets ?? []).filter((t) => t.status === 'valid');
+        if (fulfilled.length > 0) return fulfilled;
+      }
+    } catch {
+      /* poll mine below */
+    }
+  }
+
   const r = await fetch('/api/tickets/mine');
   if (!r.ok) throw new Error('fetch failed');
   const d = (await r.json()) as { tickets?: TicketData[] };
-  return d.tickets?.[0] ?? null;
+  return (d.tickets ?? []).filter((t) => t.status === 'valid');
+}
+
+async function qrDataUrlForTicket(t: TicketData): Promise<string> {
+  return QRCode.toDataURL(t.qr_data, {
+    errorCorrectionLevel: 'H',
+    margin: 2,
+    width: 400,
+    color: { dark: '#1a1a1a', light: '#f5f0e8' },
+  });
+}
+
+function orderReceiptTotals(tickets: TicketData[], orderId: string | null | undefined) {
+  const first = tickets[0];
+  const group = orderId
+    ? tickets.filter((t) => t.order_id === orderId)
+    : first
+      ? [first]
+      : [];
+  const subtotal = group.reduce((s, t) => s + t.amount_cents, 0);
+  const fees = group.reduce((s, t) => s + t.fee_cents, 0);
+  return { subtotal, fees, total: subtotal + fees, count: group.length };
 }
 
 function sleep(ms: number) {
@@ -65,26 +157,28 @@ export default function TicketScreen() {
     kind: 'success',
     message: '',
   });
-  const [ticket, setTicket] = useState<TicketData | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [tickets, setTickets] = useState<TicketData[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [qrByTicketId, setQrByTicketId] = useState<Record<string, string>>({});
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [ticketError, setTicketError] = useState(false);
+  const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const { isWide } = useResponsive();
 
-  const applyTicket = useCallback(async (t: TicketData) => {
-    setTicket(t);
-    try {
-      const url = await QRCode.toDataURL(t.qr_data, {
-        errorCorrectionLevel: 'H',
-        margin: 2,
-        width: 400,
-        color: { dark: '#1a1a1a', light: '#f5f0e8' },
-      });
-      setQrDataUrl(url);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+  const ticket = tickets[activeIndex] ?? null;
+  const ev = ticketEvent(ticket);
+  const holderLabel = ticketHolderName(ticket, holderFallback);
+  const doorsLabel = ticketDoorsLabel(ticket);
+  const qrDataUrl = ticket ? (qrByTicketId[ticket.id] ?? '') : '';
+  const receipt = orderReceiptTotals(tickets, ticket?.order_id);
+
+  const reloadTickets = useCallback(async () => {
+    const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
+    setTickets(list);
+    setActiveIndex((i) => Math.min(i, Math.max(0, list.length - 1)));
+    return list;
+  }, [paymentIntentFromRedirect]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,18 +187,6 @@ export default function TicketScreen() {
       setLoading(true);
       setTicketError(false);
 
-      if (paymentIntentFromRedirect) {
-        try {
-          await fetch('/api/checkout/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentIntentId: paymentIntentFromRedirect }),
-          });
-        } catch {
-          /* poll below may still find the ticket */
-        }
-      }
-
       const shouldPoll = purchased || Boolean(paymentIntentFromRedirect);
       const attempts = shouldPoll ? 5 : 1;
       const delayMs = shouldPoll ? 1000 : 0;
@@ -112,9 +194,14 @@ export default function TicketScreen() {
       try {
         for (let i = 0; i < attempts; i++) {
           if (cancelled) return;
-          const t = await loadTicketFromApi();
-          if (t) {
-            if (!cancelled) await applyTicket(t);
+          const list = await loadAllTickets({
+            paymentIntentId: paymentIntentFromRedirect,
+          });
+          if (list.length > 0) {
+            if (!cancelled) {
+              setTickets(list);
+              setActiveIndex(0);
+            }
             return;
           }
           if (i < attempts - 1) await sleep(delayMs);
@@ -130,7 +217,57 @@ export default function TicketScreen() {
     return () => {
       cancelled = true;
     };
-  }, [purchased, paymentIntentFromRedirect, applyTicket]);
+  }, [purchased, paymentIntentFromRedirect]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { profile?: { display_name?: string } } | null) => {
+        if (cancelled || !d?.profile?.display_name?.trim()) return;
+        setHolderFallback(d.profile.display_name.trim());
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const t = tickets[activeIndex];
+    if (!t || qrByTicketId[t.id]) return;
+
+    let cancelled = false;
+    void qrDataUrlForTicket(t)
+      .then((url) => {
+        if (!cancelled) {
+          setQrByTicketId((prev) => ({ ...prev, [t.id]: url }));
+        }
+      })
+      .catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tickets, activeIndex, qrByTicketId]);
+
+  function goToTicket(index: number) {
+    if (tickets.length === 0) return;
+    const next = ((index % tickets.length) + tickets.length) % tickets.length;
+    setActiveIndex(next);
+  }
+
+  function handleTouchStart(clientX: number) {
+    setTouchStartX(clientX);
+  }
+
+  function handleTouchEnd(clientX: number) {
+    if (touchStartX === null || tickets.length < 2) return;
+    const delta = clientX - touchStartX;
+    if (delta > 48) goToTicket(activeIndex - 1);
+    else if (delta < -48) goToTicket(activeIndex + 1);
+    setTouchStartX(null);
+  }
 
   function showToast(kind: ToastKind, message: string) {
     setToast({ shown: true, kind, message });
@@ -237,7 +374,7 @@ export default function TicketScreen() {
           <div style={{ padding: '0 16px' }}>
             <EmptyState title="Could not load ticket" body="Check your connection and try again." />
           </div>
-        ) : !ticket ? (
+        ) : tickets.length === 0 ? (
           <div style={{ padding: '0 16px' }}>
             <EmptyState
               title="No ticket"
@@ -264,7 +401,7 @@ export default function TicketScreen() {
           </div>
         ) : null}
 
-        {!loading && !ticketError && ticket !== null && (
+        {!loading && !ticketError && ticket !== null && tickets.length > 0 && (
           <>
             {/* Day-of contextual banner */}
             <div
@@ -312,7 +449,7 @@ export default function TicketScreen() {
                   }}
                 >
                   {ticket?.events?.doors_open
-                    ? `Doors open at ${formatDoorsTime(ticket.events.doors_open)}. Side entrance on 23rd.`
+                    ? `Doors ${formatDoorsRange(ticket.events.doors_open, ticket.events.doors_close)}. Side entrance on 23rd.`
                     : 'Doors open soon. Side entrance on 23rd.'}
                 </div>
               </div>
@@ -345,15 +482,18 @@ export default function TicketScreen() {
               </div>
             </div>
 
-            {/* Ticket card */}
+            {/* Ticket card — swipe between tickets when qty > 1 */}
             <div style={{ padding: '0 16px' }}>
               <div
+                onTouchStart={(e) => handleTouchStart(e.changedTouches[0]?.clientX ?? 0)}
+                onTouchEnd={(e) => handleTouchEnd(e.changedTouches[0]?.clientX ?? 0)}
                 style={{
                   background: colors.text,
                   borderRadius: 16,
                   overflow: 'hidden',
                   boxShadow: '0 12px 40px rgba(232,101,26,0.15), 0 0 0 1px rgba(240,237,230,0.1)',
                   position: 'relative',
+                  touchAction: 'pan-y',
                 }}
               >
                 {/* Top stub */}
@@ -382,7 +522,10 @@ export default function TicketScreen() {
                           opacity: 0.5,
                         }}
                       >
-                        Edition 24 · Admit one
+                        Edition {ticket?.events?.edition_number ?? '—'} · Admit one
+                        {tickets.length > 1
+                          ? ` · ${activeIndex + 1} of ${tickets.length}`
+                          : ''}
                       </div>
                       <img
                         src="/assets/hof-logo-black.png"
@@ -465,8 +608,8 @@ export default function TicketScreen() {
                       [
                         [
                           'Date',
-                          ticket?.events?.date
-                            ? new Date(ticket.events.date).toLocaleDateString('en-US', {
+                          ev?.date
+                            ? new Date(ev.date).toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
@@ -474,9 +617,9 @@ export default function TicketScreen() {
                               })
                             : '—',
                         ],
-                        ['Doors', '—'],
-                        ['Venue', ticket?.events?.venue_name ?? '—'],
-                        ['Holder', ticket?.code ?? '—'],
+                        ['Doors', doorsLabel],
+                        ['Venue', ev?.venue_name ?? '—'],
+                        ['Holder', holderLabel],
                       ] as [string, string][]
                     ).map(([k, v]) => (
                       <div key={k}>
@@ -588,6 +731,79 @@ export default function TicketScreen() {
                   </div>
                 </div>
               </div>
+
+              {tickets.length > 1 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 12,
+                    marginTop: 14,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="hof-btn hof-press"
+                    aria-label="Previous ticket"
+                    onClick={() => goToTicket(activeIndex - 1)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      background: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="chev" size={16} color={colors.text} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {tickets.map((t, i) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        aria-label={`Ticket ${i + 1}`}
+                        onClick={() => setActiveIndex(i)}
+                        style={{
+                          width: i === activeIndex ? 18 : 6,
+                          height: 6,
+                          borderRadius: 3,
+                          border: 'none',
+                          padding: 0,
+                          background: i === activeIndex ? colors.amber : colors.border,
+                          transition: 'width 150ms ease-out',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="hof-btn hof-press"
+                    aria-label="Next ticket"
+                    onClick={() => goToTicket(activeIndex + 1)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      background: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon
+                      name="chev"
+                      size={16}
+                      color={colors.text}
+                      style={{ transform: 'rotate(180deg)' }}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -749,11 +965,16 @@ export default function TicketScreen() {
               >
                 {(
                   [
-                    ['Order', ticket?.code ?? '—'],
+                    [
+                      'Order',
+                      receipt.count > 1
+                        ? `${receipt.count} tickets`
+                        : (ticket?.code ?? '—'),
+                    ],
                     ['Date', ticket ? formatPurchasedAt(ticket.purchased_at) : '—'],
                     ['Payment', 'Paid via Stripe'],
-                    ['Subtotal', ticket ? formatCents(ticket.amount_cents) : '—'],
-                    ['Fees', ticket ? formatCents(ticket.fee_cents) : '—'],
+                    ['Subtotal', formatCents(receipt.subtotal)],
+                    ['Fees', formatCents(receipt.fees)],
                   ] as [string, string][]
                 ).map(([k, v]) => (
                   <div
@@ -781,9 +1002,7 @@ export default function TicketScreen() {
                   }}
                 >
                   <span>Total</span>
-                  <span>
-                    {ticket ? formatCents(ticket.amount_cents + ticket.fee_cents) : '—'}
-                  </span>
+                  <span>{formatCents(receipt.total)}</span>
                 </div>
               </div>
             </div>
@@ -821,9 +1040,16 @@ export default function TicketScreen() {
             ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Ed ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
             : undefined
         }
-        onTransferred={() => showToast('success', 'Ticket transferred — they have 24h to accept.')}
+        onTransferred={() => {
+          showToast('success', 'Ticket transferred — they have 24h to accept.');
+          void reloadTickets();
+        }}
       />
-      <RefundSheet open={refundOpen} onClose={() => setRefundOpen(false)} />
+      <RefundSheet
+        open={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        ticketId={ticket?.id}
+      />
       <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>

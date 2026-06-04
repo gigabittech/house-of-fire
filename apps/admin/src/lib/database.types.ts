@@ -39,6 +39,7 @@ export type Database = {
           venue_lat: number | null;
           venue_lng: number | null;
           capacity: number;
+          max_tickets_per_user: number;
           status: 'upcoming' | 'live' | 'past' | 'cancelled';
           hero_image_url: string | null;
           faqs: Json;
@@ -51,6 +52,38 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['events']['Insert']>;
         Relationships: [];
       };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_id: string;
+          tier_id: string;
+          quantity: number;
+          subtotal_cents: number;
+          discount_cents: number;
+          fee_cents: number;
+          total_cents: number;
+          stripe_payment_intent_id: string;
+          status: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_id: string;
+          tier_id: string;
+          quantity: number;
+          subtotal_cents: number;
+          discount_cents?: number;
+          fee_cents?: number;
+          total_cents: number;
+          stripe_payment_intent_id: string;
+          status?: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['orders']['Insert']>;
+        Relationships: [];
+      };
       ticket_tiers: {
         Row: {
           id: string;
@@ -59,6 +92,7 @@ export type Database = {
           display_name: string;
           description: string | null;
           price_cents: number;
+          fee_cents: number;
           capacity: number;
           doors_start: string | null;
           doors_end: string | null;
@@ -76,7 +110,8 @@ export type Database = {
           code: string;
           event_id: string;
           tier_id: string;
-          holder_id: string;
+          holder_id: string | null;
+          order_id: string | null;
           stripe_payment_intent_id: string | null;
           stripe_charge_id: string | null;
           amount_cents: number;
@@ -84,6 +119,9 @@ export type Database = {
           status: 'valid' | 'used' | 'transferred' | 'refunded' | 'cancelled';
           purchased_at: string;
           used_at: string | null;
+          checked_in_at: string | null;
+          source: 'online' | 'door';
+          metadata: Json;
           qr_data: string;
         };
         Insert: {
@@ -91,14 +129,18 @@ export type Database = {
           code: string;
           event_id: string;
           tier_id: string;
-          holder_id: string;
+          holder_id?: string | null;
+          order_id?: string | null;
           stripe_payment_intent_id?: string | null;
           stripe_charge_id?: string | null;
           amount_cents: number;
-          fee_cents: number;
+          fee_cents?: number;
           status?: 'valid' | 'used' | 'transferred' | 'refunded' | 'cancelled';
           purchased_at?: string;
           used_at?: string | null;
+          checked_in_at?: string | null;
+          source?: 'online' | 'door';
+          metadata?: Json;
           qr_data: string;
         };
         Update: Partial<Database['public']['Tables']['tickets']['Insert']>;

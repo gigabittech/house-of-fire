@@ -3,13 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EventFaq, EventFormPayload, EventStatus } from '@/lib/eventPayload';
 import { DEFAULT_EVENT_FORM } from '@/lib/eventPayload';
+import type { TierFormRow } from '@/lib/tierPayload';
 import { uploadEventHero } from '@/lib/storageUpload';
+import { TicketTiersEditor } from '@/components/TicketTiersEditor';
 
 interface EventFormModalProps {
   open: boolean;
   mode: 'create' | 'edit';
   eventId?: string;
   initial?: Partial<EventFormPayload>;
+  initialTiers?: TierFormRow[];
+  soldByTierId?: Record<string, number>;
   sold?: number;
   onClose: () => void;
   onSaved: () => void;
@@ -41,6 +45,8 @@ export function EventFormModal({
   mode,
   eventId,
   initial,
+  initialTiers = [],
+  soldByTierId = {},
   sold = 0,
   onClose,
   onSaved,
@@ -51,6 +57,7 @@ export function EventFormModal({
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [removeHero, setRemoveHero] = useState(false);
   const heroInputRef = useRef<HTMLInputElement>(null);
+  const [tiers, setTiers] = useState<TierFormRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +72,10 @@ export function EventFormModal({
       ...DEFAULT_EVENT_FORM,
       ...initial,
       faqs: initial?.faqs ?? [],
+      max_tickets_per_user: initial?.max_tickets_per_user ?? DEFAULT_EVENT_FORM.max_tickets_per_user,
     });
-  }, [open, initial]);
+    setTiers(initialTiers.map((t) => ({ ...t })));
+  }, [open, initial, initialTiers]);
 
   useEffect(() => {
     if (!heroFile) return;
@@ -158,9 +167,37 @@ export function EventFormModal({
       }
 
       const savedId = mode === 'edit' ? eventId : data.event?.id;
-      if (savedId && heroFile) {
+      if (!savedId) {
+        setError('Event saved but id missing');
+        return;
+      }
+
+      if (heroFile) {
         const heroUrl = await uploadEventHero(savedId, heroFile);
         setForm((prev) => ({ ...prev, hero_image_url: heroUrl }));
+      }
+
+      const tierCapacity = tiers
+        .filter((t) => t.status !== 'hidden')
+        .reduce((sum, t) => sum + t.capacity, 0);
+
+      const tiersRes = await fetch(`/api/admin/events/${savedId}/tiers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiers }),
+      });
+      const tiersData = (await tiersRes.json()) as { error?: string };
+      if (!tiersRes.ok) {
+        setError(tiersData.error ?? 'Failed to save ticket tiers');
+        return;
+      }
+
+      if (tierCapacity !== form.capacity) {
+        await fetch(`/api/admin/events/${savedId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ capacity: tierCapacity }),
+        });
       }
 
       onSaved();
@@ -355,16 +392,21 @@ export function EventFormModal({
               />
             </div>
             <div>
-              <label style={labelStyle}>Capacity</label>
+              <label style={labelStyle}>Max tickets per account</label>
               <input
                 type="number"
                 min={1}
+                max={20}
                 style={inputStyle}
-                value={form.capacity}
-                onChange={(e) => setField('capacity', Number(e.target.value))}
+                value={form.max_tickets_per_user}
+                onChange={(e) =>
+                  setField('max_tickets_per_user', Number(e.target.value) || 4)
+                }
               />
             </div>
           </div>
+
+          <TicketTiersEditor tiers={tiers} onChange={setTiers} soldByTierId={soldByTierId} />
 
           <div>
             <label style={labelStyle}>Address</label>

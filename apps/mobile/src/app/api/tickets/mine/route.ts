@@ -11,7 +11,9 @@ export async function GET() {
 
   const { data: tickets, error } = await supabase
     .from('tickets')
-    .select('*, events(*), ticket_tiers(*)')
+    .select(
+      '*, events(*), ticket_tiers(*), profiles!tickets_holder_id_fkey(display_name, handle)',
+    )
     .eq('holder_id', user.id)
     .order('purchased_at', { ascending: false });
 

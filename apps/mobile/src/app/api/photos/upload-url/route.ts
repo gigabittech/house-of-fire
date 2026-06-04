@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
 import {
   createServerSupabaseClient,
   createServiceRoleClient,
@@ -11,13 +12,7 @@ async function resolveEventId(
   eventId?: string,
 ): Promise<string | null> {
   if (eventId) return eventId;
-  const { data } = await serviceClient
-    .from('events')
-    .select('id')
-    .in('status', ['upcoming', 'live'])
-    .order('date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const { data } = await getActiveEvent(serviceClient, 'id');
   return data?.id ?? null;
 }
 
@@ -41,7 +36,7 @@ export async function POST(request: NextRequest) {
   const serviceClient = await createServiceRoleClient();
   const eventId = await resolveEventId(serviceClient, rawEventId);
   if (!eventId) {
-    return NextResponse.json({ error: 'No upcoming event found for photo upload' }, { status: 400 });
+    return NextResponse.json({ error: NO_EVENTS_MESSAGE }, { status: 400 });
   }
 
   const ext = (fileName.split('.').pop() ?? 'jpg').toLowerCase();
