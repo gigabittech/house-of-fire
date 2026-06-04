@@ -28,12 +28,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const ticket = ticketData as TicketRow;
 
-  // Issue Stripe refund if we have a payment intent id
+  let paymentIntentId = ticket.stripe_payment_intent_id;
+  if (!paymentIntentId && ticket.order_id) {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('stripe_payment_intent_id')
+      .eq('id', ticket.order_id)
+      .single();
+    paymentIntentId = order?.stripe_payment_intent_id ?? null;
+  }
+
   let stripeRefundId: string | null = null;
-  if (ticket.stripe_payment_intent_id) {
+  if (paymentIntentId) {
     try {
       const refund = await stripe.refunds.create({
-        payment_intent: ticket.stripe_payment_intent_id,
+        payment_intent: paymentIntentId,
+        amount: ticket.amount_cents + ticket.fee_cents,
         reason: 'requested_by_customer',
       });
       stripeRefundId = refund.id;

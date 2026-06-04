@@ -87,7 +87,17 @@ export default function CommunityScreen() {
   const [postsError, setPostsError] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
+  const [liveEventId, setLiveEventId] = useState<string | undefined>();
   const { isWide, isDesktop } = useResponsive();
+
+  useEffect(() => {
+    fetch('/api/events/upcoming')
+      .then((r) => r.json())
+      .then((d: { event?: { id: string } }) => {
+        if (d.event?.id) setLiveEventId(d.event.id);
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     setLoadingPosts(true);
@@ -343,11 +353,12 @@ export default function CommunityScreen() {
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
           defaultChannel={activeChannel}
+          eventId={liveEventId}
           onPost={async (channel: string, title: string, body?: string, mediaUrls?: string[]) => {
             const r = await fetch('/api/posts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ channel, title, body, mediaUrls }),
+              body: JSON.stringify({ channel, title, body, mediaUrls, eventId: liveEventId }),
             });
             const d = (await r.json()) as { post?: ApiPost };
             if (d.post) {

@@ -9,7 +9,7 @@ interface TierBarProps {
 export function TierBar({ name, sold, total, color, sub }: TierBarProps) {
   const pct = (sold / total) * 100;
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div
         style={{
           display: 'flex',
@@ -39,7 +39,14 @@ export function TierBar({ name, sold, total, color, sub }: TierBarProps) {
           {sold} / {total}
         </span>
       </div>
-      <div style={{ height: 6, background: 'var(--hof-elevated)', borderRadius: 3 }}>
+      <div
+        style={{
+          height: 6,
+          width: '100%',
+          background: 'var(--hof-elevated)',
+          borderRadius: 3,
+        }}
+      >
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3 }} />
       </div>
       <div
