@@ -1,5 +1,6 @@
 'use client';
 
+import { HofLogoMark } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
@@ -44,36 +45,26 @@ export default function LoginPage() {
       <div
         style={{
           width: 400,
-          padding: 32,
+          padding: '24px 32px 28px',
           background: 'var(--hof-surface)',
           border: '1px solid var(--hof-border)',
           borderRadius: 14,
         }}
       >
-        <div style={{ marginBottom: 28, textAlign: 'center' }}>
+        <div style={{ marginBottom: 20, textAlign: 'center' }}>
           <div
             style={{
-              fontFamily: 'Clash Display, system-ui',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--hof-text)',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
+              display: 'flex',
+              justifyContent: 'center',
+              lineHeight: 0,
+              overflow: 'hidden',
+              marginTop: -10,
+              marginBottom: -6,
             }}
           >
-            House of Fire
-          </div>
-          <div
-            style={{
-              fontFamily: 'Inter, system-ui',
-              fontSize: 10,
-              color: 'var(--hof-text-sec)',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              marginTop: 4,
-            }}
-          >
-            Admin Console
+            <div style={{ transform: 'translateX(-8px)' }}>
+              <HofLogoMark fit="wordmark" width={150} src="/assets/hof-emblem.png" alt="House of Fire" />
+            </div>
           </div>
           <div
             style={{
@@ -81,7 +72,7 @@ export default function LoginPage() {
               fontWeight: 600,
               fontSize: 28,
               color: 'var(--hof-text)',
-              marginTop: 16,
+              marginTop: 8,
               letterSpacing: '-0.01em',
             }}
           >
