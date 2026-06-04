@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { validateDiscountCodeForCheckout } from './promoCodes';
 import { buildTicketQRData } from './qr';
 
 type Supabase = SupabaseClient<Database>;
@@ -18,6 +19,8 @@ export type DoorSaleInput = {
   qty: number;
   pay_method: 'cash' | 'card' | 'tap';
   client_sale_id?: string;
+  promo_code?: string | null;
+  code_id?: string | null;
 };
 
 export type DoorSaleTicket = {
@@ -288,7 +291,25 @@ export async function fulfillDoorSale(
 
   const subtotalCents = tier.price_cents * qty;
   const feeCentsTotal = (tier.fee_cents ?? 0) * qty;
-  const totalCents = subtotalCents + feeCentsTotal;
+
+  let discountCents = 0;
+  let discountCodeId: string | null = null;
+
+  if (input.code_id || input.promo_code?.trim()) {
+    const promo = await validateDiscountCodeForCheckout(supabase, {
+      tierId: tier.id,
+      subtotalCents,
+      codeId: input.code_id ?? null,
+      rawCode: input.promo_code ?? null,
+    });
+    if (!promo.ok) {
+      return { ok: false, error: promo.error, status: 400 };
+    }
+    discountCents = promo.discountCents;
+    discountCodeId = promo.code.id;
+  }
+
+  const totalCents = subtotalCents - discountCents + feeCentsTotal;
   const now = new Date().toISOString();
   const orderInsert: OrderInsert = {
     user_id: holderResult.holderId,
@@ -296,11 +317,12 @@ export async function fulfillDoorSale(
     tier_id: tier.id,
     quantity: qty,
     subtotal_cents: subtotalCents,
-    discount_cents: 0,
+    discount_cents: discountCents,
     fee_cents: feeCentsTotal,
     total_cents: totalCents,
     stripe_payment_intent_id: piId,
     status: 'completed',
+    discount_code_id: discountCodeId,
   };
 
   const { data: order, error: orderError } = await supabase
