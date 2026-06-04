@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   const { data: tickets, error: ticketsError } = await supabase
     .from('tickets')
-    .select('purchased_at, amount_cents, tier_id, ticket_tiers(display_name, name, capacity)')
+    .select('purchased_at, amount_cents, tier_id, source, stripe_charge_id, ticket_tiers(display_name, name, capacity)')
     .eq('event_id', eventId)
     .in('status', ['valid', 'used'])
     .order('purchased_at', { ascending: true });
@@ -30,10 +30,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: tiersError.message }, { status: 500 });
   }
 
+  function isDoorSale(t: { source?: string | null; stripe_charge_id?: string | null }): boolean {
+    return t.source === 'door' || (t.stripe_charge_id ?? '').startsWith('door-');
+  }
+
+  let doorCount = 0;
+  let onlineCount = 0;
+  const doorByDay = new Map<string, number>();
   const byDay = new Map<string, number>();
+
   for (const t of tickets ?? []) {
     const day = t.purchased_at.slice(0, 10);
     byDay.set(day, (byDay.get(day) ?? 0) + 1);
+    if (isDoorSale(t)) {
+      doorCount++;
+      doorByDay.set(day, (doorByDay.get(day) ?? 0) + 1);
+    } else {
+      onlineCount++;
+    }
   }
 
   const salesByDay = [...byDay.entries()]
@@ -42,6 +56,16 @@ export async function GET(request: NextRequest) {
 
   const salesData =
     salesByDay.length >= 14 ? salesByDay.slice(-14) : salesByDay.length > 0 ? salesByDay : [0];
+
+  const doorSalesByDayArr = [...doorByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, count]) => count);
+  const doorSalesByDay =
+    doorSalesByDayArr.length >= 14
+      ? doorSalesByDayArr.slice(-14)
+      : doorSalesByDayArr.length > 0
+        ? doorSalesByDayArr
+        : [0];
 
   const tierSold = new Map<string, number>();
   for (const t of tickets ?? []) {
@@ -61,6 +85,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     salesData,
+    doorSalesByDay,
+    salesByChannel: { online: onlineCount, door: doorCount },
     tierBars,
     openRequests: openRequests ?? 0,
   });

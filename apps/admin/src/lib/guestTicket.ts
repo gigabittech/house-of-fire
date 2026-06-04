@@ -129,9 +129,7 @@ export function formatPurchasedAt(iso: string): string {
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
-export function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+export { formatCents } from '@/lib/formatters';
 
 export type TicketReceipt = {
   kind: 'order' | 'door' | 'single';
@@ -151,15 +149,23 @@ export function receiptForTicket(
 ): TicketReceipt {
   const order = ticket.orders;
   if (order) {
+    const isDoorOrder = order.stripe_payment_intent_id.startsWith('door_sale_');
+    const metaPay = (ticket.metadata?.pay_method as string | undefined)?.trim();
+    const payFromCharge =
+      ticket.stripe_charge_id?.startsWith('door-')
+        ? ticket.stripe_charge_id.replace(/^door-/, '').split('-')[0]
+        : null;
     return {
-      kind: 'order',
+      kind: isDoorOrder ? 'door' : 'order',
       subtotal: order.subtotal_cents,
       discount: order.discount_cents,
       fees: order.fee_cents,
       total: order.total_cents,
       ticketCount: allTickets.filter((t) => t.order_id === order.id).length,
-      payMethod: 'Stripe',
-      stripePaymentIntentId: order.stripe_payment_intent_id,
+      payMethod: isDoorOrder
+        ? (metaPay || payFromCharge || 'Door')
+        : 'Stripe',
+      stripePaymentIntentId: isDoorOrder ? null : order.stripe_payment_intent_id,
       stripeChargeId: ticket.stripe_charge_id,
     };
   }
