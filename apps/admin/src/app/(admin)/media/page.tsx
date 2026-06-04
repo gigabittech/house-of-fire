@@ -37,7 +37,7 @@ export default function MediaPage() {
         const mapped: PhotoItem[] = (data.photos ?? []).map((p) => ({
           id: p.id,
           author: p.profiles?.handle ?? 'unknown',
-          edition: p.events?.edition_number ? `Ed ${p.events.edition_number}` : 'Ed ?',
+          edition: p.events?.edition_number ? `Th ${p.events.edition_number}` : 'Th ?',
           status: p.status,
           public_url: p.public_url,
         }));

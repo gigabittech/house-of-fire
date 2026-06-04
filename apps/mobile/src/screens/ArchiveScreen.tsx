@@ -128,7 +128,7 @@ export default function ArchiveScreen() {
             >
               Every
               <br />
-              edition.
+              theme.
             </div>
             <div
               style={{
@@ -275,7 +275,7 @@ export default function ArchiveScreen() {
                           {e.name}
                         </div>
                       </div>
-                      {/* Edition badge */}
+                      {/* Theme badge */}
                       <div
                         style={{
                           position: 'absolute',

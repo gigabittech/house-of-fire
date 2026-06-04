@@ -145,7 +145,7 @@ function StepSignup({
 
   return (
     <div style={{ padding: '24px 20px' }}>
-      <HofLogoMark size={36} />
+      <HofLogoMark size={90} />
       <div
         style={{
           fontFamily: 'Clash Display',
@@ -506,7 +506,7 @@ function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => v
           marginRight: 'auto',
         }}
       >
-        Welcome, {data.first.length > 0 ? data.first : 'friend'}. The next edition is Fri Jun 26 —
+        Welcome, {data.first.length > 0 ? data.first : 'friend'}. The next theme is Fri Jun 26 —
         tickets close when we hit 300. Lock yours in.
       </div>
 
@@ -517,7 +517,7 @@ function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => v
           onClick={onComplete}
           icon={<Icon name="ticket" size={18} color={colors.bg} />}
         >
-          Get Edition 24 tickets
+          Get Theme 24 tickets
         </HofButton>
         <div style={{ height: 10 }} />
         <HofButton variant="ghost" full onClick={onComplete}>

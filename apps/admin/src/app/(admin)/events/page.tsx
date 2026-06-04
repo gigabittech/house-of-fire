@@ -95,10 +95,10 @@ export default function EventsPage() {
   const draftCount = events.filter((e) => e.status === 'draft').length;
   const sub =
     events.length > 0
-      ? `${events.length} editions to date · ${draftCount} draft${draftCount === 1 ? '' : 's'} · ${liveCount} live`
+      ? `${events.length} themes to date · ${draftCount} draft${draftCount === 1 ? '' : 's'} · ${liveCount} live`
       : loading
-        ? 'Loading editions…'
-        : (error ?? 'No editions');
+        ? 'Loading themes…'
+        : (error ?? 'No themes');
 
   async function duplicateLast() {
     const last = [...events].sort((a, b) => b.ed - a.ed)[0];
@@ -220,7 +220,7 @@ export default function EventsPage() {
     <>
       <PaneHeader
         eyebrow="Events"
-        title="All editions"
+        title="All themes"
         sub={sub}
         cta={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -239,7 +239,7 @@ export default function EventsPage() {
                 color: 'var(--hof-text)',
               }}
             >
-              Duplicate last edition
+              Duplicate last theme
             </button>
             <button
               type="button"
@@ -256,7 +256,7 @@ export default function EventsPage() {
                 color: 'var(--hof-bg)',
               }}
             >
-              + New edition
+              + New theme
             </button>
           </div>
         }
@@ -324,7 +324,7 @@ export default function EventsPage() {
                 color: 'var(--hof-text-sec)',
               }}
             >
-              Loading editions…
+              Loading themes…
             </div>
           )}
           {!loading && error && (

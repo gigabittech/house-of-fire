@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
     codeId?: string;
     discountCents?: number;
     paymentIntentId?: string;
+    buyerEmail?: string;
+    buyerFirstName?: string;
+    buyerLastName?: string;
+    buyerPhone?: string;
   };
   const {
     tierId,
@@ -43,6 +47,10 @@ export async function POST(request: NextRequest) {
     promoCode,
     discountCents = 0,
     paymentIntentId: existingPaymentIntentId,
+    buyerEmail,
+    buyerFirstName,
+    buyerLastName,
+    buyerPhone,
   } = body;
 
   if (!tierId) {
@@ -116,6 +124,17 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
+  const trimmedBuyerEmail = buyerEmail?.trim() ?? '';
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (trimmedBuyerEmail && !emailRe.test(trimmedBuyerEmail)) {
+    return NextResponse.json({ error: 'Invalid buyer email' }, { status: 400 });
+  }
+
+  const buyerFullName = [buyerFirstName?.trim(), buyerLastName?.trim()].filter(Boolean).join(' ');
+  const holderName = buyerFullName || profile?.display_name?.trim() || '';
+  const holderEmail = trimmedBuyerEmail || user.email || '';
+  const holderPhone = buyerPhone?.trim() ?? '';
+
   const metadata = {
     userId: user.id,
     tierId,
@@ -125,8 +144,9 @@ export async function POST(request: NextRequest) {
     discountCents: String(discountApplied),
     fee: String(fee),
     codeId: resolvedCodeId,
-    holderName: profile?.display_name ?? '',
-    holderEmail: user.email ?? '',
+    holderName,
+    holderEmail,
+    holderPhone,
   };
 
   const description = `House of Fire — Ed ${ev?.edition_number ?? '?'} ${tierRow.display_name} × ${quantity}`;

@@ -1,23 +1,33 @@
+export interface SendEmailAttachment {
+  filename: string;
+  /** Base64-encoded file content (Resend API). */
+  content: string;
+}
+
 export interface SendEmailParams {
   from?: string;
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  attachments?: SendEmailAttachment[];
 }
 
 export interface SendEmailResult {
   id: string;
 }
 
-const DEFAULT_FROM = 'House of Fire <tickets@houseoffire.club>';
+const DEFAULT_FROM =
+  process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';
 
 async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.warn('[resend] RESEND_API_KEY is not set — skipping real send, returning mock id');
-    return { id: `mock_${Date.now()}` };
+    const msg =
+      '[resend] RESEND_API_KEY is not set — email was not sent. Add it to the monorepo root .env.local';
+    console.error(msg);
+    throw new Error(msg);
   }
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -32,6 +42,7 @@ async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
       subject: params.subject,
       html: params.html,
       ...(params.text ? { text: params.text } : {}),
+      ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     }),
   });
 

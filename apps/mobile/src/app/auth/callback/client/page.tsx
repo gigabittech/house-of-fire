@@ -180,20 +180,7 @@ export default function AuthCallbackClientPage() {
             padding: 18,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <HofLogoMark size={22} />
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: colors.textSec,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-              }}
-            >
-              House of Fire
-            </div>
-          </div>
+          <HofLogoMark size={90} />
 
           <div
             style={{

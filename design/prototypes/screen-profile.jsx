@@ -78,7 +78,7 @@ function ScreenProfile({ nav, onOpenTicket, onOpenPost, onOpenSettings, startTab
               position: 'relative',
             }}>
               {[
-                ['12', 'Editions'],
+                ['12', 'Themes'],
                 ['38', 'Photos'],
                 ['85%', 'Attended'],
               ].map(([n, l]) => (
@@ -151,7 +151,7 @@ function ScreenProfile({ nav, onOpenTicket, onOpenPost, onOpenSettings, startTab
                 <div>
                   <div style={{
                     fontFamily: 'Clash Display', fontWeight: 600, fontSize: 16, color: HOF.text,
-                  }}>Fireversary · Ed 24</div>
+                  }}>Fireversary · Th 24</div>
                   <div style={{
                     fontFamily: 'Inter', fontSize: 12, color: HOF.textSec, marginTop: 2,
                   }}>Junkyard Social Club · 8 PM</div>
@@ -177,9 +177,9 @@ function ScreenProfile({ nav, onOpenTicket, onOpenPost, onOpenSettings, startTab
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              { d: '23', m: 'May', y: '2026', n: 'Ed 23 · Late Bloom', t: 'GA', a: true },
-              { d: '25', m: 'Apr', y: '2026', n: 'Ed 22 · Slow Burn', t: 'VIP', a: true },
-              { d: '28', m: 'Mar', y: '2026', n: 'Ed 21 · The Equinox', t: 'GA', a: false },
+              { d: '23', m: 'May', y: '2026', n: 'Th 23 · Late Bloom', t: 'GA', a: true },
+              { d: '25', m: 'Apr', y: '2026', n: 'Th 22 · Slow Burn', t: 'VIP', a: true },
+              { d: '28', m: 'Mar', y: '2026', n: 'Th 21 · The Equinox', t: 'GA', a: false },
             ].map((it, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: 12,

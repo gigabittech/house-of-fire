@@ -90,11 +90,11 @@ function SettingsNotifs() {
       <Section title="Push">
         <Toggle on={s.push_ticket}  onChange={t('push_ticket')}  label="Your ticket events" sub="Doors open, your group at the door, transfer accepted."/>
         <Toggle on={s.push_replies} onChange={t('push_replies')} label="Replies to your posts" sub="Plus reactions over 10."/>
-        <Toggle on={s.push_recap}   onChange={t('push_recap')}   label="Recap photos" sub="Once per edition, after photos are reviewed."/>
+        <Toggle on={s.push_recap}   onChange={t('push_recap')}   label="Recap photos" sub="Once per theme, after photos are reviewed."/>
         <Toggle on={s.push_general} onChange={t('push_general')} label="#general announcements" sub="Crew posts only. We post 2–4 times a month."/>
       </Section>
       <Section title="Email">
-        <Toggle on={s.email_smoke}    onChange={t('email_smoke')}    label="Smoke Signal newsletter" sub="One short message before each edition."/>
+        <Toggle on={s.email_smoke}    onChange={t('email_smoke')}    label="Smoke Signal newsletter" sub="One short message before each theme."/>
         <Toggle on={s.email_receipts} onChange={t('email_receipts')} label="Tickets & receipts" sub="Always on for your records."/>
       </Section>
       <Section title="SMS">
@@ -209,7 +209,7 @@ function SettingsPrivacy() {
       </Section>
       <Section title="Data">
         <ActionRow label="Download my data" sub="JSON export — tickets, posts, photos."/>
-        <ActionRow label="Delete my account" sub="Removes you and your posts. Past tickets stay attached to the editions you attended." destructive/>
+        <ActionRow label="Delete my account" sub="Removes you and your posts. Past tickets stay attached to the themes you attended." destructive/>
       </Section>
     </div>
   );
@@ -219,7 +219,7 @@ function SettingsHelp() {
   return (
     <div style={{ padding: '8px 16px' }}>
       <Section title="Reach the crew">
-        <ActionRow label="Text the crew" sub="(303) 555-0124 · We respond same day during edition weeks."/>
+        <ActionRow label="Text the crew" sub="(303) 555-0124 · We respond same day during theme weeks."/>
         <ActionRow label="Email the crew" sub="crew@houseoffire.events"/>
         <ActionRow label="Open a help post" sub="In #help — fastest path for non-urgent questions."/>
       </Section>

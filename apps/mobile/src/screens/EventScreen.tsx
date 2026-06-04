@@ -84,7 +84,7 @@ import { ShareSheet } from '../sheets/ShareSheet';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ padding: '28px 16px 14px' }}>
+    <div style={{ padding: '28px 0 14px' }}>
       <div
         style={{
           fontFamily: 'Inter',
@@ -110,7 +110,7 @@ function MetaItem({
   value: string;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
       <div
         style={{
           width: 32,
@@ -126,12 +126,12 @@ function MetaItem({
       >
         <Icon name={icon} size={16} color={colors.amber} />
       </div>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <div
           style={{
             fontFamily: 'Inter',
             fontSize: 10,
-            color: colors.textSec,
+            color: colors.amber,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
           }}
@@ -214,11 +214,13 @@ function TierCard({
       <div
         style={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
+          paddingRight: isVip ? 52 : 0,
         }}
       >
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
               fontFamily: 'Clash Display',
@@ -248,7 +250,8 @@ function TierCard({
             fontSize: 22,
             color: colors.text,
             letterSpacing: '-0.01em',
-            marginRight: isVip ? 60 : 0,
+            flexShrink: 0,
+            lineHeight: 1,
           }}
         >
           ${tier.price}
@@ -731,7 +734,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                   textTransform: 'uppercase',
                 }}
               >
-                Upcoming · Edition № {eventData?.edition_number ?? '—'}
+                Upcoming · Theme № {eventData?.edition_number ?? '—'}
               </span>
               <div
                 style={{
@@ -745,7 +748,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                   textTransform: 'uppercase',
                 }}
               >
-                {eventData?.name ?? 'Next edition'}
+                {eventData?.name ?? 'Next theme'}
                 {eventData?.tagline ? (
                   <>
                     <br />
@@ -764,7 +767,8 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               padding: '20px 0',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: 12,
+              columnGap: 20,
+              rowGap: 16,
             }}
           >
             <MetaItem
@@ -786,7 +790,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           </div>
 
           {/* Add to Calendar */}
-          <div style={{ padding: '0 16px 4px' }}>
+          <div style={{ paddingBottom: 12 }}>
             <button
               className="hof-btn hof-press"
               onClick={() => setCalOpen(true)}
@@ -847,7 +851,6 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           <SectionLabel>Tickets</SectionLabel>
           <div
             style={{
-              padding: '0 16px',
               display: 'flex',
               flexDirection: 'column',
               gap: 10,
@@ -862,7 +865,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               />
             ))}
           </div>
-          <div style={{ padding: '16px 16px 0' }}>
+          <div style={{ paddingTop: 16 }}>
             <button
               className="hof-btn hof-press"
               onClick={() => {
@@ -896,7 +899,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* Waitlist card — shown when all tiers are sold out */}
           {soldOut && (
-            <div style={{ padding: '16px 16px 0' }}>
+            <div style={{ paddingTop: 16 }}>
               <div
                 style={{
                   background: '#141412',
@@ -1033,7 +1036,6 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           <SectionLabel>What to expect</SectionLabel>
           <div
             style={{
-              padding: '0 16px',
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
@@ -1098,7 +1100,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* Lineup */}
           <SectionLabel>Lineup</SectionLabel>
-          <div style={{ padding: '0 16px' }}>
+          <div>
             {apiLineup.length > 0
               ? apiLineup.map((entry, i) => (
                   <div
@@ -1229,7 +1231,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* Venue */}
           <SectionLabel>Venue</SectionLabel>
-          <div style={{ padding: '0 16px' }}>
+          <div>
             <div
               style={{
                 background: colors.surface,
@@ -1339,7 +1341,6 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           <SectionLabel>Talking about this</SectionLabel>
           <div
             style={{
-              padding: '0 16px',
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
@@ -1403,7 +1404,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 }}
               >
                 <Icon name="chat" size={16} color={colors.amber} />
-                Open the Edition 24 thread
+                Open the Theme 24 thread
               </span>
               <Icon name="chev" size={14} color={colors.textSec} />
             </button>
@@ -1411,7 +1412,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* FAQ */}
           <SectionLabel>FAQ</SectionLabel>
-          <div style={{ padding: '0 16px' }}>
+          <div>
             {faqs.map((f, i) => (
               <button
                 key={i}
@@ -1469,7 +1470,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           </div>
 
           {/* Past edition footer */}
-          <div style={{ padding: '28px 16px 0' }}>
+          <div style={{ paddingTop: 28 }}>
             <div
               style={{
                 fontFamily: 'Inter',
@@ -1491,7 +1492,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 letterSpacing: '-0.01em',
               }}
             >
-              23 sold-out editions. Browse the archive →
+              23 sold-out themes. Browse the archive →
             </div>
           </div>
 

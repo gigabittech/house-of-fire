@@ -3,6 +3,7 @@ import type { Database } from './database.types';
 import { validateTierCapacityForFulfillment } from './checkoutValidation';
 import { fetchDiscountCodeById, validateDiscountCodeForCheckout } from './promoCodes';
 import { buildTicketQRData } from './qr';
+import { maybeSendOrderReceiptEmail } from './receipt/maybeSendOrderReceiptEmail';
 import { createServiceRoleClient } from './supabase.server';
 
 type TicketInsert = Database['public']['Tables']['tickets']['Insert'];
@@ -13,6 +14,14 @@ type EventRow = Database['public']['Tables']['events']['Row'];
 function generateTicketCode(edition: number, n: number): string {
   const pad = String(n).padStart(4, '0');
   return `HOF-${String(edition).padStart(2, '0')}-${pad}`;
+}
+
+async function trySendReceipt(orderId: string, pi: Stripe.PaymentIntent): Promise<void> {
+  try {
+    await maybeSendOrderReceiptEmail(orderId, pi);
+  } catch (err) {
+    console.error('[receipt] maybeSendOrderReceiptEmail failed:', err);
+  }
 }
 
 export type FulfillResult =
@@ -34,6 +43,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     discountCents,
     holderName,
     holderEmail,
+    holderPhone,
   } = pi.metadata;
 
   if (!userId || !tierId || !eventId) {
@@ -53,6 +63,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
 
   if (legacyTickets && legacyTickets.length > 0) {
     const orderId = legacyTickets[0]?.order_id ?? pi.id;
+    await trySendReceipt(orderId, pi);
     return {
       ok: true,
       tickets: legacyTickets as TicketRow[],
@@ -74,6 +85,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
       .eq('order_id', existingOrder.id)
       .order('code', { ascending: true });
 
+    await trySendReceipt(existingOrder.id, pi);
     return {
       ok: true,
       tickets: (existingTickets ?? []) as TicketRow[],
@@ -199,6 +211,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
       metadata: {
         holder_name: holderName?.trim() || null,
         holder_email: holderEmail?.trim() || null,
+        holder_phone: holderPhone?.trim() || null,
       },
     });
   }
@@ -236,12 +249,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     link: '/ticket',
   });
 
-  if (holderEmail) {
-    const codes = tickets.map((t) => t.code).join(', ');
-    console.log(
-      `[ticket-confirmed] to=${holderEmail} name=${holderName ?? 'guest'} codes=${codes}`,
-    );
-  }
+  await trySendReceipt(order.id, pi);
 
   return {
     ok: true,

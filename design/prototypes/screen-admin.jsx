@@ -125,7 +125,7 @@ function ScreenAdmin({ startView = 'dashboard', doorModalOpen = false } = {}) {
             <div style={{
               fontFamily: 'Clash Display', fontWeight: 600, fontSize: 26,
               color: HOF.text, letterSpacing: '-0.01em', marginTop: 4,
-            }}>Fireversary · Edition 24</div>
+            }}>Fireversary · Theme 24</div>
             <div style={{ fontFamily: 'Inter', fontSize: 12, color: HOF.textSec, marginTop: 4 }}>
               Friday, June 26 · 8 PM · Junkyard Social Club
             </div>
@@ -242,7 +242,7 @@ function AdminDoorPane({ defaultModalOpen = false }) {
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 26,
             color: HOF.text, letterSpacing: '-0.01em', marginTop: 4,
-          }}>Fireversary · Edition 24</div>
+          }}>Fireversary · Theme 24</div>
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: HOF.textSec, marginTop: 4 }}>
             Doors open since 8:00 PM · Junkyard Social Club
           </div>
@@ -280,10 +280,10 @@ function AdminAnnouncePane() {
   const [photoChosen, setPhotoChosen] = React.useState(false);
 
   const HISTORY = [
-    { k: 'announcement', t: 'Edition 24 lineup is final',
+    { k: 'announcement', t: 'Theme 24 lineup is final',
       b: 'Headliner reveal: HEX. Doors 8 PM sharp — we open the floor at 9.',
       meta: 'Jordan · yesterday', stats: '52 🔥 · 7 replies', tone: 'amber' },
-    { k: 'recap',        t: 'Edition 23 recap is up',
+    { k: 'recap',        t: 'Theme 23 recap is up',
       b: '127 photos from the night. Tag yourself.',
       meta: 'Crew · 3 days ago', stats: '184 🔥 · 21 replies', tone: 'amber' },
     { k: 'quick',        t: 'Coat check is $3 cash tonight',
@@ -393,7 +393,7 @@ function AdminAnnouncePane() {
                            title="Email subscribers" sub="1,247 people on The Smoke Signal."/>
             <ChannelToggle on={postTo.sms}
                            onChange={v => setPostTo(p => ({ ...p, sms: v }))}
-                           title="SMS attendees" sub="Only people holding a ticket to Edition 24."/>
+                           title="SMS attendees" sub="Only people holding a ticket to Theme 24."/>
           </div>
 
           {/* Submit row */}
@@ -679,7 +679,7 @@ function PhotoReview() {
           <div style={{ fontFamily: 'Clash Display', fontWeight: 600, fontSize: 18,
                         color: HOF.text, marginTop: 4 }}>4 pending</div>
         </div>
-        <HofPill tone="warning" size="sm">From Ed 23</HofPill>
+        <HofPill tone="warning" size="sm">From Th 23</HofPill>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {[0,1,2,3].map(i => (
@@ -720,7 +720,7 @@ function AdminModerationPane() {
   const QUEUE = [
     { id: 'q1', kind: 'first post',  body: "Hey! First time at HoF this Friday. Anyone meeting up beforehand?",
       author: 'newbie_42', channel: 'general', age: '8m' },
-    { id: 'q2', kind: 'photo upload', body: "Edition 23 — my favorite shot of the night",
+    { id: 'q2', kind: 'photo upload', body: "Theme 23 — my favorite shot of the night",
       author: 'mauro.k', channel: 'recap', age: '1d', hasPhoto: true },
   ];
 
@@ -938,15 +938,15 @@ function AdminEventsPane() {
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 26,
             color: HOF.text, letterSpacing: '-0.01em', marginTop: 4,
-          }}>All editions</div>
+          }}>All themes</div>
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: HOF.textSec, marginTop: 4 }}>
-            24 editions to date · 1 draft · 1 live
+            24 themes to date · 1 draft · 1 live
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <HofButton variant="ghost" size="md">Duplicate last edition</HofButton>
+          <HofButton variant="ghost" size="md">Duplicate last theme</HofButton>
           <HofButton variant="primary" size="md" icon={<Icon name="plus" size={14} color={HOF.bg}/>}>
-            New edition
+            New theme
           </HofButton>
         </div>
       </div>
@@ -1019,13 +1019,13 @@ function AdminEventsPane() {
 // ─── Admin Members directory pane ───────────────────────────────────────────
 function AdminMembersPane() {
   const MEMBERS = [
-    { name: 'Sujan Bhuiyan',   email: 'sujan@…',  tier: 'VIP',    role: 'member', joined: 'Apr 24', editions: 12, lastSeen: 'Ed 23', posts: 8,  flag: '' },
-    { name: 'Mia Castellanos', email: 'mia@…',    tier: 'GA',     role: 'member', joined: 'Jan 25', editions: 6,  lastSeen: 'Ed 23', posts: 24, flag: '' },
-    { name: 'Devon Park',      email: 'devon@…',  tier: 'GA',     role: 'member', joined: 'Mar 25', editions: 4,  lastSeen: 'Ed 23', posts: 41, flag: '' },
-    { name: 'Tara Reyes',      email: 'tara@…',   tier: 'VIP',    role: 'member', joined: 'Jun 24', editions: 11, lastSeen: 'Ed 22', posts: 5,  flag: '' },
-    { name: 'iris.w',          email: 'iris@…',   tier: 'GA',     role: 'member', joined: 'Sep 25', editions: 2,  lastSeen: 'Ed 23', posts: 17, flag: 'new' },
-    { name: 'Jordan Groth',    email: 'j@…',      tier: 'Owner',  role: 'crew',   joined: 'Jan 24', editions: 24, lastSeen: 'Ed 23', posts: 86, flag: '' },
-    { name: 'Mauro K.',        email: 'mauro@…',  tier: 'GA',     role: 'crew',   joined: 'Jan 24', editions: 22, lastSeen: 'Ed 23', posts: 14, flag: 'photographer' },
+    { name: 'Sujan Bhuiyan',   email: 'sujan@…',  tier: 'VIP',    role: 'member', joined: 'Apr 24', editions: 12, lastSeen: 'Th 23', posts: 8,  flag: '' },
+    { name: 'Mia Castellanos', email: 'mia@…',    tier: 'GA',     role: 'member', joined: 'Jan 25', editions: 6,  lastSeen: 'Th 23', posts: 24, flag: '' },
+    { name: 'Devon Park',      email: 'devon@…',  tier: 'GA',     role: 'member', joined: 'Mar 25', editions: 4,  lastSeen: 'Th 23', posts: 41, flag: '' },
+    { name: 'Tara Reyes',      email: 'tara@…',   tier: 'VIP',    role: 'member', joined: 'Jun 24', editions: 11, lastSeen: 'Th 22', posts: 5,  flag: '' },
+    { name: 'iris.w',          email: 'iris@…',   tier: 'GA',     role: 'member', joined: 'Sep 25', editions: 2,  lastSeen: 'Th 23', posts: 17, flag: 'new' },
+    { name: 'Jordan Groth',    email: 'j@…',      tier: 'Owner',  role: 'crew',   joined: 'Jan 24', editions: 24, lastSeen: 'Th 23', posts: 86, flag: '' },
+    { name: 'Mauro K.',        email: 'mauro@…',  tier: 'GA',     role: 'crew',   joined: 'Jan 24', editions: 22, lastSeen: 'Th 23', posts: 14, flag: 'photographer' },
     { name: 'newbie_42',       email: 'spam@…',   tier: 'GA',     role: 'member', joined: '6 days', editions: 0,  lastSeen: '—',     posts: 1,  flag: 'flagged' },
   ];
 
@@ -1083,7 +1083,7 @@ function AdminMembersPane() {
             fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
             letterSpacing: '0.16em', textTransform: 'uppercase',
           }}>
-            <div>Member</div><div>Email</div><div>Tier</div><div>Editions</div><div>Last seen</div><div>Posts</div><div></div>
+            <div>Member</div><div>Email</div><div>Tier</div><div>Themes</div><div>Last seen</div><div>Posts</div><div></div>
           </div>
           {MEMBERS.map((m, i) => (
             <div key={i} style={{
@@ -1134,7 +1134,7 @@ function AdminCodesPane() {
     { code: 'CREW-MAURO', kind: 'Comp',     pct: '100%', uses: '8 / ∞',   note: 'Photographer comps' },
     { code: 'BOULDER-15', kind: 'Discount', pct: '15%',  uses: '47 / 100', note: 'Local partner code' },
     { code: 'PLUS-ONE',   kind: 'Discount', pct: '$10',  uses: '12 / 50',  note: 'For member referrals' },
-    { code: 'PRESS-24',   kind: 'Comp',     pct: '100%', uses: '3 / 10',   note: 'Press passes Ed 24' },
+    { code: 'PRESS-24',   kind: 'Comp',     pct: '100%', uses: '3 / 10',   note: 'Press passes Th 24' },
   ];
   return (
     <>
@@ -1206,13 +1206,13 @@ function AdminFinancialsPane() {
   return (
     <>
       <PaneHeader title="Financials"
-                  sub="Money in, money out. Per edition and rolling."
+                  sub="Money in, money out. Per theme and rolling."
                   cta={<HofButton variant="ghost" size="md" icon={<Icon name="download" size={14} color={HOF.text}/>}>Export</HofButton>}/>
 
       <div style={{ padding: '20px 28px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <Kpi label="Edition 24 gross"   value="$7,684"  delta="+$840 from Tap-to-Pay walk-ups" tone="amber"/>
-          <Kpi label="Edition 24 net"     value="$5,234"  delta="68% margin" tone="neutral"/>
+          <Kpi label="Theme 24 gross"   value="$7,684"  delta="+$840 from Tap-to-Pay walk-ups" tone="amber"/>
+          <Kpi label="Theme 24 net"     value="$5,234"  delta="68% margin" tone="neutral"/>
           <Kpi label="YTD gross"          value="$58,420" delta="+12% YoY"  tone="amber"/>
           <Kpi label="Open refund req."   value="1"       delta="Action needed" tone="warning"/>
         </div>
@@ -1228,7 +1228,7 @@ function AdminFinancialsPane() {
           <div style={{
             fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
             letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>By edition · last 6</div>
+          }}>By theme · last 6</div>
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 18,
             color: HOF.text, marginTop: 4,
@@ -1259,7 +1259,7 @@ function AdminFinancialsPane() {
                 <span style={{
                   fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
                   letterSpacing: '0.16em', textTransform: 'uppercase',
-                }}>Ed {b.ed}</span>
+                }}>Th {b.ed}</span>
               </div>
             ))}
           </div>
@@ -1272,7 +1272,7 @@ function AdminFinancialsPane() {
           <div style={{
             fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
             letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 14,
-          }}>Ed 24 breakdown</div>
+          }}>Th 24 breakdown</div>
           {[
             { l: 'GA × 143',    v: '$4,004', pct: 52, color: HOF.amber },
             { l: 'Early × 80',  v: '$1,600', pct: 21, color: HOF.glow },

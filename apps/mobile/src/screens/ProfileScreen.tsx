@@ -220,7 +220,7 @@ function ProfileTicketRow({ ticket, onOpen }: { ticket: ProfileTicket; onOpen: (
             color: colors.text,
           }}
         >
-          {ev ? `Edition ${ev.edition_number} · ${ev.name}` : ticket.code}
+          {ev ? `Theme ${ev.edition_number} · ${ev.name}` : ticket.code}
         </div>
         <div
           style={{
@@ -836,7 +836,7 @@ export default function ProfileScreen() {
                 >
                   {(
                     [
-                      [String(profile?.editions_attended ?? 0), 'Editions'],
+                      [String(profile?.editions_attended ?? 0), 'Themes'],
                       [String(profile?.tickets_count ?? 0), 'Tickets'],
                       ['—', 'Photos'],
                     ] as [string, string][]
@@ -1023,7 +1023,7 @@ export default function ProfileScreen() {
                               color: colors.text,
                             }}
                           >
-                            {upcomingTicket.events.name} · Ed {upcomingTicket.events.edition_number}
+                            {upcomingTicket.events.name} · Th {upcomingTicket.events.edition_number}
                           </div>
                           <div
                             style={{
@@ -1093,7 +1093,7 @@ export default function ProfileScreen() {
                   >
                     <EmptyState
                       title="No upcoming ticket"
-                      body="Get your ticket for the next edition."
+                      body="Get your ticket for the next theme."
                       action={
                         <button
                           type="button"
@@ -1214,7 +1214,7 @@ export default function ProfileScreen() {
                         lineHeight: 1.5,
                       }}
                     >
-                      Share the fire — your friends skip the waitlist next edition.
+                      Share the fire — your friends skip the waitlist next theme.
                     </div>
                   </div>
                 </div>

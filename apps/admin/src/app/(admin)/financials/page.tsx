@@ -84,15 +84,15 @@ export default function FinancialsPage() {
   const maxGross =
     editionBars.length > 0 ? Math.max(...editionBars.map((b) => b.gross), 1000) : 8000;
 
-  // Total revenue across all editions
+  // Total revenue across all themes
   const totalGrossCents = financials.reduce((sum, f) => sum + f.gross_cents, 0);
   const totalGross = `$${(totalGrossCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const activeGrossCents = activeEdition?.gross_cents ?? 0;
   const activeGross = `$${(activeGrossCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   const activeEditionLabel = activeEdition
-    ? `Edition ${activeEdition.edition_number}`
-    : 'Latest edition';
+    ? `Theme ${activeEdition.edition_number}`
+    : 'Latest theme';
 
   // Breakdown rows — one per edition in the chart
   const breakdownColors = [
@@ -109,7 +109,7 @@ export default function FinancialsPage() {
       <PaneHeader
         eyebrow="Admin"
         title="Financials"
-        sub="Money in, money out. Per edition and rolling."
+        sub="Money in, money out. Per theme and rolling."
         cta={
           <button
             type="button"
@@ -174,7 +174,7 @@ export default function FinancialsPage() {
             tone="neutral"
           />
           <Kpi
-            label="Total gross all editions"
+            label="Total gross all themes"
             value={loading ? '…' : totalGross}
             delta="All time"
             tone="amber"
@@ -215,7 +215,7 @@ export default function FinancialsPage() {
               textTransform: 'uppercase',
             }}
           >
-            By edition · last 6
+            By theme · last 6
           </div>
           <div
             style={{
@@ -301,7 +301,7 @@ export default function FinancialsPage() {
                         textTransform: 'uppercase',
                       }}
                     >
-                      Ed {b.edition}
+                      Th {b.edition}
                     </span>
                   </div>
                 );
@@ -309,7 +309,7 @@ export default function FinancialsPage() {
           </div>
         </div>
 
-        {/* Edition breakdown */}
+        {/* Theme breakdown */}
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -328,7 +328,7 @@ export default function FinancialsPage() {
               marginBottom: 14,
             }}
           >
-            Edition breakdown
+            Theme breakdown
           </div>
 
           {loading && (
@@ -361,7 +361,7 @@ export default function FinancialsPage() {
                     }}
                   >
                     <span style={{ color: 'var(--hof-text)', fontWeight: 500 }}>
-                      Ed {f.edition_number} × {f.ticket_count}
+                      Th {f.edition_number} × {f.ticket_count}
                     </span>
                     <span
                       style={{

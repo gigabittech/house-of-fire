@@ -245,7 +245,7 @@ function ShareSheet({ open, onClose }) {
             <div style={{
               fontFamily: 'Clash Display', fontWeight: 600, fontSize: 15,
               color: HOF.text, letterSpacing: '-0.01em',
-            }}>Fireversary · Ed 24</div>
+            }}>Fireversary · Th 24</div>
             <div style={{ fontFamily: 'Inter', fontSize: 12, color: HOF.textSec, marginTop: 2 }}>
               Fri Jun 26 · Junkyard · 47 left
             </div>
