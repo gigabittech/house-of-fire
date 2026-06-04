@@ -1,6 +1,7 @@
 'use client';
 
 import { breakpoints } from '@hof/design-tokens';
+import { HofLogoMark } from '@hof/ui';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -26,6 +27,10 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
 // threshold at 768px which sits between the two.
 const BP_TABLET = 768;
 const BP_DESKTOP = breakpoints.desktop; // 1280
+
+/** Match member app `HofAppShell` sidebar chrome. */
+const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH_TABLET = 76;
 
 type SidebarMode = 'full' | 'icon-only' | 'hidden';
 
@@ -127,70 +132,32 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/login');
   }
 
-  // ── Sidebar column widths ──────────────────────────────────────────────────
-  const sidebarWidth = sidebarMode === 'full' ? 232 : sidebarMode === 'icon-only' ? 60 : 0;
+  // ── Sidebar column widths (same as member HofAppShell) ───────────────────
+  const sidebarWidth =
+    sidebarMode === 'full' ? SIDEBAR_WIDTH : sidebarMode === 'icon-only' ? SIDEBAR_WIDTH_TABLET : 0;
+  const sidebarPadding = sidebarMode === 'icon-only' ? '2px 0 16px' : '2px 12px 16px';
 
   // ── Shared sidebar content ─────────────────────────────────────────────────
   function SidebarContent({ compact }: { compact: boolean }) {
     return (
       <>
-        {/* Brand header */}
+        {/* Brand header — matches HofAppShell */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: compact ? 0 : 10,
-            padding: compact ? '0 0 22px' : '0 6px 22px',
             justifyContent: compact ? 'center' : 'flex-start',
+            width: '100%',
+            padding: 0,
+            marginBottom: 4,
+            lineHeight: 0,
+            boxSizing: 'border-box',
           }}
         >
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 6,
-              flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--hof-amber), var(--hof-ember))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path
-                stroke="var(--hof-bg)"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-                d="M12 3c2 4 6 6 6 11a6 6 0 01-12 0c0-3 2-4 2-7 1 1 1.5 2 2 3 .5-3 1-5 2-7z"
-              />
-            </svg>
-          </div>
-          {!compact && (
-            <div>
-              <div
-                style={{
-                  fontFamily: 'Clash Display, system-ui',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  color: 'var(--hof-text)',
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                House of Fire
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Admin Console
-              </div>
-            </div>
+          {compact ? (
+            <HofLogoMark size={24} src="/assets/hof-emblem.png" alt="House of Fire" />
+          ) : (
+            <HofLogoMark fit="wordmark" width={140} src="/assets/hof-emblem.png" alt="House of Fire" />
           )}
         </div>
 
@@ -381,7 +348,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             flexShrink: 0,
             background: 'var(--hof-surface)',
             borderRight: '1px solid var(--hof-border)',
-            padding: sidebarMode === 'icon-only' ? '20px 8px' : '20px 14px',
+            padding: sidebarPadding,
             display: 'flex',
             flexDirection: 'column',
             transition: 'width 200ms ease',
@@ -413,10 +380,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               left: 0,
               bottom: 0,
               zIndex: 50,
-              width: 232,
+              width: SIDEBAR_WIDTH,
               background: 'var(--hof-surface)',
               borderRight: '1px solid var(--hof-border)',
-              padding: '20px 14px',
+              padding: '2px 12px',
               display: 'flex',
               flexDirection: 'column',
               animation: 'adminDrawerSlideIn 180ms ease',
