@@ -13,10 +13,3 @@ export function getStripe(): Stripe {
   }
   return _stripe;
 }
-
-// Convenience proxy so existing code can use `stripe.xxx` without changes
-export const stripe: Stripe = new Proxy({} as Stripe, {
-  get(_target, prop) {
-    return getStripe()[prop as keyof Stripe];
-  },
-});

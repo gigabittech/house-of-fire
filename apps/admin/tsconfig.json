@@ -3,6 +3,9 @@
   "compilerOptions": {
     "jsx": "preserve",
     "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
     "incremental": true,
     "plugins": [
       {

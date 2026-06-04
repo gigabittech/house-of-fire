@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "biome lint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "rm -f tsconfig.tsbuildinfo && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
@@ -16,13 +16,16 @@
     "@hof/ui": "workspace:*",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
+    "html-to-image": "^1.11.13",
     "next": "^16.2.7",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@next/env": "^16.2.7",
     "@types/node": "^24.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "typescript": "^5.9.0"

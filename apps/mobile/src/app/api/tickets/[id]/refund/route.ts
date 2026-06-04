@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { Database } from '../../../../../lib/database.types';
-import { stripe } from '../../../../../lib/stripe';
+import { getStripe } from '../../../../../lib/stripe';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let stripeRefundId: string | null = null;
   if (paymentIntentId) {
     try {
-      const refund = await stripe.refunds.create({
+      const refund = await getStripe().refunds.create({
         payment_intent: paymentIntentId,
         amount: ticket.amount_cents + ticket.fee_cents,
         reason: 'requested_by_customer',
