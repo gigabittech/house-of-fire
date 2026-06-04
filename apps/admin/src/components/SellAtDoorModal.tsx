@@ -97,6 +97,16 @@ export function SellAtDoorModal({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [pay, setPay] = useState<'tap' | 'card' | 'cash'>('cash');
+  const [promoInput, setPromoInput] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoResult, setPromoResult] = useState<{
+    valid: boolean;
+    code?: string;
+    codeId?: string;
+    discountCents?: number;
+    label?: string;
+    error?: string;
+  } | null>(null);
   const [stage, setStage] = useState<'form' | 'complete'>('form');
   const [error, setError] = useState('');
   const [exportError, setExportError] = useState('');
@@ -110,7 +120,8 @@ export function SellAtDoorModal({
   const effectiveTierId = tierId || selectedTier?.id || '';
   const subtotalCents = selectedTier?.price_cents ?? 0;
   const feeCents = selectedTier?.fee_cents ?? 0;
-  const totalCents = subtotalCents + feeCents;
+  const discountCents = promoResult?.valid ? (promoResult.discountCents ?? 0) : 0;
+  const totalCents = subtotalCents - discountCents + feeCents;
 
   const valid =
     first.trim() !== '' &&
@@ -155,8 +166,42 @@ export function SellAtDoorModal({
     setEmail('');
     setPhone('');
     setPay('cash');
+    setPromoInput('');
+    setPromoResult(null);
     const firstPurchasable = tiers.find((t) => t.purchasable);
     setTierId(firstPurchasable?.id ?? '');
+  }
+
+  async function applyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code || !effectiveTierId) return;
+    setPromoLoading(true);
+    setPromoResult(null);
+    try {
+      const r = await fetch('/api/admin/codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          tierId: effectiveTierId,
+          subtotalCents,
+        }),
+      });
+      const d = (await r.json()) as {
+        valid: boolean;
+        code?: string;
+        codeId?: string;
+        discountCents?: number;
+        label?: string;
+        error?: string;
+      };
+      setPromoResult(d);
+      if (d.valid && d.code) setPromoInput(d.code);
+    } catch {
+      setPromoResult({ valid: false, error: 'Could not validate code' });
+    } finally {
+      setPromoLoading(false);
+    }
   }
 
   function handleSuccess(data: DoorSellResponse) {
@@ -237,6 +282,8 @@ export function SellAtDoorModal({
       phone: phone.trim(),
       qty: 1,
       pay_method: pay,
+      promo_code: promoResult?.valid ? promoInput.trim().toUpperCase() : undefined,
+      code_id: promoResult?.valid ? promoResult.codeId : undefined,
       queued_at: new Date().toISOString(),
     };
 
@@ -623,6 +670,60 @@ export function SellAtDoorModal({
               />
             </div>
 
+            <div style={{ marginTop: 12 }}>
+              <label style={labelStyle}>Promo code (optional)</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={promoInput}
+                  onChange={(e) => {
+                    setPromoInput(e.target.value.toUpperCase());
+                    setPromoResult(null);
+                  }}
+                  placeholder="FIREFAMILY"
+                  style={{
+                    ...inputStyle,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    letterSpacing: '0.04em',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void applyPromo()}
+                  disabled={promoLoading || promoInput.trim().length === 0}
+                  style={{
+                    flexShrink: 0,
+                    padding: '0 14px',
+                    height: 44,
+                    borderRadius: 8,
+                    cursor:
+                      promoLoading || promoInput.trim().length === 0 ? 'not-allowed' : 'pointer',
+                    background:
+                      promoLoading || promoInput.trim().length === 0
+                        ? '#161616'
+                        : 'var(--hof-amber)',
+                    border: '1px solid #2e2e2e',
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color:
+                      promoLoading || promoInput.trim().length === 0 ? '#6b6560' : '#0c0c0c',
+                  }}
+                >
+                  {promoLoading ? '…' : 'Apply'}
+                </button>
+              </div>
+              {promoResult?.valid && (
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--hof-amber)' }}>
+                  ✓ {promoResult.code} — {promoResult.label ?? 'discount applied'}
+                </div>
+              )}
+              {promoResult && !promoResult.valid && (
+                <div style={{ marginTop: 6, fontSize: 12, color: '#e85c4a' }}>
+                  {promoResult.error ?? 'Invalid code'}
+                </div>
+              )}
+            </div>
+
             <div style={{ marginTop: 18 }}>
               <label style={labelStyle}>Payment (record only)</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -681,6 +782,22 @@ export function SellAtDoorModal({
                 <span>Ticket</span>
                 <span style={{ color: '#f5f0e8' }}>${(subtotalCents / 100).toFixed(2)}</span>
               </div>
+              {discountCents > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 13,
+                    color: '#9a9590',
+                    marginBottom: 8,
+                  }}
+                >
+                  <span>Discount</span>
+                  <span style={{ color: 'var(--hof-amber)' }}>
+                    −${(discountCents / 100).toFixed(2)}
+                  </span>
+                </div>
+              )}
               {feeCents > 0 && (
                 <div
                   style={{

@@ -65,6 +65,7 @@ export type Database = {
           total_cents: number;
           stripe_payment_intent_id: string;
           status: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          discount_code_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +80,7 @@ export type Database = {
           total_cents: number;
           stripe_payment_intent_id: string;
           status?: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          discount_code_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['orders']['Insert']>;
@@ -402,7 +404,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      sync_discount_code_uses: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;
