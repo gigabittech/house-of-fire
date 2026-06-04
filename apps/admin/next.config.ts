@@ -3,6 +3,8 @@ import type { NextConfig } from 'next';
 import path from 'node:path';
 
 const monorepoRoot = path.join(__dirname, '../..');
+// Next.js loads app-dir env first; forceReload replaces it with monorepo root `.env.local`.
+// https://github.com/vercel/next.js/issues/92040 — keep secrets in repo root, not apps/*/.
 const isDev = process.env.NODE_ENV !== 'production';
 loadEnvConfig(monorepoRoot, isDev, undefined, true);
 

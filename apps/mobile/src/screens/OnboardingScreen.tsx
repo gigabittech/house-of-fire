@@ -145,7 +145,7 @@ function StepSignup({
 
   return (
     <div style={{ padding: '24px 20px' }}>
-      <HofLogoMark size={36} />
+      <HofLogoMark size={90} />
       <div
         style={{
           fontFamily: 'Clash Display',

@@ -2,7 +2,15 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import type { NavId, Post as UiPost } from '@hof/ui';
-import { EmptyState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import {
+  EmptyState,
+  FeedPost,
+  FeedSkeletonCard,
+  HofAppShell,
+  HofLogoMark,
+  Icon,
+  useResponsive,
+} from '@hof/ui';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
@@ -246,11 +254,11 @@ export default function HomeScreen() {
         <div
           style={{
             position: 'absolute',
-            top: isWide ? 12 : 54,
+            top: isWide ? 8 : 40,
             left: 0,
             right: 0,
             zIndex: 10,
-            padding: '12px 0',
+            padding: 0,
             boxSizing: 'border-box',
           }}
         >
@@ -262,35 +270,7 @@ export default function HomeScreen() {
               justifyContent: isWide ? 'flex-end' : 'space-between',
             }}
           >
-          {!isWide && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div
-                style={{
-                  width: 26,
-                  height: 26,
-                  background: colors.amber,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name="flame" size={14} color={colors.bg} />
-              </div>
-              <span
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  letterSpacing: '0.18em',
-                  color: colors.text,
-                  textTransform: 'uppercase',
-                }}
-              >
-                House of Fire
-              </span>
-            </div>
-          )}
+          {!isWide && <HofLogoMark size={90} />}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               className="hof-btn hof-press"
@@ -429,13 +409,13 @@ export default function HomeScreen() {
                 bottom: 0,
               }}
             >
-              <div style={{ ...pageColumn, paddingBottom: 20 }}>
+              <div style={{ ...pageColumn, paddingBottom: 12 }}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 14,
+                  marginBottom: 16,
                 }}
               >
                 <Pill tone="warning">
@@ -455,38 +435,30 @@ export default function HomeScreen() {
                 </Pill>
                 <Pill tone="neutral">Edition № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>
-              <Image
-                src="/assets/hof-logo-color.png"
-                alt="House of Fire"
-                width={160}
-                height={96}
-                priority
-                style={{
-                  display: 'block',
-                  marginLeft: -6,
-                  filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.5))',
-                }}
-              />
               <div
                 style={{
                   fontFamily: 'Clash Display',
                   fontWeight: 600,
                   fontSize: 26,
                   color: colors.text,
-                  marginTop: 10,
+                  marginTop: 4,
                   letterSpacing: '-0.01em',
-                  lineHeight: 1,
+                  lineHeight: 1.1,
                   textTransform: 'uppercase',
                 }}
               >
                 {upcomingEvent?.name ?? 'Next edition'}
                 {upcomingEvent?.tagline ? (
-                  <>
-                    <br />
-                    <span style={{ color: colors.glow, fontWeight: 500 }}>
-                      {upcomingEvent.tagline}
-                    </span>
-                  </>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 12,
+                      color: colors.glow,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {upcomingEvent.tagline}
+                  </span>
                 ) : null}
               </div>
               <div
@@ -494,7 +466,7 @@ export default function HomeScreen() {
                   fontFamily: 'Inter',
                   fontSize: 13,
                   color: colors.textSec,
-                  marginTop: 14,
+                  marginTop: 20,
                   letterSpacing: '0.04em',
                 }}
               >

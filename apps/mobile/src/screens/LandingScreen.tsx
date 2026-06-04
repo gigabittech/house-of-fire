@@ -151,25 +151,11 @@ export default function LandingScreen() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingTop: isWide ? 12 : 54,
-                paddingBottom: 12,
+                paddingTop: isWide ? 8 : 40,
+                paddingBottom: 0,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <HofLogoMark size={22} />
-                <span
-                  style={{
-                    fontFamily: 'Clash Display',
-                    fontWeight: 600,
-                    fontSize: 12,
-                    letterSpacing: '0.22em',
-                    color: colors.text,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  House of Fire
-                </span>
-              </div>
+              <HofLogoMark size={90} />
               <button
                 type="button"
                 className="hof-btn hof-press"

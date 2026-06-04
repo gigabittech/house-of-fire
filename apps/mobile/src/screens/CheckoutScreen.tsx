@@ -1460,7 +1460,7 @@ export default function CheckoutScreen() {
   const ctaTotal = step === 3 ? displayTotalCents / 100 : total;
 
   const topBarHeight = 62;
-  const contentInsetX = isWide ? 24 : 16;
+  const contentInsetX = 16;
   const scrollPaddingTop = isWide
     ? topBarHeight + 20
     : `calc(${topBarHeight + 20}px + env(safe-area-inset-top, 0px))`;
@@ -1548,11 +1548,31 @@ export default function CheckoutScreen() {
         }}
       >
         {/* Step indicator */}
-        <div style={{ padding: `12px ${contentInsetX}px 20px` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {stepNames.map((n, i) => (
-              <div key={n} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            padding: `12px ${contentInsetX}px 20px`,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+            }}
+          >
+            {stepNames.flatMap((n, i) => {
+              const stepNode = (
+                <div
+                  key={n}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexShrink: 0,
+                  }}
+                >
                   <div
                     style={{
                       width: 22,
@@ -1580,37 +1600,51 @@ export default function CheckoutScreen() {
                       color: i + 1 === step ? colors.text : colors.textSec,
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {n}
                   </span>
                 </div>
-                {i < 2 && (
-                  <div
-                    style={{
-                      flex: 1,
-                      height: 1,
-                      background: i < step - 1 ? colors.amber : colors.border,
-                      marginLeft: 8,
-                    }}
-                  />
-                )}
-              </div>
-            ))}
+              );
+              if (i >= 2) return [stepNode];
+              return [
+                stepNode,
+                <div
+                  key={`${n}-connector`}
+                  aria-hidden
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    minWidth: 12,
+                    margin: '0 10px',
+                    background: i < step - 1 ? colors.amber : colors.border,
+                  }}
+                />,
+              ];
+            })}
           </div>
         </div>
 
         {/* Summary chip */}
-        <div style={{ padding: `0 ${contentInsetX}px 16px` }}>
+        <div
+          style={{
+            padding: `0 ${contentInsetX}px 16px`,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '10px 14px',
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '14px 16px',
               background: colors.surface,
               border: `1px solid ${colors.border}`,
-              borderRadius: 10,
+              borderRadius: 12,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
