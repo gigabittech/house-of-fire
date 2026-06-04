@@ -3,13 +3,21 @@ import QRCode from 'qrcode';
 
 const QR_HMAC_SECRET = process.env.QR_HMAC_SECRET ?? 'dev-secret-do-not-use-in-prod';
 
+const QR_RENDER_OPTIONS = {
+  errorCorrectionLevel: 'H' as const,
+  margin: 2,
+  width: 400,
+  color: { dark: '#1a1a1a', light: '#f5f0e8' },
+};
+
 export async function generateQRDataURL(data: string): Promise<string> {
-  return QRCode.toDataURL(data, {
-    errorCorrectionLevel: 'H',
-    margin: 2,
-    width: 400,
-    color: { dark: '#1a1a1a', light: '#f5f0e8' },
-  });
+  return QRCode.toDataURL(data, QR_RENDER_OPTIONS);
+}
+
+/** PNG QR for email attachments (base64, no data-URL prefix). */
+export async function renderTicketQrPngBase64(qrData: string): Promise<string> {
+  const buffer = await QRCode.toBuffer(qrData, QR_RENDER_OPTIONS);
+  return Buffer.from(buffer).toString('base64');
 }
 
 export function buildTicketQRData(ticketCode: string, eventId: string): string {

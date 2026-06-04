@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { resend } from '../resend';
 import { loadReceiptData } from './loadReceiptData';
+import { buildTicketQrAttachments } from './buildTicketQrAttachments';
 import { buildReceiptEmailHtml, buildReceiptEmailText } from './receiptEmail';
 import { renderReceiptPdf } from './renderReceiptPdf';
 
@@ -38,6 +39,8 @@ export async function sendOrderReceiptEmail(params: {
   const from =
     process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';
 
+  const qrAttachments = await buildTicketQrAttachments(params.orderId);
+
   try {
     const result = await resend.emails.send({
       from,
@@ -50,9 +53,15 @@ export async function sendOrderReceiptEmail(params: {
           filename: 'House-of-Fire-Receipt.pdf',
           content: pdfBase64,
         },
+        ...qrAttachments,
       ],
     });
-    console.info('[receipt] Sent receipt email', { orderId: params.orderId, to, id: result.id });
+    console.info('[receipt] Sent receipt email', {
+      orderId: params.orderId,
+      to,
+      id: result.id,
+      qrAttachments: qrAttachments.length,
+    });
   } catch (err) {
     console.error('[receipt] Failed to send receipt email:', { to, from, err });
     throw err;
