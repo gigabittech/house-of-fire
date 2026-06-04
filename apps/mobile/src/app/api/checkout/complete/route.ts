@@ -41,8 +41,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
+  let ticketsQuery = supabase
+    .from('tickets')
+    .select('*, events(*), ticket_tiers(*)')
+    .order('code', { ascending: true });
+
+  if (result.orderId && result.orderId !== paymentIntentId) {
+    ticketsQuery = ticketsQuery.eq('order_id', result.orderId);
+  } else {
+    ticketsQuery = ticketsQuery.eq('stripe_payment_intent_id', paymentIntentId);
+  }
+
+  const { data: ticketsWithRelations } = await ticketsQuery;
+
   return NextResponse.json({
-    tickets: result.tickets,
+    tickets: ticketsWithRelations ?? result.tickets,
+    orderId: result.orderId,
     alreadyFulfilled: result.alreadyFulfilled,
   });
 }

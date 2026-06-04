@@ -4,6 +4,7 @@ import { colors, layoutWidth } from '@hof/design-tokens';
 import type { IconName, NavId } from '@hof/ui';
 import {
   Avatar,
+  EmptyState,
   ErrorState,
   FakeQR,
   FeedSkeletonCard,
@@ -15,6 +16,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { navHref } from '../lib/nav';
+import { NO_EVENTS_MESSAGE } from '@/lib/eventDisplay';
 import { MapSheet } from '../sheets/MapSheet';
 
 // ── API response shapes ────────────────────────────────────────────────────
@@ -303,6 +305,47 @@ export default function LiveNightScreen() {
     ['Restrooms', 'user', 'Back hallway · left'],
     ['Photographer', 'camera', 'Mauro · ask before pics'],
   ];
+
+  if (!lineupLoading && !eventId) {
+    return (
+      <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100dvh',
+            background: colors.bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <EmptyState
+            icon="flame"
+            title={NO_EVENTS_MESSAGE}
+            action={
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: `1px solid ${colors.amber}`,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: colors.bg,
+                }}
+              >
+                Back to home
+              </button>
+            }
+          />
+        </div>
+      </HofAppShell>
+    );
+  }
 
   return (
     <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>

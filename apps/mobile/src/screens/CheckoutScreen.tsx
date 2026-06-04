@@ -1,12 +1,12 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { Icon, useResponsive } from '@hof/ui';
+import { EmptyState, Icon, useResponsive } from '@hof/ui';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { formatEventDateShort, type UpcomingEvent } from '@/lib/eventDisplay';
+import { formatEventDateShort, NO_EVENTS_MESSAGE, type UpcomingEvent } from '@/lib/eventDisplay';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
@@ -1274,6 +1274,7 @@ export default function CheckoutScreen() {
     UpcomingEvent,
     'name' | 'date' | 'venue_name'
   > | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -1331,7 +1332,8 @@ export default function CheckoutScreen() {
           if (Object.keys(built).length > 0) setTierData(built);
         },
       )
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoading(false));
   }, []);
 
   // Ensure selected tier is a valid API tier id (UUID), not a stale slug
@@ -1468,6 +1470,79 @@ export default function CheckoutScreen() {
     step === 3
       ? 'calc(32px + env(safe-area-inset-bottom, 0px))'
       : 'calc(168px + env(safe-area-inset-bottom, 0px))';
+
+  if (!eventLoading && !checkoutEvent) {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          background: colors.bg,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: isWide
+              ? '12px 16px'
+              : 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
+            background: 'rgba(10,10,8,0.94)',
+            borderBottom: `1px solid ${colors.border}`,
+          }}
+        >
+          <button
+            className="hof-btn hof-press"
+            onClick={() => router.back()}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+          <span style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 16, color: colors.text }}>
+            Checkout
+          </span>
+          <div style={{ width: 38 }} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <EmptyState
+            icon="ticket"
+            title={NO_EVENTS_MESSAGE}
+            action={
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/event')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: `1px solid ${colors.amber}`,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: colors.bg,
+                }}
+              >
+                View events
+              </button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

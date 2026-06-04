@@ -119,6 +119,38 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['ticket_tiers']['Insert']>;
         Relationships: [];
       };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_id: string;
+          tier_id: string;
+          quantity: number;
+          subtotal_cents: number;
+          discount_cents: number;
+          fee_cents: number;
+          total_cents: number;
+          stripe_payment_intent_id: string;
+          status: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_id: string;
+          tier_id: string;
+          quantity: number;
+          subtotal_cents: number;
+          discount_cents?: number;
+          fee_cents: number;
+          total_cents: number;
+          stripe_payment_intent_id: string;
+          status?: 'pending' | 'completed' | 'refunded' | 'cancelled';
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['orders']['Insert']>;
+        Relationships: [];
+      };
       tickets: {
         Row: {
           id: string;
@@ -126,6 +158,7 @@ export type Database = {
           event_id: string;
           tier_id: string;
           holder_id: string | null;
+          order_id: string | null;
           stripe_payment_intent_id: string | null;
           stripe_charge_id: string | null;
           amount_cents: number;
@@ -144,6 +177,7 @@ export type Database = {
           event_id: string;
           tier_id: string;
           holder_id?: string | null;
+          order_id?: string | null;
           stripe_payment_intent_id?: string | null;
           stripe_charge_id?: string | null;
           amount_cents: number;
@@ -462,6 +496,14 @@ export type Database = {
       increment_code_uses: {
         Args: { code_id: string };
         Returns: undefined;
+      };
+      tier_available_count: {
+        Args: { tier_id: string };
+        Returns: number;
+      };
+      user_event_ticket_count: {
+        Args: { p_user_id: string; p_event_id: string };
+        Returns: number;
       };
     };
     Enums: {

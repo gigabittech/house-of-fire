@@ -1,3 +1,5 @@
+export const NO_EVENTS_MESSAGE = 'There are currently no events available.';
+
 export interface UpcomingTier {
   id: string;
   name: string;

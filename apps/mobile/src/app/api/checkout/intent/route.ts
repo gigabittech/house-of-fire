@@ -1,8 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { Database } from '../../../../lib/database.types';
+import { validateCheckoutRequest } from '../../../../lib/checkoutValidation';
 import { rateLimitCheck } from '../../../../lib/rateLimit';
 import { stripe } from '../../../../lib/stripe';
-import { createServerSupabaseClient } from '../../../../lib/supabase.server';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../lib/supabase.server';
+import { clampOrderQuantity } from '../../../../lib/ticketLimits';
 
 const HOF_FEE_RATE = 0.07; // 7% platform fee
 
@@ -30,21 +35,32 @@ export async function POST(request: NextRequest) {
     codeId?: string;
     discountCents?: number;
   };
-  const { tierId, quantity = 1, codeId, discountCents = 0 } = body;
+  const { tierId, quantity: rawQuantity = 1, codeId, discountCents = 0 } = body;
 
   if (!tierId) {
     return NextResponse.json({ error: 'tierId required' }, { status: 400 });
   }
 
-  // Get tier
+  const inventorySupabase = await createServiceRoleClient();
+  const validation = await validateCheckoutRequest(inventorySupabase, {
+    userId: user.id,
+    tierId,
+    quantity: rawQuantity,
+  });
+
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: validation.status });
+  }
+
+  const quantity = validation.quantity;
+
   const { data: tier } = await supabase.from('ticket_tiers').select('*').eq('id', tierId).single();
 
-  if (!tier || (tier as TicketTierRow).status === 'sold_out') {
+  if (!tier) {
     return NextResponse.json({ error: 'Tier not available' }, { status: 400 });
   }
   const tierRow = tier as TicketTierRow;
 
-  // Get event
   const { data: eventData } = await supabase
     .from('events')
     .select('*')
@@ -52,13 +68,16 @@ export async function POST(request: NextRequest) {
     .single();
   const ev = eventData as EventRow | null;
 
+  if (!ev || (ev.status !== 'live' && ev.status !== 'upcoming')) {
+    return NextResponse.json({ error: 'Tickets are not available for this event' }, { status: 400 });
+  }
+
   const subtotal = tierRow.price_cents * quantity;
-  const discountApplied = Math.min(discountCents ?? 0, subtotal); // clamp — can't discount more than subtotal
+  const discountApplied = Math.min(discountCents ?? 0, subtotal);
   const discountedSubtotal = subtotal - discountApplied;
   const fee = Math.round(discountedSubtotal * HOF_FEE_RATE);
   const total = discountedSubtotal + fee;
 
-  // Get profile for holder name
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name')
@@ -91,5 +110,6 @@ export async function POST(request: NextRequest) {
     subtotal,
     discountCents: discountApplied,
     fee,
+    quantity: clampOrderQuantity(quantity),
   });
 }

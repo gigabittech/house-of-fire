@@ -2,13 +2,14 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import type { NavId, Post as UiPost } from '@hof/ui';
-import { ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import {
   formatCapacityMeta,
   formatDoorsRange,
   formatEventDateLong,
+  NO_EVENTS_MESSAGE,
   parseEventFaqs,
   resolveEventHeroImage,
   totalTicketsSold,
@@ -363,6 +364,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlDone, setWlDone] = useState<{ position: number } | null>(null);
   const [eventData, setEventData] = useState<UpcomingEvent | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -370,7 +372,8 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .then((d) => {
         if (d.event) setEventData(d.event);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setEventLoading(false));
   }, []);
 
   useEffect(() => {
@@ -512,6 +515,47 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       boxSizing: 'border-box',
     };
   }, [isWide, isDesktop]);
+
+  if (!eventLoading && !eventData) {
+    return (
+      <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            background: colors.bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <EmptyState
+            icon="calendar"
+            title={NO_EVENTS_MESSAGE}
+            action={
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: `1px solid ${colors.amber}`,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: colors.bg,
+                }}
+              >
+                Back to home
+              </button>
+            }
+          />
+        </div>
+      </HofAppShell>
+    );
+  }
 
   return (
     <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Database } from '../../../../lib/database.types';
+import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
@@ -11,16 +12,10 @@ function normalizeDbTime(value: string): string {
 export async function GET() {
   const supabase = await createServerSupabaseClient();
 
-  const { data: event, error } = await supabase
-    .from('events')
-    .select('*')
-    .in('status', ['upcoming', 'live'])
-    .order('edition_number', { ascending: false })
-    .limit(1)
-    .single();
+  const { data: event, error } = await getActiveEvent(supabase);
 
   if (error || !event) {
-    return NextResponse.json({ error: 'No upcoming event found' }, { status: 404 });
+    return NextResponse.json({ error: NO_EVENTS_MESSAGE }, { status: 404 });
   }
 
   const { data: tiers } = await supabase
