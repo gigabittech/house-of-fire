@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import type { Database } from '../../../../lib/database.types';
 import { validateCheckoutRequest } from '../../../../lib/checkoutValidation';
 import { rateLimitCheck } from '../../../../lib/rateLimit';
-import { stripe } from '../../../../lib/stripe';
+import { getStripe } from '../../../../lib/stripe';
 import {
   createServerSupabaseClient,
   createServiceRoleClient,
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  const paymentIntent = await stripe.paymentIntents.create({
+  const paymentIntent = await getStripe().paymentIntents.create({
     amount: total,
     currency: 'usd',
     automatic_payment_methods: { enabled: true },

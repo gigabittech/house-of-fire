@@ -147,7 +147,7 @@ export function GuestTierStatus({ events, loading, scopeLabel }: GuestTierStatus
                       name={tier.display_name || tier.name}
                       sold={tier.sold}
                       total={tier.capacity}
-                      color={TIER_COLORS[i % TIER_COLORS.length]}
+                      color={TIER_COLORS[i % TIER_COLORS.length] ?? 'var(--hof-amber)'}
                       sub={`${tier.remaining} remaining${tier.tier_status === 'sold_out' ? ' · Sold out' : ''}`}
                     />
                   </div>

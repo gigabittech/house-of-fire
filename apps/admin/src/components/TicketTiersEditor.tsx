@@ -75,9 +75,11 @@ export function TicketTiersEditor({ tiers, onChange, soldByTierId = {} }: Ticket
     const next = index + dir;
     if (next < 0 || next >= tiers.length) return;
     const copy = [...tiers];
-    const tmp = copy[index];
-    copy[index] = copy[next];
-    copy[next] = tmp;
+    const a = copy[index];
+    const b = copy[next];
+    if (a === undefined || b === undefined) return;
+    copy[index] = b;
+    copy[next] = a;
     onChange(copy.map((t, i) => ({ ...t, sort_order: i })));
   }
 

@@ -102,25 +102,16 @@ async function resolveHolderId(
   const admin = supabase.auth.admin;
   let existingUser: { id: string } | null = null;
 
-  try {
-    const byEmail = await admin.getUserByEmail(email);
-    if (byEmail.data?.user) {
-      existingUser = { id: byEmail.data.user.id };
+  let page = 1;
+  while (page <= 10 && !existingUser) {
+    const { data: listData } = await admin.listUsers({ page, perPage: 200 });
+    const match = listData?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+    if (match) {
+      existingUser = { id: match.id };
+      break;
     }
-  } catch {
-    let page = 1;
-    while (page <= 10 && !existingUser) {
-      const { data: listData } = await admin.listUsers({ page, perPage: 200 });
-      const match = listData?.users.find(
-        (u) => u.email?.toLowerCase() === email.toLowerCase(),
-      );
-      if (match) {
-        existingUser = { id: match.id };
-        break;
-      }
-      if (!listData?.users.length || listData.users.length < 200) break;
-      page++;
-    }
+    if (!listData?.users.length || listData.users.length < 200) break;
+    page++;
   }
 
   if (existingUser) {

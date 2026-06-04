@@ -32,23 +32,7 @@ export async function GET(request: NextRequest) {
 
   let tiersQuery = supabase
     .from('ticket_tiers')
-    .select(
-      `
-      id,
-      event_id,
-      name,
-      display_name,
-      capacity,
-      status,
-      sort_order,
-      events!ticket_tiers_event_id_fkey (
-        id,
-        edition_number,
-        name,
-        status
-      )
-    `,
-    )
+    .select('id, event_id, name, display_name, capacity, status, sort_order')
     .neq('status', 'hidden')
     .order('sort_order', { ascending: true });
 
@@ -66,6 +50,18 @@ export async function GET(request: NextRequest) {
   if (tierIds.length === 0) {
     return NextResponse.json({ events: [] as EventTierStatusGroup[] });
   }
+
+  const eventIds = [...new Set((tiers ?? []).map((t) => t.event_id))];
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('id, edition_number, name, status')
+    .in('id', eventIds);
+
+  if (eventsError) {
+    return NextResponse.json({ error: eventsError.message }, { status: 500 });
+  }
+
+  const eventById = new Map((events ?? []).map((e) => [e.id, e]));
 
   let ticketsQuery = supabase
     .from('tickets')
@@ -91,11 +87,7 @@ export async function GET(request: NextRequest) {
   const groupMap = new Map<string, EventTierStatusGroup>();
 
   for (const tier of tiers ?? []) {
-    const evRaw = tier.events as
-      | { id: string; edition_number: number; name: string; status: string }
-      | Array<{ id: string; edition_number: number; name: string; status: string }>
-      | null;
-    const ev = Array.isArray(evRaw) ? (evRaw[0] ?? null) : evRaw;
+    const ev = eventById.get(tier.event_id);
     if (!ev) continue;
 
     const sold = soldByTier[tier.id] ?? 0;
@@ -123,7 +115,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const events = [...groupMap.values()].sort((a, b) => b.edition_number - a.edition_number);
+  const eventsOut = [...groupMap.values()].sort(
+    (a, b) => b.edition_number - a.edition_number,
+  );
 
-  return NextResponse.json({ events });
+  return NextResponse.json({ events: eventsOut });
 }

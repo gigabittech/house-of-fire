@@ -13,7 +13,7 @@ import {
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { formatDoorsRange, formatDoorsTime } from '@/lib/eventDisplay';
+import { formatDoorsRange } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';

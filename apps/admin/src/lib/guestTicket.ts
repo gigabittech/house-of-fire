@@ -129,7 +129,9 @@ export function formatPurchasedAt(iso: string): string {
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
-export { formatCents } from '@/lib/formatters';
+import { formatCents } from '@/lib/formatters';
+
+export { formatCents };
 
 export type TicketReceipt = {
   kind: 'order' | 'door' | 'single';

@@ -102,6 +102,9 @@ export function tierRowToDbInsert(eventId: string, tier: TierFormRow) {
     price_cents: tier.price_cents,
     fee_cents: tier.fee_cents,
     capacity: tier.capacity,
+    doors_start: null,
+    doors_end: null,
+    stripe_price_id: null,
     status: tier.status,
     sort_order: tier.sort_order,
   };
