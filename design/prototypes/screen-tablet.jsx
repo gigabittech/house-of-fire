@@ -81,7 +81,7 @@ function ScreenTablet({ nav }) {
             border: `1px solid ${HOF.border}`, borderRadius: 8,
           }}>
             <Icon name="search" size={14} color={HOF.textSec}/>
-            <input placeholder="Search editions…" style={{
+            <input placeholder="Search themes…" style={{
               flex: 1, border: 0, background: 'transparent', outline: 'none',
               fontFamily: 'Inter', fontSize: 13, color: HOF.text,
             }}/>
@@ -102,7 +102,7 @@ function ScreenTablet({ nav }) {
             padding: '14px 18px 6px',
             fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
             letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>Past editions</div>
+          }}>Past themes</div>
           {events.filter(e => e.status === 'past').map(e => (
             <ListRow key={e.id} ev={e} active={active === e.id} onClick={() => setActive(e.id)}/>
           ))}
@@ -116,7 +116,7 @@ function ScreenTablet({ nav }) {
           <Avatar initials="SB" role="member" size={36}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: HOF.text }}>Sujan Bhuiyan</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 11, color: HOF.gold }}>VIP · 12 editions</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 11, color: HOF.gold }}>VIP · 12 themes</div>
           </div>
           <Icon name="settings" size={16} color={HOF.textSec}/>
         </div>
@@ -160,7 +160,7 @@ function ListRow({ ev, active, onClick }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 14, color: HOF.text,
-          }}>Ed {ev.ed}</span>
+          }}>Th {ev.ed}</span>
           <span style={{
             fontFamily: 'Inter', fontWeight: 400, fontSize: 13, color: HOF.text,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -201,7 +201,7 @@ function TabletDetail({ event }) {
           position: 'absolute', left: 32, right: 32, bottom: 28,
         }}>
           <HofPill tone={past ? 'success' : 'amber'} size="sm">
-            {past ? `Attended · Ed ${event.ed}` : `Upcoming · Ed ${event.ed}`}
+            {past ? `Attended · Th ${event.ed}` : `Upcoming · Th ${event.ed}`}
           </HofPill>
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 700, fontSize: 56,
@@ -307,7 +307,7 @@ function TabletDetail({ event }) {
           <div style={{
             fontFamily: 'Inter', fontSize: 10, color: HOF.amber,
             letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 12,
-          }}>Edition thread</div>
+          }}>Theme thread</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {HOF_POSTS.filter(p => p.edition === 24).slice(0, 2).map(p => (
               <FeedPost key={p.id} post={p} compact onOpen={() => {}}/>

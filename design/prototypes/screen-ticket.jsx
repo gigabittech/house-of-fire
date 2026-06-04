@@ -64,7 +64,7 @@ function ScreenTicket({ nav, onBack, startTransferOpen = false, startRefundOpen 
                   <div style={{
                     fontFamily: 'Inter', fontSize: 10, color: HOF.bg,
                     letterSpacing: '0.22em', textTransform: 'uppercase', opacity: 0.5,
-                  }}>Edition 24 · Admit one</div>
+                  }}>Theme 24 · Admit one</div>
                   <img src="assets/hof-logo-black.png" alt="House of Fire" style={{
                     height: 30, width: 'auto', display: 'block', marginTop: 8, marginLeft: -3,
                   }}/>

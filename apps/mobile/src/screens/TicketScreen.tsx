@@ -118,29 +118,12 @@ async function qrDataUrlForTicket(t: TicketData): Promise<string> {
   });
 }
 
-function orderReceiptTotals(tickets: TicketData[], orderId: string | null | undefined) {
-  const first = tickets[0];
-  const group = orderId
-    ? tickets.filter((t) => t.order_id === orderId)
-    : first
-      ? [first]
-      : [];
-  const subtotal = group.reduce((s, t) => s + t.amount_cents, 0);
-  const fees = group.reduce((s, t) => s + t.fee_cents, 0);
-  return { subtotal, fees, total: subtotal + fees, count: group.length };
-}
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatPurchasedAt(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
 export default function TicketScreen() {
@@ -171,7 +154,6 @@ export default function TicketScreen() {
   const holderLabel = ticketHolderName(ticket, holderFallback);
   const doorsLabel = ticketDoorsLabel(ticket);
   const qrDataUrl = ticket ? (qrByTicketId[ticket.id] ?? '') : '';
-  const receipt = orderReceiptTotals(tickets, ticket?.order_id);
 
   const reloadTickets = useCallback(async () => {
     const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
@@ -274,8 +256,13 @@ export default function TicketScreen() {
     setTimeout(() => setToast((t) => ({ ...t, shown: false })), 3500);
   }
 
+  function handleSavePdf() {
+    window.print();
+  }
+
   return (
     <div
+      className="hof-ticket-page"
       style={{
         position: 'relative',
         width: '100%',
@@ -286,6 +273,7 @@ export default function TicketScreen() {
     >
       {/* Top bar */}
       <div
+        className="hof-no-print"
         style={{
           position: 'absolute',
           top: isWide ? 0 : 54,
@@ -351,7 +339,7 @@ export default function TicketScreen() {
 
       {/* Scrollable content — centered column on tablet/desktop */}
       <div
-        className="hof-scroll"
+        className="hof-scroll hof-ticket-scroll"
         style={{
           position: 'absolute',
           top: 0,
@@ -364,21 +352,21 @@ export default function TicketScreen() {
           paddingBottom: 40,
         }}
       >
-        <div style={{ height: isWide ? 64 : 102 }} />
+        <div className="hof-no-print" style={{ height: isWide ? 64 : 102 }} />
 
         {loading ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <HofSkeleton width="100%" height={300} radius={16} />
           </div>
         ) : ticketError ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <EmptyState title="Could not load ticket" body="Check your connection and try again." />
           </div>
         ) : tickets.length === 0 ? (
-          <div style={{ padding: '0 16px' }}>
+          <div className="hof-no-print" style={{ padding: '0 16px' }}>
             <EmptyState
               title="No ticket"
-              body="Get your ticket to Edition X."
+              body="Get your ticket to Theme X."
               action={
                 <button
                   className="hof-btn hof-press"
@@ -405,6 +393,7 @@ export default function TicketScreen() {
           <>
             {/* Day-of contextual banner */}
             <div
+              className="hof-no-print"
               style={{
                 margin: '0 16px 16px',
                 padding: '12px 14px',
@@ -456,7 +445,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Success copy */}
-            <div style={{ padding: '12px 16px 18px' }}>
+            <div className="hof-no-print" style={{ padding: '12px 16px 18px' }}>
               <div
                 style={{
                   fontFamily: 'Clash Display',
@@ -483,7 +472,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Ticket card — swipe between tickets when qty > 1 */}
-            <div style={{ padding: '0 16px' }}>
+            <div id="hof-ticket-print" style={{ padding: '0 16px' }}>
               <div
                 onTouchStart={(e) => handleTouchStart(e.changedTouches[0]?.clientX ?? 0)}
                 onTouchEnd={(e) => handleTouchEnd(e.changedTouches[0]?.clientX ?? 0)}
@@ -522,7 +511,7 @@ export default function TicketScreen() {
                           opacity: 0.5,
                         }}
                       >
-                        Edition {ticket?.events?.edition_number ?? '—'} · Admit one
+                        Theme {ticket?.events?.edition_number ?? '—'} · Admit one
                         {tickets.length > 1
                           ? ` · ${activeIndex + 1} of ${tickets.length}`
                           : ''}
@@ -550,7 +539,7 @@ export default function TicketScreen() {
                           textTransform: 'uppercase',
                         }}
                       >
-                        {ticket?.events?.name ?? 'Edition 24 — Fireversary'}
+                        {ticket?.events?.name ?? 'Theme 24 — Fireversary'}
                       </div>
                     </div>
                     <div
@@ -577,7 +566,8 @@ export default function TicketScreen() {
                         {ticket?.ticket_tiers?.display_name ?? 'GA'}
                       </div>
                       <button
-                        className="hof-btn hof-press"
+                        type="button"
+                        className="hof-btn hof-press hof-no-print"
                         onClick={() => setUpgradeOpen(true)}
                         style={{
                           padding: '3px 8px',
@@ -734,6 +724,7 @@ export default function TicketScreen() {
 
               {tickets.length > 1 && (
                 <div
+                  className="hof-no-print"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -808,6 +799,7 @@ export default function TicketScreen() {
 
             {/* Actions */}
             <div
+              className="hof-no-print"
               style={{
                 padding: '20px 16px 0',
                 display: 'grid',
@@ -827,7 +819,7 @@ export default function TicketScreen() {
                     a.click();
                   },
                 },
-                { label: 'Save PDF', icon: 'download' as const, onClick: () => window.print() },
+                { label: 'Save PDF', icon: 'download' as const, onClick: handleSavePdf },
                 { label: 'Transfer', icon: 'share' as const, onClick: () => setTransferOpen(true) },
                 {
                   label: 'Request refund',
@@ -861,7 +853,7 @@ export default function TicketScreen() {
             </div>
 
             {/* Tell a friend */}
-            <div style={{ padding: '24px 16px 0' }}>
+            <div className="hof-no-print" style={{ padding: '24px 16px 0' }}>
               <button
                 className="hof-btn hof-press"
                 onClick={() => setShareOpen(true)}
@@ -938,76 +930,7 @@ export default function TicketScreen() {
               </button>
             </div>
 
-            {/* Receipt */}
-            <div style={{ padding: '24px 16px 0' }}>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  color: colors.textSec,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  marginBottom: 10,
-                }}
-              >
-                Receipt
-              </div>
-              <div
-                style={{
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 12,
-                  padding: 14,
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {(
-                  [
-                    [
-                      'Order',
-                      receipt.count > 1
-                        ? `${receipt.count} tickets`
-                        : (ticket?.code ?? '—'),
-                    ],
-                    ['Date', ticket ? formatPurchasedAt(ticket.purchased_at) : '—'],
-                    ['Payment', 'Paid via Stripe'],
-                    ['Subtotal', formatCents(receipt.subtotal)],
-                    ['Fees', formatCents(receipt.fees)],
-                  ] as [string, string][]
-                ).map(([k, v]) => (
-                  <div
-                    key={k}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '6px 0',
-                      color: colors.textSec,
-                    }}
-                  >
-                    <span>{k}</span>
-                    <span style={{ color: colors.text }}>{v}</span>
-                  </div>
-                ))}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '10px 0 0',
-                    marginTop: 4,
-                    borderTop: `1px solid ${colors.border}`,
-                    fontWeight: 500,
-                    color: colors.text,
-                  }}
-                >
-                  <span>Total</span>
-                  <span>{formatCents(receipt.total)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ height: 40 }} />
+            <div className="hof-no-print" style={{ height: 40 }} />
           </>
         )}
       </div>
@@ -1015,6 +938,7 @@ export default function TicketScreen() {
       {/* Toast */}
       {toast.shown && (
         <div
+          className="hof-no-print"
           style={{
             position: 'absolute',
             top: 100,
@@ -1037,7 +961,7 @@ export default function TicketScreen() {
         ticketId={ticket?.id}
         ticketSummary={
           ticket
-            ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Ed ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
+            ? `${ticket.events?.name ?? 'House of Fire'} · ${ticket.ticket_tiers?.display_name ?? 'Ticket'} · Th ${ticket.events?.edition_number ?? '—'} · ${formatCents(ticket.amount_cents)}`
             : undefined
         }
         onTransferred={() => {

@@ -233,13 +233,13 @@ function StepWelcome({ data, onComplete }) {
         marginTop: 12, lineHeight: 1.55, textWrap: 'pretty',
         maxWidth: 300, marginLeft: 'auto', marginRight: 'auto',
       }}>
-        Welcome, {data.first || 'friend'}. The next edition is Fri Jun 26 — tickets close when we hit 300. Lock yours in.
+        Welcome, {data.first || 'friend'}. The next theme is Fri Jun 26 — tickets close when we hit 300. Lock yours in.
       </div>
 
       <div style={{ marginTop: 32, padding: '0 4px' }}>
         <HofButton variant="primary" full onClick={onComplete}
                    icon={<Icon name="ticket" size={18} color={HOF.bg}/>}>
-          Get Edition 24 tickets
+          Get Theme 24 tickets
         </HofButton>
         <div style={{ height: 10 }}/>
         <HofButton variant="ghost" full onClick={onComplete}>

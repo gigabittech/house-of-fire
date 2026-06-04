@@ -28,7 +28,7 @@ function ScreenArchive({ nav, onBack, startUploadOpen = false }) {
             fontFamily: 'Clash Display', fontWeight: 700, fontSize: 44,
             color: HOF.text, letterSpacing: '-0.02em', lineHeight: 1, marginTop: 6,
             textTransform: 'uppercase',
-          }}>Every<br/>edition.</div>
+          }}>Every<br/>theme.</div>
           <div style={{
             fontFamily: 'Inter', fontSize: 14, color: HOF.textSec, marginTop: 12,
             lineHeight: 1.5, maxWidth: 280, textWrap: 'pretty',

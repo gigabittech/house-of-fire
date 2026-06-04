@@ -541,7 +541,7 @@ function ScreenDoorMobile({ nav }) {
           <div style={{
             fontFamily: 'Inter', fontSize: 10, color: HOF.textSec,
             letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>Door · Ed. 24</div>
+          }}>Door · Th. 24</div>
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 600, fontSize: 16,
             color: HOF.text, letterSpacing: '-0.01em', marginTop: 2,

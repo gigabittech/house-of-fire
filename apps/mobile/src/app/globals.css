@@ -79,3 +79,77 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ─── Ticket PDF / print — only #hof-ticket-print ───────────────────────────*/
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  .hof-app-frame {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .hof-no-print {
+    display: none !important;
+  }
+
+  .hof-ticket-page,
+  .hof-ticket-scroll {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  #hof-ticket-print {
+    display: block !important;
+    width: 100% !important;
+    max-width: 420px !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #hof-ticket-print,
+  #hof-ticket-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Receipt-only print — add class `hof-print-receipt` on <body> before print() */
+  body.hof-print-receipt #hof-ticket-print {
+    display: none !important;
+  }
+
+  body.hof-print-receipt #hof-receipt-print {
+    display: block !important;
+    width: 100% !important;
+    max-width: 612px !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.hof-print-receipt #hof-receipt-print,
+  body.hof-print-receipt #hof-receipt-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ticket Save PDF — hide receipt unless printing receipt only */
+  body:not(.hof-print-receipt) #hof-receipt-print {
+    display: none !important;
+  }
+}

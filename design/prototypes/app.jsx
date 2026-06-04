@@ -236,7 +236,7 @@ function App() {
             <ScreenAdmin startView="mod"/>
           </BrowserChrome>
         </DCArtboard>
-        <DCArtboard id="admin-events" label="Events · all editions" width={1280} height={800}>
+        <DCArtboard id="admin-events" label="Events · all themes" width={1280} height={800}>
           <BrowserChrome width={1280} height={800}>
             <ScreenAdmin startView="events"/>
           </BrowserChrome>
@@ -664,7 +664,7 @@ function ToastsDemo() {
       <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <HofToast kind="success" onDismiss={() => {}}>Ticket transferred to Devon — they have 24h to accept.</HofToast>
         <HofToast kind="info"    onDismiss={() => {}}>Your post is in #general. 12 members see it now.</HofToast>
-        <HofToast kind="warn"    onDismiss={() => {}}>Edition 24 sells out in ~6 days at this pace.</HofToast>
+        <HofToast kind="warn"    onDismiss={() => {}}>Theme 24 sells out in ~6 days at this pace.</HofToast>
         <HofToast kind="error"   onDismiss={() => {}}>Couldn't charge that card. Try a different one?</HofToast>
       </div>
 
@@ -677,7 +677,7 @@ function ToastsDemo() {
       <HofConfirm
         open={confirmOpen}
         title="Delete your account?"
-        body="This removes you and your posts. Past tickets stay attached to the editions you attended."
+        body="This removes you and your posts. Past tickets stay attached to the themes you attended."
         confirmLabel="Delete my account"
         destructive
         onConfirm={() => setConfirmOpen(false)}

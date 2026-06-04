@@ -49,7 +49,7 @@ function WalletPassApple() {
           <div style={{
             fontFamily: 'Inter', fontSize: 9, color: HOF.textSec, fontWeight: 600,
             letterSpacing: '0.16em', textTransform: 'uppercase',
-          }}>Edition 24</div>
+          }}>Theme 24</div>
           <div style={{
             fontFamily: 'Clash Display', fontWeight: 700, fontSize: 24,
             color: HOF.text, letterSpacing: '-0.02em', textTransform: 'uppercase',
@@ -155,7 +155,7 @@ function WalletPassGoogle() {
         <div style={{ padding: '16px 18px 4px' }}>
           <div style={{
             fontFamily: 'Inter', fontSize: 11, color: '#5f6368',
-          }}>Edition 24 · Friday, Jun 26 · 8:00 PM</div>
+          }}>Theme 24 · Friday, Jun 26 · 8:00 PM</div>
           <div style={{
             fontFamily: 'Inter', fontWeight: 700, fontSize: 22, color: '#202124',
             marginTop: 4, textTransform: 'uppercase',
@@ -314,7 +314,7 @@ function EmailReceipt() {
           letterSpacing: '-0.02em', margin: 0, color: '#000',
         }}>You're in.</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 12, color: '#555' }}>
-          Hi Sujan — your ticket for Fireversary (Edition 24) is confirmed. The QR below is your entry. Show this email or open it in the app.
+          Hi Sujan — your ticket for Fireversary (Theme 24) is confirmed. The QR below is your entry. Show this email or open it in the app.
         </p>
 
         {/* Big QR */}
@@ -333,7 +333,7 @@ function EmailReceipt() {
         {/* Event facts */}
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           {[
-            ['Event',  'Fireversary · Edition 24'],
+            ['Event',  'Fireversary · Theme 24'],
             ['Date',   'Friday, June 26, 2026'],
             ['Doors',  '8:00 PM'],
             ['Venue',  'Junkyard Social Club · 2525 Pearl St'],
@@ -515,7 +515,7 @@ function PushIosLockscreen() {
           appName="House of Fire"
           time="2m ago"
           title="Jordan posted in #general"
-          body="Edition 24 lineup is final — HEX takes the 12 slot."
+          body="Theme 24 lineup is final — HEX takes the 12 slot."
         />
         <PushCard
           appName="House of Fire"
