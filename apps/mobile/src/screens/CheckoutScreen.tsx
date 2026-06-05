@@ -1,18 +1,19 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
-import { EmptyState, Icon, useResponsive } from '@hof/ui';
+import { colors, layoutChrome } from '@hof/design-tokens';
+import { EmptyState, HofMobilePageHeader, Icon, useResponsive } from '@hof/ui';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import {
   formatDoorsRange,
   formatEventDateShort,
   NO_EVENTS_MESSAGE,
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
-import { computeCheckoutAmounts, tierAllInCents } from '@/lib/ticketPricing';
+import { computeCheckoutAmounts } from '@/lib/ticketPricing';
 import { MAX_TICKETS_PER_ORDER } from '@/lib/ticketLimits';
 
 const stripePromise = loadStripe(
@@ -278,6 +279,10 @@ function SaveToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => 
   );
 }
 
+function formatCurrency(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 // ─── Step 1 ──────────────────────────────────────────────────────────────────
 
 interface TierData {
@@ -346,7 +351,6 @@ function StepTickets({
       >
         {Object.entries(tierData).map(([id, t]) => {
           const disabled = t.soldOut;
-          const allIn = tierAllInCents(t.priceCents, t.feeCents) / 100;
           return (
           <button
             key={id}
@@ -423,7 +427,7 @@ function StepTickets({
                 color: colors.text,
               }}
             >
-              ${allIn.toFixed(0)}
+              {formatCurrency(t.priceCents)}
             </div>
           </button>
           );
@@ -944,10 +948,6 @@ function PromoCodeSection({
 
 // ─── Step 3 ──────────────────────────────────────────────────────────────────
 
-function formatCurrency(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
 function StepPaymentInner({
   paymentIntentId,
   intentAmount,
@@ -1163,7 +1163,7 @@ function StepPaymentInner({
             {err}
           </div>
         )}
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, paddingBottom: 4 }}>
           <button
             className="hof-btn hof-press"
             onClick={() => {
@@ -1601,18 +1601,24 @@ export default function CheckoutScreen() {
 
   const stepNames = ['Tickets', 'Your details', 'Payment'];
 
+  const handleCheckoutBack = useCallback(() => {
+    if (step === 1) router.back();
+    else setStep((step - 1) as 1 | 2 | 3);
+  }, [step, router]);
+
+  useAppHeader({ title: 'Checkout', onBack: handleCheckoutBack, hideMobileHeader: true });
+
   // Display total for the sticky CTA bar (uses discounted total on step 3, base total elsewhere)
   const ctaTotal = step === 3 ? displayTotalCents / 100 : total;
 
-  const topBarHeight = 62;
   const contentInsetX = 16;
   const scrollPaddingTop = isWide
-    ? topBarHeight + 20
-    : `calc(${topBarHeight + 20}px + env(safe-area-inset-top, 0px))`;
+    ? layoutChrome.wideActionsInset
+    : `calc(${layoutChrome.mobilePageHeaderInset} + 12px)`;
   const scrollPaddingBottom =
     step === 3
-      ? 'calc(32px + env(safe-area-inset-bottom, 0px))'
-      : 'calc(168px + env(safe-area-inset-bottom, 0px))';
+      ? 'calc(28px + max(10px, env(safe-area-inset-bottom, 0px)))'
+      : `calc(${layoutChrome.mobileCheckoutCtaHeight}px + max(10px, env(safe-area-inset-bottom, 0px)))`;
 
   if (!eventLoading && !checkoutEvent) {
     return (
@@ -1626,39 +1632,9 @@ export default function CheckoutScreen() {
           flexDirection: 'column',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: isWide
-              ? '12px 16px'
-              : 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
-            background: 'rgba(10,10,8,0.94)',
-            borderBottom: `1px solid ${colors.border}`,
-          }}
-        >
-          <button
-            className="hof-btn hof-press"
-            onClick={() => router.back()}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
-          </button>
-          <span style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 16, color: colors.text }}>
-            Checkout
-          </span>
-          <div style={{ width: 38 }} />
-        </div>
+        {!isWide ? (
+          <HofMobilePageHeader title="Checkout" onBack={handleCheckoutBack} />
+        ) : null}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <EmptyState
             icon="ticket"
@@ -1697,57 +1673,9 @@ export default function CheckoutScreen() {
         overflow: 'hidden',
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 760px)' : 'auto',
-          boxSizing: 'border-box',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: isWide
-            ? '12px 16px'
-            : 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
-          background: 'rgba(10,10,8,0.94)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <button
-          className="hof-btn hof-press"
-          onClick={() => (step === 1 ? router.back() : setStep((step - 1) as 1 | 2 | 3))}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
-        </button>
-        <span
-          style={{
-            fontFamily: 'Inter',
-            fontWeight: 500,
-            fontSize: 16,
-            color: colors.text,
-          }}
-        >
-          Checkout
-        </span>
-        <div style={{ width: 38 }} />
-      </div>
-
+      {!isWide ? (
+        <HofMobilePageHeader title="Checkout" onBack={handleCheckoutBack} />
+      ) : null}
       {/* Scrollable content */}
       <div
         className="hof-scroll"
@@ -1768,7 +1696,7 @@ export default function CheckoutScreen() {
         {/* Step indicator */}
         <div
           style={{
-            padding: `12px ${contentInsetX}px 20px`,
+            padding: `8px ${contentInsetX}px 28px`,
             width: '100%',
             boxSizing: 'border-box',
           }}
@@ -1956,12 +1884,13 @@ export default function CheckoutScreen() {
           />
         )}
 
-        <div style={{ height: 20, flexShrink: 0 }} aria-hidden="true" />
+        <div style={{ height: step === 3 ? 12 : 8, flexShrink: 0 }} aria-hidden="true" />
       </div>
 
       {/* Sticky CTA — hidden on step 3 (payment is handled inside Stripe Elements) */}
       {step !== 3 && (
         <div
+          className="hof-no-print"
           style={{
             position: 'absolute',
             left: isWide ? '50%' : 0,
@@ -1970,11 +1899,13 @@ export default function CheckoutScreen() {
             transform: isWide ? 'translateX(-50%)' : undefined,
             width: isWide ? 'min(100%, 760px)' : 'auto',
             boxSizing: 'border-box',
-            zIndex: 30,
-            background: 'rgba(20,20,18,0.94)',
-            backdropFilter: 'blur(20px)',
+            zIndex: 45,
+            background: 'rgba(10,10,8,0.92)',
+            backdropFilter: 'blur(20px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
             borderTop: `1px solid ${colors.border}`,
-            padding: `16px ${contentInsetX}px calc(24px + env(safe-area-inset-bottom, 0px))`,
+            padding: `14px ${contentInsetX}px calc(12px + max(10px, env(safe-area-inset-bottom, 0px)))`,
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
           }}
         >
           <div

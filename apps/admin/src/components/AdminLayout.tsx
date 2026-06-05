@@ -1,6 +1,6 @@
 'use client';
 
-import { breakpoints } from '@hof/design-tokens';
+import { breakpoints, sidebarWidth } from '@hof/design-tokens';
 import { HofLogoMark } from '@hof/ui';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -18,6 +18,7 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
     { id: 'members', href: '/members', icon: 'user', label: 'Members' },
     { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation' },
     { id: 'announce', href: '/announce', icon: 'bell', label: 'Announcements' },
+    { id: 'email-log', href: '/email-log', icon: 'mail', label: 'Email log' },
     { id: 'codes', href: '/codes', icon: 'tag', label: 'Codes & comps' },
     { id: 'financials', href: '/financials', icon: 'wallet', label: 'Financials' },
   ];
@@ -28,9 +29,9 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
 const BP_TABLET = 768;
 const BP_DESKTOP = breakpoints.desktop; // 1280
 
-/** Match member app `HofAppShell` sidebar chrome. */
-const SIDEBAR_WIDTH = 240;
-const SIDEBAR_WIDTH_TABLET = 76;
+/** Match member app `HofAppShell` sidebar chrome (shared design token). */
+const SIDEBAR_WIDTH = sidebarWidth.full;
+const SIDEBAR_WIDTH_TABLET = sidebarWidth.rail;
 
 type SidebarMode = 'full' | 'icon-only' | 'hidden';
 
@@ -155,9 +156,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           }}
         >
           {compact ? (
-            <HofLogoMark size={24} src="/assets/hof-emblem.png" alt="House of Fire" />
+            <HofLogoMark size={24} alt="House of Fire" />
           ) : (
-            <HofLogoMark fit="wordmark" width={140} src="/assets/hof-emblem.png" alt="House of Fire" />
+            <HofLogoMark fit="wordmark" width={140} alt="House of Fire" />
           )}
         </div>
 
@@ -383,7 +384,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               width: SIDEBAR_WIDTH,
               background: 'var(--hof-surface)',
               borderRight: '1px solid var(--hof-border)',
-              padding: '2px 12px',
+              padding: sidebarPadding,
               display: 'flex',
               flexDirection: 'column',
               animation: 'adminDrawerSlideIn 180ms ease',

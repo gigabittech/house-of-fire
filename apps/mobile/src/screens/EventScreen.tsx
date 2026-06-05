@@ -1,10 +1,12 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
-import type { NavId, Post as UiPost } from '@hof/ui';
-import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import type { Post as UiPost } from '@hof/ui';
+import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import {
   formatCapacityMeta,
   formatDoorsRange,
@@ -16,7 +18,6 @@ import {
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';
 import CalendarSheet from '../sheets/CalendarSheet';
 
@@ -480,6 +481,52 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   const { isWide, isDesktop } = useResponsive();
 
+  const headerActions = useMemo(
+    () => (
+      <>
+        <AppHeaderIconButton
+          icon="calendar"
+          label="Add to calendar"
+          onClick={() => setCalOpen(true)}
+          badge={
+            <span
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                background: colors.amber,
+                color: colors.bg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'Inter',
+                fontSize: 9,
+                fontWeight: 700,
+                lineHeight: '1',
+                border: `2px solid ${colors.bg}`,
+              }}
+            >
+              +
+            </span>
+          }
+        />
+        <AppHeaderIconButton
+          icon="share"
+          label="Share event"
+          onClick={() => setShareOpen(true)}
+        />
+      </>
+    ),
+    [],
+  );
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Event', actions: headerActions, onBack: handleBack });
+
   const heroSrc = resolveEventHeroImage(eventData?.hero_image_url);
 
   const pageColumn: CSSProperties = useMemo(() => {
@@ -502,7 +549,6 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   if (!eventLoading && !eventData) {
     return (
-      <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
         <div
           style={{
             position: 'relative',
@@ -537,12 +583,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             }
           />
         </div>
-      </HofAppShell>
     );
   }
 
   return (
-    <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
@@ -552,124 +596,6 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           overflow: 'hidden',
         }}
       >
-        {/* Top bar */}
-        <div
-          style={{
-            position: 'absolute',
-            top: isWide ? 12 : 54,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            padding: '12px 0',
-            background: 'rgba(10,10,8,0.7)',
-            backdropFilter: 'blur(12px)',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            style={{
-              ...pageColumn,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-          <button
-            className="hof-btn hof-press"
-            onClick={() => router.back()}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              background: 'rgba(20,20,18,0.7)',
-              backdropFilter: 'blur(12px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: `1px solid ${colors.border}`,
-            }}
-          >
-            <Icon
-              name="chev"
-              size={18}
-              color={colors.text}
-              style={{ transform: 'rotate(180deg)' }}
-            />
-          </button>
-          <span
-            style={{
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 16,
-              color: colors.text,
-            }}
-          >
-            Event
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => setCalOpen(true)}
-              aria-label="Add to calendar"
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                background: 'rgba(20,20,18,0.7)',
-                backdropFilter: 'blur(12px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1px solid ${colors.border}`,
-                position: 'relative',
-              }}
-            >
-              <Icon name="calendar" size={18} color={colors.text} />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  background: colors.amber,
-                  color: colors.bg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  lineHeight: '1',
-                  border: `2px solid ${colors.bg}`,
-                }}
-              >
-                +
-              </span>
-            </button>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => setShareOpen(true)}
-              aria-label="Share event"
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                background: 'rgba(20,20,18,0.7)',
-                backdropFilter: 'blur(12px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              <Icon name="share" size={20} color={colors.text} />
-            </button>
-          </div>
-          </div>
-        </div>
-
         {/* Scrollable content — hero full bleed; body in centered column */}
         <div
           className="hof-scroll"
@@ -677,7 +603,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             position: 'absolute',
             inset: 0,
             overflowY: 'auto',
-            paddingBottom: isWide ? 40 : 80,
+            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
           {/* Hero */}
@@ -1508,6 +1434,5 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
         <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
         <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>
-    </HofAppShell>
   );
 }

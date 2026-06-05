@@ -27,6 +27,13 @@ export type {
   Reply,
   UserRole,
 } from './feed/types';
+export { HOF_CHROME_ICON_SIZE, hofChromeCircleBtn, hofChromeIconRow } from './hofChromeIcon';
+export type { HofAppHeaderProps, HofAppHeaderUser } from './HofAppHeader';
+export { HofAppHeader } from './HofAppHeader';
+export type { HofWideTopBarProps } from './HofWideTopBar';
+export { HofWideTopBar } from './HofWideTopBar';
+export type { HofMobilePageHeaderProps } from './HofMobilePageHeader';
+export { HofMobilePageHeader } from './HofMobilePageHeader';
 export type { HofAppShellProps, HofContentProps } from './HofAppShell';
 export { HofAppShell, HofContent } from './HofAppShell';
 export type { HofBottomNavProps, NavId } from './HofBottomNav';

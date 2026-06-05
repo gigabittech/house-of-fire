@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
   }
 
   const edStr = String(event.edition_number).padStart(2, '0');
-  const eventPageUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://houseoffire.live'}/events/${eventId}`;
+  const eventPageUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://houseoffire.events'}/events/${eventId}`;
 
   // Send notification email via Resend
   const emailHtml =
@@ -118,6 +118,11 @@ export async function POST(request: NextRequest) {
       'See you on the dance floor,',
       'House of Fire',
     ].join('\n'),
+    log: {
+      kind: 'waitlist_notify',
+      projectId: eventId,
+      meta: { waitlistEntryId: entry.id },
+    },
   });
 
   // Mark the entry as notified

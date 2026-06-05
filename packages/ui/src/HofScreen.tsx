@@ -45,10 +45,17 @@ export function HofScroll({ children, style = {} }: HofScrollProps) {
 
 /** Spacer matching the status-bar height. */
 export function HofStatusbarSpacer() {
-  return <div style={{ height: 54 }} />;
+  return <div style={{ height: 'calc(12px + env(safe-area-inset-top, 0px))', minHeight: 12 }} />;
 }
 
 /** Spacer reserving room for the bottom nav + home indicator. */
 export function HofHomeSpacer() {
-  return <div style={{ height: 90 }} />;
+  return (
+    <div
+      style={{
+        height: 'calc(50px + max(6px, env(safe-area-inset-bottom, 0px)))',
+        minHeight: 56,
+      }}
+    />
+  );
 }

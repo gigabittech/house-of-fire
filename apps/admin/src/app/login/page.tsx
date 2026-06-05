@@ -63,7 +63,7 @@ export default function LoginPage() {
             }}
           >
             <div style={{ transform: 'translateX(-8px)' }}>
-              <HofLogoMark fit="wordmark" width={150} src="/assets/hof-emblem.png" alt="House of Fire" />
+              <HofLogoMark fit="wordmark" width={150} alt="House of Fire" />
             </div>
           </div>
           <div

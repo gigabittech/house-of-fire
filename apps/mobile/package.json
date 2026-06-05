@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --max-old-space-size=3072 ./node_modules/next/dist/bin/next dev",
+    "dev:webpack": "node --max-old-space-size=3072 ./node_modules/next/dist/bin/next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",
-    "typecheck": "rm -f tsconfig.tsbuildinfo && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
+    "typecheck": "rm -f tsconfig.tsbuildinfo && node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "@supabase/supabase-js": "^2.107.0",
     "next": "^16.2.7",
     "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "stripe": "^22.2.0"
@@ -31,6 +34,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

@@ -1,60 +1,24 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { HofButton, HofLogoMark, useResponsive } from '@hof/ui';
+import { HofButton } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { createClient } from '../lib/supabase';
-
-function AuthToggle({
-  mode,
-  onGoSignIn: _onGoSignIn,
-  onGoSignUp,
-}: {
-  mode: 'sign-in' | 'sign-up';
-  onGoSignIn: () => void;
-  onGoSignUp: () => void;
-}) {
-  const item: React.CSSProperties = {
-    background: 'transparent',
-    border: 'none',
-    padding: 0,
-    cursor: 'pointer',
-    fontFamily: 'Inter',
-    fontSize: 13,
-    fontWeight: 500,
-  };
-
-  return (
-    <div
-      style={{
-        marginTop: 18,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        alignItems: 'center',
-      }}
-    >
-      <button
-        type="button"
-        className="hof-btn"
-        onClick={onGoSignUp}
-        style={{
-          ...item,
-          color: mode === 'sign-up' ? colors.text : colors.amber,
-          opacity: mode === 'sign-up' ? 0.8 : 1,
-        }}
-      >
-        Not a member? Sign Up →
-      </button>
-    </div>
-  );
-}
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
+import {
+  AuthDivider,
+  AuthErrorBanner,
+  AuthInput,
+  AuthLabel,
+  AuthLegalFooter,
+  authContentPadding,
+  authHeadlineStyle,
+  authSubtextStyle,
+} from '../components/auth/AuthFormPrimitives';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 export default function SignInScreen() {
   const router = useRouter();
-  const supabase = createClient();
-  const { isWide } = useResponsive();
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -67,19 +31,21 @@ export default function SignInScreen() {
     setLoading(true);
     setError('');
 
-    const { error: authErr } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
-        // Important: don't create accounts on the Sign In flow.
-        shouldCreateUser: false,
-      },
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        flow: 'sign_in',
+        redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}&flow=sign_in`,
+      }),
     });
 
     setLoading(false);
 
-    if (authErr) {
-      const msg = authErr.message ?? 'Could not send sign-in link.';
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const msg = data.error ?? 'Could not send sign-in link.';
       const normalized = msg.toLowerCase();
       if (normalized.includes('user') && normalized.includes('not')) {
         setError('No account exists for this email address. Please sign up first.');
@@ -97,205 +63,109 @@ export default function SignInScreen() {
   }
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100dvh',
-        overflow: 'hidden',
-        background: colors.bg,
-      }}
-    >
-      <div
-        className="hof-scroll"
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 520px)' : 'auto',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ height: 54 }} />
-
-        {/* Header */}
-        <div style={{ padding: '10px 16px 0' }}>
-          <HofLogoMark size={90} />
-
-          <div
-            style={{
-              fontFamily: 'Clash Display',
-              fontWeight: 700,
-              fontSize: 44,
-              color: colors.text,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              marginTop: 16,
-              textTransform: 'uppercase',
-            }}
-          >
-            Sign in.
-          </div>
-          <div
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: colors.textSec,
-              marginTop: 12,
-              lineHeight: 1.5,
-              maxWidth: 360,
-            }}
-          >
-            Enter your email and we&apos;ll send a sign-in link. One tap, you&apos;re in.
-          </div>
+    <AuthScreenShell progressStep={1}>
+      <div style={{ padding: authContentPadding }}>
+        <div style={authHeadlineStyle}>Sign in.</div>
+        <div style={authSubtextStyle}>
+          Members get first crack at tickets, photos, and the discussion board.
         </div>
 
-        {/* Form */}
-        <div style={{ padding: '20px 16px 0' }}>
-          {error ? (
+        <div style={{ marginTop: 22 }}>
+          <GoogleSignInButton flow="sign_in" next="/" disabled={loading} />
+        </div>
+
+        <AuthDivider />
+
+        {!sent ? (
+          <>
+            <AuthLabel>Email</AuthLabel>
+            <AuthInput
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="email"
+            />
+
+            <AuthErrorBanner message={error} />
+
+            <div style={{ marginTop: error ? 16 : 28 }}>
+              <HofButton
+                variant="primary"
+                full
+                disabled={!isEmailValid || loading}
+                onClick={() => {
+                  void handleSendLink();
+                }}
+              >
+                {loading ? 'Sending link…' : 'Send sign-in link'}
+              </HofButton>
+            </div>
+          </>
+        ) : (
+          <div
+            style={{
+              padding: '14px 14px',
+              borderRadius: 12,
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+            }}
+          >
             <div
               style={{
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'rgba(232,101,26,0.10)',
-                border: `1px solid ${colors.border}`,
                 fontFamily: 'Inter',
-                fontSize: 13,
+                fontWeight: 500,
+                fontSize: 14,
                 color: colors.text,
-                lineHeight: 1.4,
               }}
             >
-              {error}
+              Check your email
             </div>
-          ) : null}
+            <div
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: colors.textSec,
+                marginTop: 4,
+                lineHeight: 1.5,
+              }}
+            >
+              Sent to <span style={{ color: colors.text }}>{email}</span>. Click the link to sign
+              in.
+            </div>
+          </div>
+        )}
 
-          {!sent ? (
-            <>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  color: colors.textSec,
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                  marginTop: error ? 14 : 0,
-                  marginBottom: 8,
-                }}
-              >
-                Email
-              </div>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                type="email"
-                inputMode="email"
-                autoCapitalize="none"
-                autoCorrect="off"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  height: 48,
-                  padding: '0 14px',
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 8,
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  color: colors.text,
-                  outline: 'none',
-                }}
-              />
-
-              <div style={{ marginTop: 14 }}>
-                <HofButton
-                  variant="primary"
-                  full
-                  disabled={!isEmailValid || loading}
-                  onClick={() => {
-                    void handleSendLink();
-                  }}
-                >
-                  {loading ? 'Sending…' : 'Send sign-in link'}
-                </HofButton>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                <button
-                  type="button"
-                  className="hof-btn"
-                  onClick={() => router.push('/landing')}
-                  style={{
-                    width: '100%',
-                    background: 'transparent',
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: 10,
-                    height: 44,
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: colors.textSec,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Back
-                </button>
-              </div>
-
-              <AuthToggle
-                mode="sign-in"
-                onGoSignIn={() => {}}
-                onGoSignUp={() => router.push('/onboarding')}
-              />
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  marginTop: error ? 14 : 0,
-                  padding: '14px 14px',
-                  borderRadius: 12,
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontWeight: 500,
-                    fontSize: 14,
-                    color: colors.text,
-                  }}
-                >
-                  Check your email
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    color: colors.textSec,
-                    marginTop: 4,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Sent to <span style={{ color: colors.text }}>{email}</span>. Click the link to
-                  sign in.
-                </div>
-              </div>
-
-              <AuthToggle
-                mode="sign-in"
-                onGoSignIn={() => {}}
-                onGoSignUp={() => router.push('/onboarding')}
-              />
-            </>
-          )}
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: 16,
+            fontFamily: 'Inter',
+            fontSize: 13,
+            color: colors.textSec,
+          }}
+        >
+          Not a member?{' '}
+          <button
+            type="button"
+            className="hof-btn"
+            onClick={() => router.push('/onboarding')}
+            style={{
+              color: colors.amber,
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            Sign up →
+          </button>
         </div>
 
-        <div style={{ height: 36 }} />
+        <AuthLegalFooter />
       </div>
-    </div>
+    </AuthScreenShell>
   );
 }
