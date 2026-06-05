@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useState } from 'react';
 import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
+import { QR_RENDER_OPTIONS } from '@/lib/qrRenderOptions';
 import RefundSheet from '../sheets/RefundSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 import TransferSheet from '../sheets/TransferSheet';
@@ -37,9 +38,7 @@ type TicketData = {
   profiles?: TicketHolderProfile | TicketHolderProfile[];
 };
 
-function resolveHolderProfile(
-  profiles: TicketData['profiles'],
-): TicketHolderProfile {
+function resolveHolderProfile(profiles: TicketData['profiles']): TicketHolderProfile {
   if (!profiles) return null;
   return Array.isArray(profiles) ? (profiles[0] ?? null) : profiles;
 }
@@ -83,9 +82,7 @@ function ticketDoorsLabel(ticket: TicketData | null): string {
   return formatDoorsRange(open, close ?? undefined);
 }
 
-async function loadAllTickets(options: {
-  paymentIntentId?: string | null;
-}): Promise<TicketData[]> {
+async function loadAllTickets(options: { paymentIntentId?: string | null }): Promise<TicketData[]> {
   if (options.paymentIntentId) {
     try {
       const r = await fetch('/api/checkout/complete', {
@@ -110,12 +107,7 @@ async function loadAllTickets(options: {
 }
 
 async function qrDataUrlForTicket(t: TicketData): Promise<string> {
-  return QRCode.toDataURL(t.qr_data, {
-    errorCorrectionLevel: 'H',
-    margin: 2,
-    width: 400,
-    color: { dark: '#1a1a1a', light: '#f5f0e8' },
-  });
+  return QRCode.toDataURL(t.qr_data, QR_RENDER_OPTIONS);
 }
 
 function sleep(ms: number) {
@@ -512,9 +504,7 @@ export default function TicketScreen() {
                         }}
                       >
                         Theme {ticket?.events?.edition_number ?? '—'} · Admit one
-                        {tickets.length > 1
-                          ? ` · ${activeIndex + 1} of ${tickets.length}`
-                          : ''}
+                        {tickets.length > 1 ? ` · ${activeIndex + 1} of ${tickets.length}` : ''}
                       </div>
                       <img
                         src="/assets/hof-logo-black.png"
@@ -969,11 +959,7 @@ export default function TicketScreen() {
           void reloadTickets();
         }}
       />
-      <RefundSheet
-        open={refundOpen}
-        onClose={() => setRefundOpen(false)}
-        ticketId={ticket?.id}
-      />
+      <RefundSheet open={refundOpen} onClose={() => setRefundOpen(false)} ticketId={ticket?.id} />
       <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>

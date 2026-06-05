@@ -3,7 +3,7 @@
 // mirroring these live in ./tokens.css.
 
 export type { BreakpointToken } from './breakpoints';
-export { breakpoints, layoutWidth } from './breakpoints';
+export { breakpoints, layoutWidth, sidebarWidth } from './breakpoints';
 export type { ColorToken } from './colors';
 export { colors } from './colors';
 export type { DurationToken } from './motion';
@@ -23,7 +23,7 @@ export {
   lineHeights,
 } from './typography';
 
-import { breakpoints, layoutWidth } from './breakpoints';
+import { breakpoints, layoutWidth, sidebarWidth } from './breakpoints';
 import { colors } from './colors';
 import { durations, easings, keyframes } from './motion';
 import { radii } from './radii';
@@ -47,4 +47,5 @@ export const tokens = {
   shadows,
   breakpoints,
   layoutWidth,
+  sidebarWidth,
 } as const;

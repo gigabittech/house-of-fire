@@ -1,6 +1,6 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, sidebarWidth } from '@hof/design-tokens';
 import type { ReactNode } from 'react';
 import { HofBottomNav, type NavId } from './HofBottomNav';
 import { HofLogoMark } from './HofLogoMark';
@@ -20,8 +20,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
 ];
 
-const SIDEBAR_WIDTH = 240;
-const SIDEBAR_WIDTH_TABLET = 76; // icon-only rail on tablet
+const SIDEBAR_WIDTH = sidebarWidth.full;
+const SIDEBAR_WIDTH_TABLET = sidebarWidth.rail; // icon-only rail on tablet
 
 // ─── Sidebar (tablet + desktop) ───────────────────────────────────────────────
 
@@ -61,11 +61,7 @@ function HofSidebar({
           boxSizing: 'border-box',
         }}
       >
-        {compact ? (
-          <HofLogoMark size={24} />
-        ) : (
-          <HofLogoMark fit="wordmark" width={140} />
-        )}
+        {compact ? <HofLogoMark size={24} /> : <HofLogoMark fit="wordmark" width={140} />}
       </div>
 
       {/* Nav items */}
