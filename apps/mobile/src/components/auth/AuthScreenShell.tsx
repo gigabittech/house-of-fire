@@ -5,10 +5,10 @@ import { HofLogoMark, useResponsive } from '@hof/ui';
 
 export function AuthScreenShell({
   children,
-  progressStep = 1,
+  progressStep,
 }: {
   children: React.ReactNode;
-  /** Active step (1–3) for the dots below the logo. */
+  /** Active step (1–3) for the progress dots below the logo. */
   progressStep?: 1 | 2 | 3;
 }) {
   const { isWide } = useResponsive();
@@ -39,37 +39,44 @@ export function AuthScreenShell({
       >
         <div
           style={{
-            paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+            paddingTop: 'calc(28px + env(safe-area-inset-top, 0px))',
             paddingLeft: 20,
             paddingRight: 20,
-            paddingBottom: 8,
+            paddingBottom: 12,
           }}
         >
-          <HofLogoMark fit="wordmark" width={isWide ? 140 : 120} alt="House of Fire" />
+          <HofLogoMark
+            fit="wordmark"
+            src="/assets/hof-logo.png"
+            width={isWide ? 120 : 108}
+            alt="House of Fire"
+          />
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '6px 0 0',
-          }}
-        >
-          {([1, 2, 3] as const).map((i) => (
-            <div
-              key={i}
-              style={{
-                width: i === progressStep ? 22 : 6,
-                height: 6,
-                borderRadius: 3,
-                background: i <= progressStep ? colors.amber : colors.elevated,
-                transition: 'width 200ms',
-              }}
-            />
-          ))}
-        </div>
+        {progressStep ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '4px 0 8px',
+            }}
+          >
+            {([1, 2, 3] as const).map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: i === progressStep ? 22 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: i <= progressStep ? colors.amber : colors.elevated,
+                  transition: 'width 200ms',
+                }}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {children}
       </div>

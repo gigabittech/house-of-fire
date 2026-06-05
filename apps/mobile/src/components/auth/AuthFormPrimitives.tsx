@@ -158,14 +158,14 @@ export function AuthLegalFooter() {
 }
 
 /** Shared content inset for sign-in and onboarding steps. */
-export const authContentPadding = '16px 20px 24px';
+export const authContentPadding = '8px 20px 24px';
 
 export const authHeadlineStyle: React.CSSProperties = {
   fontFamily: 'Clash Display',
   fontWeight: 700,
   fontSize: 32,
   color: colors.text,
-  marginTop: 18,
+  marginTop: 8,
   letterSpacing: '-0.02em',
   lineHeight: 1.05,
   textTransform: 'uppercase',

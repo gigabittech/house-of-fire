@@ -1,10 +1,9 @@
 'use client';
 
-import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
-import { HofButton, HofPill, Icon, useResponsive } from '@hof/ui';
+import { colors, layoutWidth } from '@hof/design-tokens';
+import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { useAppHeader } from '@/hooks/useAppHeader';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import { formatEventDate, NO_EVENTS_MESSAGE, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 
@@ -62,31 +61,6 @@ export default function LandingScreen() {
   const onGetStarted = () => router.push('/onboarding');
   const onSignIn = () => router.push('/sign-in');
 
-  const headerActions = useMemo(
-    () => (
-      <button
-        type="button"
-        className="hof-btn hof-press"
-        onClick={onSignIn}
-        style={{
-          fontFamily: 'Inter',
-          fontSize: 13,
-          fontWeight: 500,
-          color: colors.text,
-          padding: '7px 14px',
-          borderRadius: 6,
-          background: colors.surface,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
-        Sign in
-      </button>
-    ),
-    [onSignIn],
-  );
-
-  useAppHeader({ title: 'House of Fire', actions: headerActions });
-
   const sectionLabel: CSSProperties = {
     fontFamily: 'Inter',
     fontSize: 10,
@@ -121,7 +95,7 @@ export default function LandingScreen() {
           position: 'absolute',
           inset: 0,
           overflowY: 'auto',
-          paddingBottom: layoutChrome.mobileScrollBottom,
+          paddingBottom: 40,
         }}
       >
         {/* Hero — full-bleed image; chrome + copy share pageColumn */}
@@ -172,6 +146,45 @@ export default function LandingScreen() {
               flexDirection: 'column',
             }}
           >
+            <div
+              style={{
+                ...pageColumn,
+                paddingTop: `calc(12px + env(safe-area-inset-top, 0px))`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <HofLogoMark
+                fit="wordmark"
+                src="/assets/hof-logo.png"
+                width={isDesktop ? 140 : isWide ? 128 : 112}
+                alt="House of Fire"
+              />
+              <HofButton
+                variant="ghost"
+                size="sm"
+                onClick={onSignIn}
+                style={{
+                  flexShrink: 0,
+                  height: 40,
+                  padding: '0 18px',
+                  borderRadius: 999,
+                  background: 'rgba(20,20,18,0.72)',
+                  backdropFilter: 'blur(14px)',
+                  WebkitBackdropFilter: 'blur(14px)',
+                  border: `1px solid ${colors.borderHi}`,
+                  boxShadow: '0 2px 14px rgba(0,0,0,0.28)',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Sign in
+              </HofButton>
+            </div>
+
             {/* Hero copy — pinned to bottom of hero, same column */}
             <div style={{ flex: 1 }} />
             <div style={{ ...pageColumn, paddingBottom: 28 }}>
