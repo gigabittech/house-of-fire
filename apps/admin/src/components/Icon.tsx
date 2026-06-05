@@ -152,6 +152,12 @@ export function Icon({ name, size = 20, color = 'var(--hof-text-sec)' }: IconPro
         <path {...p} d="M14 6 V18" strokeDasharray="2 2" />
       </>
     ),
+    mail: (
+      <>
+        <rect {...p} x="3" y="5" width="18" height="14" rx="2" />
+        <path {...p} d="M3 7 L12 13 L21 7" />
+      </>
+    ),
   };
 
   const content = paths[name];

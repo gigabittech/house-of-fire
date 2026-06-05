@@ -118,6 +118,11 @@ export async function POST(request: NextRequest) {
       'See you on the dance floor,',
       'House of Fire',
     ].join('\n'),
+    log: {
+      kind: 'waitlist_notify',
+      projectId: eventId,
+      meta: { waitlistEntryId: entry.id },
+    },
   });
 
   // Mark the entry as notified

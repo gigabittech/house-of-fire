@@ -129,8 +129,9 @@ function formatCents(cents: number): string {
 export default function TicketScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const purchased = searchParams.get('purchased') === '1';
+  const purchasedFromUrl = searchParams.get('purchased') === '1';
   const paymentIntentFromRedirect = searchParams.get('payment_intent');
+  const [justPurchased, setJustPurchased] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -147,13 +148,23 @@ export default function TicketScreen() {
   const [loading, setLoading] = useState(true);
   const [ticketError, setTicketError] = useState(false);
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
+  const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
   const { isWide } = useResponsive();
+
+  useEffect(() => {
+    if (purchasedFromUrl) setJustPurchased(true);
+  }, [purchasedFromUrl]);
 
   const ticket = tickets[activeIndex] ?? null;
   const ev = ticketEvent(ticket);
   const holderLabel = ticketHolderName(ticket, holderFallback);
   const doorsLabel = ticketDoorsLabel(ticket);
   const qrDataUrl = ticket ? (qrByTicketId[ticket.id] ?? '') : '';
+  const receiptEmail =
+    buyerEmail?.trim() ||
+    ticket?.metadata?.holder_email?.trim() ||
+    tickets[0]?.metadata?.holder_email?.trim() ||
+    null;
 
   const reloadTickets = useCallback(async () => {
     const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
@@ -169,7 +180,7 @@ export default function TicketScreen() {
       setLoading(true);
       setTicketError(false);
 
-      const shouldPoll = purchased || Boolean(paymentIntentFromRedirect);
+      const shouldPoll = purchasedFromUrl || Boolean(paymentIntentFromRedirect);
       const attempts = shouldPoll ? 5 : 1;
       const delayMs = shouldPoll ? 1000 : 0;
 
@@ -199,15 +210,20 @@ export default function TicketScreen() {
     return () => {
       cancelled = true;
     };
-  }, [purchased, paymentIntentFromRedirect]);
+  }, [purchasedFromUrl, paymentIntentFromRedirect]);
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/profile')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { profile?: { display_name?: string } } | null) => {
-        if (cancelled || !d?.profile?.display_name?.trim()) return;
-        setHolderFallback(d.profile.display_name.trim());
+      .then((d: { profile?: { display_name?: string; email?: string | null } } | null) => {
+        if (cancelled || !d?.profile) return;
+        if (d.profile.display_name?.trim()) {
+          setHolderFallback(d.profile.display_name.trim());
+        }
+        if (d.profile.email?.trim()) {
+          setBuyerEmail(d.profile.email.trim());
+        }
       })
       .catch(() => {});
     return () => {
@@ -232,6 +248,11 @@ export default function TicketScreen() {
       cancelled = true;
     };
   }, [tickets, activeIndex, qrByTicketId]);
+
+  useEffect(() => {
+    if (!purchasedFromUrl || loading || tickets.length === 0) return;
+    router.replace('/ticket', { scroll: false });
+  }, [purchasedFromUrl, loading, tickets.length, router]);
 
   function goToTicket(index: number) {
     if (tickets.length === 0) return;
@@ -391,58 +412,59 @@ export default function TicketScreen() {
 
         {!loading && !ticketError && ticket !== null && tickets.length > 0 && (
           <>
-            {/* Day-of contextual banner */}
-            <div
-              className="hof-no-print"
-              style={{
-                margin: '0 16px 16px',
-                padding: '12px 14px',
-                background: 'rgba(232,101,26,0.1)',
-                border: `1px solid rgba(232,101,26,0.3)`,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
+            {!justPurchased ? (
               <div
+                className="hof-no-print"
                 style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 13,
-                  background: colors.amber,
+                  margin: '0 16px 16px',
+                  padding: '12px 14px',
+                  background: 'rgba(232,101,26,0.1)',
+                  border: `1px solid rgba(232,101,26,0.3)`,
+                  borderRadius: 10,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  gap: 10,
                 }}
               >
-                <Icon name="flame" size={14} color={colors.bg} />
-              </div>
-              <div>
                 <div
                   style={{
-                    fontFamily: 'Inter',
-                    fontWeight: 500,
-                    fontSize: 13,
-                    color: colors.text,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    background: colors.amber,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  Tonight&apos;s the night.
+                  <Icon name="flame" size={14} color={colors.bg} />
                 </div>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: colors.textSec,
-                    marginTop: 1,
-                  }}
-                >
-                  {ticket?.events?.doors_open
-                    ? `Doors ${formatDoorsRange(ticket.events.doors_open, ticket.events.doors_close)}. Side entrance on 23rd.`
-                    : 'Doors open soon. Side entrance on 23rd.'}
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontWeight: 500,
+                      fontSize: 13,
+                      color: colors.text,
+                    }}
+                  >
+                    Tonight&apos;s the night.
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      color: colors.textSec,
+                      marginTop: 1,
+                    }}
+                  >
+                    {ticket?.events?.doors_open
+                      ? `Doors ${formatDoorsRange(ticket.events.doors_open, ticket.events.doors_close)}. Side entrance on 23rd.`
+                      : 'Doors open soon. Side entrance on 23rd.'}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Success copy */}
             <div className="hof-no-print" style={{ padding: '12px 16px 18px' }}>
@@ -467,8 +489,70 @@ export default function TicketScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                See you Friday. The QR below is your ticket — open this screen at the door.
+                See you at the door. The QR below is your ticket — keep brightness up when you arrive.
               </div>
+              {justPurchased ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    background: 'rgba(76,175,110,0.1)',
+                    border: '1px solid rgba(76,175,110,0.28)',
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      background: colors.success,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon name="check" size={14} color={colors.bg} />
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        color: colors.text,
+                      }}
+                    >
+                      Email sent
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: colors.textSec,
+                        marginTop: 4,
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      {receiptEmail ? (
+                        <>
+                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to your email.
+                          Check your inbox — and spam if you don&apos;t see it within a few minutes.
+                        </>
+                      ) : (
+                        <>
+                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to the email
+                          you used at checkout. Check your inbox — and spam if needed.
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {/* Ticket card — swipe between tickets when qty > 1 */}

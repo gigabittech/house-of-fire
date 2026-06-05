@@ -14,15 +14,16 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Set the monorepo root so Next.js traces dependencies correctly and
-  // doesn't confuse ~/package-lock.json with our pnpm workspace root.
-  outputFileTracingRoot: path.join(__dirname, '../../'),
-
+  // Monorepo root: Turbopack + output tracing must match (see .npmrc next hoisting).
+  turbopack: {
+    root: monorepoRoot,
+  },
+  outputFileTracingRoot: monorepoRoot,
   // Workspace packages ship built ESM; transpile them through Next for safety.
   transpilePackages: ['@hof/ui', '@hof/design-tokens'],
 
   // @react-pdf/renderer must run on the server without webpack bundling issues.
-  serverExternalPackages: ['@react-pdf/renderer'],
+  serverExternalPackages: ['@react-pdf/renderer', 'sharp'],
 
   // Receipt PDF reads logo from disk — copy into serverless bundles (monorepo-aware).
   outputFileTracingIncludes: {

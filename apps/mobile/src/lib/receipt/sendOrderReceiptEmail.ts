@@ -8,6 +8,7 @@ import { renderReceiptPdf } from './renderReceiptPdf';
 export async function sendOrderReceiptEmail(params: {
   orderId: string;
   paymentIntent?: Stripe.PaymentIntent | null;
+  existingLogId?: string;
 }): Promise<void> {
   const data = await loadReceiptData(params.orderId, params.paymentIntent);
   if (!data?.buyer.email?.trim()) {
@@ -34,7 +35,7 @@ export async function sendOrderReceiptEmail(params: {
     throw new Error('Receipt PDF could not be generated');
   }
 
-  const subject = `Your House of Fire receipt — ${data.event.name} (Ed. ${data.event.editionNumber})`;
+  const subject = `Your House of Fire receipt — ${data.event.name} (Th. ${data.event.editionNumber})`;
 
   const from =
     process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';
@@ -55,6 +56,15 @@ export async function sendOrderReceiptEmail(params: {
         },
         ...qrAttachments,
       ],
+      log: {
+        existingLogId: params.existingLogId,
+        kind: 'receipt',
+        projectId: data.event.id,
+        meta: {
+          orderId: params.orderId,
+          attachments: { pdf: true, tickets: qrAttachments.length },
+        },
+      },
     });
     console.info('[receipt] Sent receipt email', {
       orderId: params.orderId,
