@@ -2,9 +2,7 @@
 
 import { colors } from '@hof/design-tokens';
 import { HofButton } from '@hof/ui';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { AuthScreenShell } from '../components/auth/AuthScreenShell';
 import {
   // AuthDivider,
   AuthErrorBanner,
@@ -15,10 +13,12 @@ import {
   authHeadlineStyle,
   authSubtextStyle,
 } from '../components/auth/AuthFormPrimitives';
+import { useAuthNavigation } from '../components/auth/AuthNavigation';
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
 // import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 export default function SignInScreen() {
-  const router = useRouter();
+  const { navigate } = useAuthNavigation();
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -152,7 +152,7 @@ export default function SignInScreen() {
           <button
             type="button"
             className="hof-btn"
-            onClick={() => router.push('/onboarding')}
+            onClick={() => navigate('/onboarding')}
             style={{
               color: colors.amber,
               fontFamily: 'inherit',

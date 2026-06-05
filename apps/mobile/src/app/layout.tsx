@@ -36,7 +36,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body>
+      <body suppressHydrationWarning>
         {/*
           Clash Display via Fontshare (no next/font support). The `precedence`
           prop lets React 19 hoist this stylesheet into <head> from inside a

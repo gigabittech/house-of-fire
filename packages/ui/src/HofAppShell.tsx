@@ -8,21 +8,9 @@ import { HofBottomNav, type NavId } from './HofBottomNav';
 import { HofLogoMark } from './HofLogoMark';
 import { hofChromeCircleBtn, hofChromeIconRow } from './hofChromeIcon';
 import { HofMobilePageHeader } from './HofMobilePageHeader';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
+import { filterMemberNavItems } from './memberNav';
 import { useResponsive } from './useBreakpoint';
-
-interface NavItem {
-  id: NavId;
-  label: string;
-  icon: IconName;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'events', label: 'Events', icon: 'calendar' },
-  { id: 'community', label: 'Community', icon: 'chat' },
-  { id: 'profile', label: 'Profile', icon: 'user' },
-];
 
 const SIDEBAR_WIDTH = sidebarWidth.full;
 const SIDEBAR_WIDTH_TABLET = sidebarWidth.rail;
@@ -149,12 +137,16 @@ function HofSidebar({
   onChange,
   compact,
   user,
+  excludeNavIds = [],
 }: {
   active?: NavId;
   onChange?: (id: NavId) => void;
   compact: boolean;
   user?: HofAppHeaderUser | null;
+  excludeNavIds?: NavId[];
 }) {
+  const navItems = filterMemberNavItems(excludeNavIds);
+
   return (
     <nav
       aria-label="Main navigation"
@@ -180,7 +172,7 @@ function HofSidebar({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {NAV_ITEMS.map((it) => {
+          {navItems.map((it) => {
             const isActive = active === it.id;
             return (
               <button
@@ -239,6 +231,8 @@ export interface HofAppShellProps {
   onBack?: () => void;
   hideMobilePageHeader?: boolean;
   hideBottomNav?: boolean;
+  /** Hide nav tabs (e.g. Community when feature is off). */
+  excludeNavIds?: NavId[];
   children: ReactNode;
 }
 
@@ -257,6 +251,7 @@ export function HofAppShell({
   onBack,
   hideMobilePageHeader = false,
   hideBottomNav = false,
+  excludeNavIds = [],
   children,
 }: HofAppShellProps) {
   const { isWide, isTablet, mounted } = useResponsive();
@@ -313,7 +308,9 @@ export function HofAppShell({
     return (
       <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
         {mainColumn}
-        {!hideBottomNav ? <HofBottomNav active={active} onChange={onNav} /> : null}
+        {!hideBottomNav ? (
+          <HofBottomNav active={active} onChange={onNav} excludeNavIds={excludeNavIds} />
+        ) : null}
       </div>
     );
   }
@@ -329,7 +326,13 @@ export function HofAppShell({
         overflow: 'hidden',
       }}
     >
-      <HofSidebar active={active} onChange={onNav} compact={isTablet} user={user} />
+      <HofSidebar
+        active={active}
+        onChange={onNav}
+        compact={isTablet}
+        user={user}
+        excludeNavIds={excludeNavIds}
+      />
       {mainColumn}
     </div>
   );

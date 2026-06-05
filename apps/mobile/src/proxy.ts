@@ -62,7 +62,8 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPublic =
     PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/')) ||
-    pathname.startsWith('/community') ||
+    // COMMUNITY_FEATURE: uncomment when enabling Community (apps/mobile/src/lib/features.ts).
+    // pathname.startsWith('/community') ||
     pathname.startsWith('/dev/login'); // dev-only impersonation route (guarded by NODE_ENV)
 
   if (!user && !isPublic && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {

@@ -176,5 +176,6 @@ export const authSubtextStyle: React.CSSProperties = {
   fontSize: 14,
   color: colors.textSec,
   marginTop: 8,
+  marginBottom: 16,
   lineHeight: 1.5,
 };

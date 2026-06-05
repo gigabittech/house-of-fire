@@ -5,6 +5,7 @@ import { HofConfirm, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { createClient } from '../lib/supabase';
 
 type View = 'list' | 'notifs' | 'payment' | 'privacy' | 'help';
@@ -214,6 +215,7 @@ function SettingsNotifs() {
       <Section title="Topics">
         <ActionRow
           label="Lineup & schedule alerts"
+          last={!COMMUNITY_FEATURE_ENABLED}
           right={
             <Toggle
               on={lineupAlerts}
@@ -224,19 +226,21 @@ function SettingsNotifs() {
             />
           }
         />
-        <ActionRow
-          label="Community mentions"
-          last
-          right={
-            <Toggle
-              on={communityMentions}
-              onChange={(v) => {
-                setCommunityMentions(v);
-                persist('community_mentions', v);
-              }}
-            />
-          }
-        />
+        {COMMUNITY_FEATURE_ENABLED ? (
+          <ActionRow
+            label="Community mentions"
+            last
+            right={
+              <Toggle
+                on={communityMentions}
+                onChange={(v) => {
+                  setCommunityMentions(v);
+                  persist('community_mentions', v);
+                }}
+              />
+            }
+          />
+        ) : null}
       </Section>
     </>
   );
@@ -321,6 +325,7 @@ function SettingsPrivacy() {
 
   return (
     <>
+      {COMMUNITY_FEATURE_ENABLED ? (
       <Section title="Community">
         <ActionRow
           label="Post anonymously by default"
@@ -348,6 +353,7 @@ function SettingsPrivacy() {
           }
         />
       </Section>
+      ) : null}
       <Section title="Data">
         <ActionRow
           label="Download my data"
