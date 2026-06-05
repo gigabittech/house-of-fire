@@ -6,10 +6,10 @@ import { AppHeaderProvider, useAppHeaderContext } from '@/context/AppHeaderConte
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { navHref } from '@/lib/nav';
 
-const AUTH_LAYOUT_PATHS = ['/sign-in', '/onboarding'];
+const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing'];
 
-function usesAuthLayout(pathname: string): boolean {
-  return AUTH_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+function usesStandaloneLayout(pathname: string): boolean {
+  return STANDALONE_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 function activeFromPath(pathname: string): NavId | undefined {
@@ -69,7 +69,7 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (usesAuthLayout(pathname)) {
+  if (usesStandaloneLayout(pathname)) {
     return <>{children}</>;
   }
 
