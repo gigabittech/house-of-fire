@@ -125,6 +125,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           </p>
         </div>
       `,
+      log: {
+        kind: 'ticket_transfer',
+        projectId: ticket.event_id,
+        meta: { ticketId: id, transferId },
+      },
     })
     .catch(console.error);
 

@@ -4,8 +4,6 @@ import { colors } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { createClient } from '../lib/supabase';
-
 function AuthToggle({
   mode,
   onGoSignIn: _onGoSignIn,
@@ -53,7 +51,6 @@ function AuthToggle({
 
 export default function SignInScreen() {
   const router = useRouter();
-  const supabase = createClient();
   const { isWide } = useResponsive();
 
   const [email, setEmail] = useState('');
@@ -67,19 +64,22 @@ export default function SignInScreen() {
     setLoading(true);
     setError('');
 
-    const { error: authErr } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
-        // Important: don't create accounts on the Sign In flow.
-        shouldCreateUser: false,
-      },
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        flow: 'sign_in',
+        redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
+      }),
     });
 
     setLoading(false);
 
-    if (authErr) {
-      const msg = authErr.message ?? 'Could not send sign-in link.';
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const msg = data.error ?? 'Could not send sign-in link.';
+      const authErr = { message: msg };
       const normalized = msg.toLowerCase();
       if (normalized.includes('user') && normalized.includes('not')) {
         setError('No account exists for this email address. Please sign up first.');
@@ -89,7 +89,7 @@ export default function SignInScreen() {
         setError('No account exists for this email address. Please sign up first.');
         return;
       }
-      setError(msg);
+      setError(authErr.message);
       return;
     }
 

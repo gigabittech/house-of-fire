@@ -570,7 +570,6 @@ function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => v
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const supabase = createClient();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [data, setData] = useState<FormData>({
     first: '',
@@ -593,21 +592,25 @@ export default function OnboardingScreen() {
   async function handleStep1Next() {
     setLoading(true);
     setError('');
-    const { error: authErr } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
-        data: {
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: data.email,
+        flow: 'sign_up',
+        redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
+        userData: {
           first_name: data.first,
           last_name: data.last,
           display_name: `${data.first} ${data.last}`.trim(),
           phone: data.phone,
         },
-      },
+      }),
     });
     setLoading(false);
-    if (authErr) {
-      setError(authErr.message);
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(payload.error ?? 'Could not send confirmation email.');
       return;
     }
     setStep(2);
