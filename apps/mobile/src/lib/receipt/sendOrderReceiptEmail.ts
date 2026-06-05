@@ -34,7 +34,7 @@ export async function sendOrderReceiptEmail(params: {
     throw new Error('Receipt PDF could not be generated');
   }
 
-  const subject = `Your House of Fire receipt — ${data.event.name} (Ed. ${data.event.editionNumber})`;
+  const subject = `Your House of Fire receipt — ${data.event.name} (Th. ${data.event.editionNumber})`;
 
   const from =
     process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';

@@ -174,7 +174,7 @@ function ReceiptPdfDocument({
             <Text style={styles.labelCaps}>Event</Text>
             <View style={styles.body14}>
               <Text style={styles.bold}>
-                {data.event.name} · Edition {data.event.editionNumber}
+                {data.event.name} · Theme {data.event.editionNumber}
               </Text>
               <Text>{data.event.dateLine}</Text>
               <Text>{data.event.venueName}</Text>

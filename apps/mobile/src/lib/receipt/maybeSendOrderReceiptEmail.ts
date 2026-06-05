@@ -15,6 +15,7 @@ export async function maybeSendOrderReceiptEmail(
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<void> {
   if (paymentIntent.metadata.receiptEmailSent === 'true') {
+    console.info('[receipt] Skipping — already sent for PaymentIntent', paymentIntent.id);
     return;
   }
 
