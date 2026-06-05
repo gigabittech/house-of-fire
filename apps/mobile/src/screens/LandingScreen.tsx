@@ -2,9 +2,14 @@
 
 import { colors, layoutWidth } from '@hof/design-tokens';
 import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
-import { useRouter } from 'next/navigation';
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
-import { formatEventDate, NO_EVENTS_MESSAGE, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
+import {
+  formatEventDate,
+  NO_EVENTS_MESSAGE,
+  remainingTickets,
+  type UpcomingEvent,
+} from '@/lib/eventDisplay';
+import { useAuthNavigation } from '../components/auth/AuthNavigation';
 import { photoSrc } from '../data/photos';
 
 /** Shared horizontal track — every section uses this for aligned edges. */
@@ -43,7 +48,7 @@ function LandingSection({
 }
 
 export default function LandingScreen() {
-  const router = useRouter();
+  const { navigate } = useAuthNavigation();
   const { isWide, isDesktop, pageColumn } = useLandingLayout();
   const [upcoming, setUpcoming] = useState<UpcomingEvent | null>(null);
   const [eventLoaded, setEventLoaded] = useState(false);
@@ -58,8 +63,8 @@ export default function LandingScreen() {
       .finally(() => setEventLoaded(true));
   }, []);
 
-  const onGetStarted = () => router.push('/onboarding');
-  const onSignIn = () => router.push('/sign-in');
+  const onGetStarted = () => navigate('/onboarding');
+  const onSignIn = () => navigate('/sign-in');
 
   const sectionLabel: CSSProperties = {
     fontFamily: 'Inter',
@@ -452,22 +457,22 @@ export default function LandingScreen() {
                   : 'Loading…'}
             </div>
             {upcoming ? (
-            <div style={{ marginTop: 16 }}>
-              <HofButton
-                variant="primary"
-                full
-                onClick={onGetStarted}
-                icon={<Icon name="ticket" size={16} color={colors.bg} />}
-              >
-                Sign up & get tickets
-              </HofButton>
-            </div>
+              <div style={{ marginTop: 16 }}>
+                <HofButton
+                  variant="primary"
+                  full
+                  onClick={onGetStarted}
+                  icon={<Icon name="ticket" size={16} color={colors.bg} />}
+                >
+                  Sign up & get tickets
+                </HofButton>
+              </div>
             ) : eventLoaded ? null : (
-            <div style={{ marginTop: 16 }}>
-              <HofButton variant="primary" full onClick={onGetStarted}>
-                Get started
-              </HofButton>
-            </div>
+              <div style={{ marginTop: 16 }}>
+                <HofButton variant="primary" full onClick={onGetStarted}>
+                  Get started
+                </HofButton>
+              </div>
             )}
           </div>
         </LandingSection>

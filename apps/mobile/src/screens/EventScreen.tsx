@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   formatCapacityMeta,
   formatDoorsRange,
@@ -1263,7 +1264,9 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             </div>
           </div>
 
-          {/* Talking about this */}
+          {/* Talking about this — COMMUNITY_FEATURE */}
+          {COMMUNITY_FEATURE_ENABLED ? (
+          <>
           <SectionLabel>Talking about this</SectionLabel>
           <div
             style={{
@@ -1335,6 +1338,8 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               <Icon name="chev" size={14} color={colors.textSec} />
             </button>
           </div>
+          </>
+          ) : null}
 
           {/* FAQ */}
           <SectionLabel>FAQ</SectionLabel>

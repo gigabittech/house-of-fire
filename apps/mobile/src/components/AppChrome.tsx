@@ -4,6 +4,7 @@ import { HofAppShell, type NavId } from '@hof/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppHeaderProvider, useAppHeaderContext } from '@/context/AppHeaderContext';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { COMMUNITY_EXCLUDED_NAV_IDS, COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { navHref } from '@/lib/nav';
 
 const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing'];
@@ -15,7 +16,9 @@ function usesStandaloneLayout(pathname: string): boolean {
 function activeFromPath(pathname: string): NavId | undefined {
   if (pathname === '/' || pathname === '/live') return 'home';
   if (pathname.startsWith('/event') || pathname.startsWith('/archive')) return 'events';
-  if (pathname.startsWith('/community')) return 'community';
+  if (pathname.startsWith('/community')) {
+    return COMMUNITY_FEATURE_ENABLED ? 'community' : undefined;
+  }
   if (
     pathname.startsWith('/profile') ||
     pathname.startsWith('/ticket') ||
@@ -31,7 +34,7 @@ function titleFromPath(pathname: string): string {
   if (pathname === '/' || pathname === '/live') return 'Home';
   if (pathname.startsWith('/event')) return 'Event';
   if (pathname.startsWith('/archive')) return 'Archive';
-  if (pathname.startsWith('/community')) return 'Community';
+  if (pathname.startsWith('/community')) return COMMUNITY_FEATURE_ENABLED ? 'Community' : 'House of Fire';
   if (pathname.startsWith('/profile/settings')) return 'Settings';
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/checkout')) return 'Checkout';
@@ -60,6 +63,7 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
       onBack={config.onBack}
       hideMobilePageHeader={config.hideMobileHeader}
       hideBottomNav={hideBottomNav}
+      excludeNavIds={[...COMMUNITY_EXCLUDED_NAV_IDS]}
     >
       {children}
     </HofAppShell>
