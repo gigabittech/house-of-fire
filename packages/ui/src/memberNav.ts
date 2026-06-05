@@ -1,5 +1,4 @@
 import type { IconName } from './Icon';
-import type { NavId } from './HofBottomNav';
 
 export type NavId = 'home' | 'events' | 'community' | 'profile';
 
