@@ -78,9 +78,10 @@ Then run: pnpm configure:auth-urls
 }
 
 const uriAllowList = parseRedirectUrls(APP_URL);
+// Management API expects a comma-separated string, not a JSON array.
 const body = {
   site_url: APP_URL,
-  uri_allow_list: uriAllowList,
+  uri_allow_list: uriAllowList.join(','),
 };
 
 const url = `https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`;

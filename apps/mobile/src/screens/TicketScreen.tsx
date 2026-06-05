@@ -1,12 +1,15 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { ToastKind } from '@hof/ui';
 import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
+import { QR_RENDER_OPTIONS } from '@/lib/qrRenderOptions';
 import RefundSheet from '../sheets/RefundSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 import TransferSheet from '../sheets/TransferSheet';
@@ -37,9 +40,7 @@ type TicketData = {
   profiles?: TicketHolderProfile | TicketHolderProfile[];
 };
 
-function resolveHolderProfile(
-  profiles: TicketData['profiles'],
-): TicketHolderProfile {
+function resolveHolderProfile(profiles: TicketData['profiles']): TicketHolderProfile {
   if (!profiles) return null;
   return Array.isArray(profiles) ? (profiles[0] ?? null) : profiles;
 }
@@ -83,9 +84,7 @@ function ticketDoorsLabel(ticket: TicketData | null): string {
   return formatDoorsRange(open, close ?? undefined);
 }
 
-async function loadAllTickets(options: {
-  paymentIntentId?: string | null;
-}): Promise<TicketData[]> {
+async function loadAllTickets(options: { paymentIntentId?: string | null }): Promise<TicketData[]> {
   if (options.paymentIntentId) {
     try {
       const r = await fetch('/api/checkout/complete', {
@@ -110,12 +109,7 @@ async function loadAllTickets(options: {
 }
 
 async function qrDataUrlForTicket(t: TicketData): Promise<string> {
-  return QRCode.toDataURL(t.qr_data, {
-    errorCorrectionLevel: 'H',
-    margin: 2,
-    width: 400,
-    color: { dark: '#1a1a1a', light: '#f5f0e8' },
-  });
+  return QRCode.toDataURL(t.qr_data, QR_RENDER_OPTIONS);
 }
 
 function sleep(ms: number) {
@@ -150,6 +144,21 @@ export default function TicketScreen() {
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
   const { isWide } = useResponsive();
+
+  const headerActions = useMemo(
+    () => (
+      <AppHeaderIconButton
+        icon="share"
+        label="Share ticket"
+        onClick={() => setShareOpen(true)}
+      />
+    ),
+    [],
+  );
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Ticket', actions: headerActions, onBack: handleBack });
 
   useEffect(() => {
     if (purchasedFromUrl) setJustPurchased(true);
@@ -292,72 +301,6 @@ export default function TicketScreen() {
         overflow: 'hidden',
       }}
     >
-      {/* Top bar */}
-      <div
-        className="hof-no-print"
-        style={{
-          position: 'absolute',
-          top: isWide ? 0 : 54,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 620px)' : 'auto',
-          boxSizing: 'border-box',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: 'rgba(10,10,8,0.94)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <button
-          className="hof-btn hof-press"
-          onClick={() => router.back()}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
-        </button>
-        <span
-          style={{
-            fontFamily: 'Inter',
-            fontWeight: 500,
-            fontSize: 16,
-            color: colors.text,
-          }}
-        >
-          Your Ticket
-        </span>
-        <button
-          className="hof-btn hof-press"
-          onClick={() => setShareOpen(true)}
-          aria-label="Share ticket"
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="share" size={20} color={colors.text} />
-        </button>
-      </div>
-
       {/* Scrollable content — centered column on tablet/desktop */}
       <div
         className="hof-scroll hof-ticket-scroll"
@@ -373,7 +316,10 @@ export default function TicketScreen() {
           paddingBottom: 40,
         }}
       >
-        <div className="hof-no-print" style={{ height: isWide ? 64 : 102 }} />
+        <div
+          className="hof-no-print"
+          style={{ height: isWide ? 8 : layoutChrome.mobilePageHeaderInset }}
+        />
 
         {loading ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
@@ -596,9 +542,7 @@ export default function TicketScreen() {
                         }}
                       >
                         Theme {ticket?.events?.edition_number ?? '—'} · Admit one
-                        {tickets.length > 1
-                          ? ` · ${activeIndex + 1} of ${tickets.length}`
-                          : ''}
+                        {tickets.length > 1 ? ` · ${activeIndex + 1} of ${tickets.length}` : ''}
                       </div>
                       <img
                         src="/assets/hof-logo-black.png"
@@ -1053,11 +997,7 @@ export default function TicketScreen() {
           void reloadTickets();
         }}
       />
-      <RefundSheet
-        open={refundOpen}
-        onClose={() => setRefundOpen(false)}
-        ticketId={ticket?.id}
-      />
+      <RefundSheet open={refundOpen} onClose={() => setRefundOpen(false)} ticketId={ticket?.id} />
       <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>

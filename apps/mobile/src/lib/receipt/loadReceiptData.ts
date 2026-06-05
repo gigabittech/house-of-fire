@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
 import type { Database } from '../database.types';
-import { createServiceRoleClient } from '../supabase.server';
 import { getStripe } from '../stripe';
+import { createServiceRoleClient } from '../supabase.server';
 import {
   feePercentLabel,
   formatEventDateTime,
@@ -15,7 +15,11 @@ type EventRow = Database['public']['Tables']['events']['Row'];
 type TierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 type TicketRow = Database['public']['Tables']['tickets']['Row'];
 
-type TicketMeta = { holder_name?: string | null; holder_email?: string | null; holder_phone?: string | null };
+type TicketMeta = {
+  holder_name?: string | null;
+  holder_email?: string | null;
+  holder_phone?: string | null;
+};
 
 function holderFromTicket(t: TicketRow, fallbackName: string): string {
   const meta = (t.metadata ?? {}) as TicketMeta;
@@ -124,11 +128,7 @@ export async function loadReceiptData(
   const [{ data: ev }, { data: tier }, { data: tickets }] = await Promise.all([
     supabase.from('events').select('*').eq('id', orderRow.event_id).single(),
     supabase.from('ticket_tiers').select('*').eq('id', orderRow.tier_id).single(),
-    supabase
-      .from('tickets')
-      .select('*')
-      .eq('order_id', orderId)
-      .order('code', { ascending: true }),
+    supabase.from('tickets').select('*').eq('order_id', orderId).order('code', { ascending: true }),
   ]);
 
   if (!ev || !tier || !tickets?.length) return null;
@@ -144,8 +144,7 @@ export async function loadReceiptData(
     (typeof piMeta.holderName === 'string' && piMeta.holderName.trim()) ||
     holderFromTicket(primaryTicket, 'Guest');
 
-  let buyerEmail =
-    (typeof piMeta.holderEmail === 'string' && piMeta.holderEmail.trim()) || '';
+  let buyerEmail = (typeof piMeta.holderEmail === 'string' && piMeta.holderEmail.trim()) || '';
   if (!buyerEmail) {
     for (const t of ticketRows) {
       const fromTicket = (t.metadata as TicketMeta)?.holder_email?.trim();
@@ -199,6 +198,9 @@ export async function loadReceiptData(
       orderRow.discount_cents,
       orderRow.subtotal_cents,
     ),
+    tickets: ticketRows
+      .filter((t) => t.status === 'valid')
+      .map((t) => ({ code: t.code, qrData: t.qr_data })),
     subtotalCents: orderRow.subtotal_cents,
     discountCents: orderRow.discount_cents,
     feeCents: orderRow.fee_cents,

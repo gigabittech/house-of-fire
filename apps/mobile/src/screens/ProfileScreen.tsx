@@ -1,21 +1,21 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
-import type { NavId, Post as UiPost } from '@hof/ui';
+import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import type { Post as UiPost } from '@hof/ui';
 import {
   EmptyState,
   ErrorState,
   FeedPost,
-  HofAppShell,
   HofSkeleton,
   Icon,
   useResponsive,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { formatDoorsRange } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';
 import { createClient } from '../lib/supabase';
 
@@ -558,8 +558,20 @@ export default function ProfileScreen() {
 
   const { isWide, isDesktop } = useResponsive();
 
+  const headerActions = useMemo(
+    () => (
+      <AppHeaderIconButton
+        icon="settings"
+        label="Settings"
+        onClick={() => router.push('/profile/settings')}
+      />
+    ),
+    [router],
+  );
+
+  useAppHeader({ title: 'Profile', actions: headerActions });
+
   return (
-    <HofAppShell active="profile" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
@@ -585,50 +597,12 @@ export default function ProfileScreen() {
                 : `min(100%, ${layoutWidth.app}px)`
               : 'auto',
             overflowY: 'auto',
-            paddingBottom: isWide ? 40 : 80,
+            paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
+            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
-          <div style={{ height: 54 }} />
-
-          <div
-            style={{
-              padding: '12px 16px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: 'Clash Display',
-                fontWeight: 600,
-                fontSize: 26,
-                color: colors.text,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Profile
-            </div>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => router.push('/profile/settings')}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon name="settings" size={18} color={colors.text} />
-            </button>
-          </div>
-
           {/* Identity card */}
-          <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ padding: isWide ? '8px 16px 0' : '12px 16px 0' }}>
             {profileError ? (
               <ErrorState />
             ) : profileLoading ? (
@@ -1385,6 +1359,5 @@ export default function ProfileScreen() {
           <div style={{ height: 24 }} />
         </div>
       </div>
-    </HofAppShell>
   );
 }

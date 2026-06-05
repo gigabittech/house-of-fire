@@ -50,19 +50,30 @@ function buildLineItemsHtml(data: OrderReceiptData): string {
 </tr>`;
 }
 
-function qrAttachmentLine(qty: number): string {
-  return qty === 1
+/** Mentions QR attachments only when they actually made it onto the email. */
+function qrAttachmentLine(qrCount: number): string {
+  if (qrCount === 0) return '';
+  return qrCount === 1
     ? 'Your receipt PDF and ticket image are attached — show the QR code at the door.'
-    : `Your receipt PDF and ${qty} ticket images are attached (one PNG per ticket). Show your QR at the door.`;
+    : `Your receipt PDF and ${qrCount} ticket images are attached (one PNG per ticket). Show your QR at the door.`;
 }
 
 /** Branded confirmation email — matches House of Fire auth email UI. PDF + QR PNGs attached separately. */
-export function buildReceiptEmailHtml(data: OrderReceiptData): string {
+export function buildReceiptEmailHtml(data: OrderReceiptData, qrCount: number): string {
   const qty = ticketQty(data);
+  const qrLine = qrAttachmentLine(qrCount);
   const appUrl = appBaseUrl();
   const eventTitle = `${data.event.name} · Theme ${data.event.editionNumber}`;
   const venueLine = [data.event.venueName, data.event.venueAddress].filter(Boolean).join(' · ');
   const issued = formatIssuedDate(data.issuedAt);
+
+  const qrNoticeHtml = qrLine
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr><td style="background:rgba(232,162,26,0.08);border:1px solid rgba(232,162,26,0.25);border-left:3px solid #E8A21A;border-radius:0 10px 10px 0;padding:14px 18px;">
+                  <p style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#cdcabf;">${escapeHtml(qrLine)}</p>
+                </td></tr>
+              </table>`
+    : '';
 
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -124,13 +135,7 @@ export function buildReceiptEmailHtml(data: OrderReceiptData): string {
               <p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8880;">Receipt · ${escapeHtml(data.receiptCode)}</p>
               <p style="margin:0 0 22px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.55;color:#8A8880;">${escapeHtml(data.paymentLine)} · Issued ${escapeHtml(issued)}</p>
 
-       
-
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr><td style="background:rgba(232,162,26,0.08);border:1px solid rgba(232,162,26,0.25);border-left:3px solid #E8A21A;border-radius:0 10px 10px 0;padding:14px 18px;">
-                  <p style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#cdcabf;">${escapeHtml(qrAttachmentLine(qty))}</p>
-                </td></tr>
-              </table>
+              ${qrNoticeHtml}
 
             </td>
           </tr></table>
@@ -156,14 +161,11 @@ export function buildReceiptEmailHtml(data: OrderReceiptData): string {
 </html>`;
 }
 
-export function buildReceiptEmailText(data: OrderReceiptData): string {
+export function buildReceiptEmailText(data: OrderReceiptData, qrCount: number): string {
   const qty = ticketQty(data);
   const ticketPhrase = qty === 1 ? '1 ticket' : `${qty} tickets`;
   const appUrl = appBaseUrl();
-  const qrLine =
-    qty === 1
-      ? 'Your ticket is attached as a PNG (show the QR at the door).'
-      : `Your ${qty} tickets are attached as PNGs (one per ticket — show the QR at the door).`;
+  const qrLine = qrAttachmentLine(qrCount);
 
   return [
     `Hi ${data.buyer.name},`,
@@ -179,7 +181,7 @@ export function buildReceiptEmailText(data: OrderReceiptData): string {
     data.paymentLine,
     '',
     'Your receipt is attached as a PDF.',
-    qrLine,
+    ...(qrLine ? [qrLine] : []),
     '',
     `View your tickets: ${appUrl}/ticket`,
     '',
