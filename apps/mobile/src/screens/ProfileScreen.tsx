@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { formatDoorsRange } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { parseMediaUrls } from '../lib/postMedia';
@@ -846,7 +847,8 @@ export default function ProfileScreen() {
             )}
           </div>
 
-          {/* Tabs */}
+          {/* Tabs — COMMUNITY_FEATURE hides Posts tab */}
+          {COMMUNITY_FEATURE_ENABLED ? (
           <div style={{ padding: '20px 16px 0' }}>
             <div
               style={{
@@ -884,8 +886,9 @@ export default function ProfileScreen() {
               ))}
             </div>
           </div>
+          ) : null}
 
-          {tab === 'posts' && (
+          {tab === 'posts' && COMMUNITY_FEATURE_ENABLED && (
             <ProfilePosts
               onOpenPost={(id) => router.push('/community/' + id)}
               reactions={profileReactions}

@@ -4,7 +4,6 @@ import { colors } from '@hof/design-tokens';
 import { HofButton, Icon } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { AuthScreenShell } from '../components/auth/AuthScreenShell';
 import {
   // AuthDivider,
   AuthErrorBanner,
@@ -16,9 +15,11 @@ import {
   authHeadlineStyle,
   authSubtextStyle,
 } from '../components/auth/AuthFormPrimitives';
+import { useAuthNavigation } from '../components/auth/AuthNavigation';
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
+import { CHANNELS } from '../data/posts';
 // import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 import { displayNameFromGoogleMetadata } from '../lib/auth/googleOAuth';
-import { CHANNELS } from '../data/posts';
 import { createClient } from '../lib/supabase';
 
 function formatPhoneFn(raw: string): string {
@@ -388,6 +389,7 @@ function StepWelcome({
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { navigate, replace } = useAuthNavigation();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [viaGoogle, setViaGoogle] = useState(false);
@@ -428,12 +430,12 @@ export default function OnboardingScreen() {
       }));
       setViaGoogle(true);
       setStep(2);
-      router.replace('/onboarding');
+      replace('/onboarding');
     })();
-  }, [searchParams, router]);
+  }, [searchParams, replace]);
 
   const onComplete = () => router.push('/');
-  const onSignIn = () => router.push('/sign-in');
+  const onSignIn = () => navigate('/sign-in');
 
   async function handleStep1Next() {
     setLoading(true);
