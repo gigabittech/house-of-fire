@@ -37,11 +37,12 @@ export function GoogleSignInButton({
   return (
     <div>
       <HofButton
-        variant="quiet"
+        variant="ghost"
         full
         size="lg"
         disabled={disabled || loading}
         icon={<Icon name="google" size={18} color={colors.text} />}
+        style={{ background: colors.elevated }}
         onClick={() => {
           void handleClick();
         }}

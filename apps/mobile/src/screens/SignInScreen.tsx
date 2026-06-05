@@ -63,7 +63,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthScreenShell>
+    <AuthScreenShell progressStep={1}>
       <div style={{ padding: authContentPadding }}>
         <div style={authHeadlineStyle}>Sign in.</div>
         <div style={authSubtextStyle}>
