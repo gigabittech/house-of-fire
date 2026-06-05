@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AuthScreenShell } from '../components/auth/AuthScreenShell';
 import {
-  AuthDivider,
+  // AuthDivider,
   AuthErrorBanner,
   AuthInput,
   AuthLabel,
@@ -16,7 +16,7 @@ import {
   authHeadlineStyle,
   authSubtextStyle,
 } from '../components/auth/AuthFormPrimitives';
-import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
+// import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 import { displayNameFromGoogleMetadata } from '../lib/auth/googleOAuth';
 import { CHANNELS } from '../data/posts';
 import { createClient } from '../lib/supabase';
@@ -63,15 +63,15 @@ function StepSignup({
         Members get first crack at tickets, photos, and the discussion board.
       </div>
 
-      <div style={{ marginTop: 22 }}>
+      {/* <div style={{ marginTop: 22 }}>
         <GoogleSignInButton
           flow="sign_up"
           next="/onboarding?oauth=complete"
           disabled={loading}
         />
-      </div>
+      </div> */}
 
-      <AuthDivider />
+      {/* <AuthDivider /> */}
 
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}>
