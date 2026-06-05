@@ -123,6 +123,11 @@ export async function POST(request: NextRequest) {
           subject: title.trim(),
           html: `<p>${(postBody ?? '').replace(/\n/g, '<br/>')}</p>${imagesHtml}`,
           text: postBody ?? undefined,
+          log: {
+            kind: 'announce',
+            projectId: eventId ?? undefined,
+            meta: { postId: post.id, recipientCount: emails.length },
+          },
         });
       } catch (e) {
         console.error('[announce] email send failed', e);

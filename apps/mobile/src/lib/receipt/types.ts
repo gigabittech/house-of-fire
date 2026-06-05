@@ -17,6 +17,7 @@ export type OrderReceiptData = {
     phone: string;
   };
   event: {
+    id: string;
     name: string;
     editionNumber: number;
     dateLine: string;

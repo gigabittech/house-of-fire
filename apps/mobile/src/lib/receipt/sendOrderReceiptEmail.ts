@@ -8,6 +8,7 @@ import { renderReceiptPdf } from './renderReceiptPdf';
 export async function sendOrderReceiptEmail(params: {
   orderId: string;
   paymentIntent?: Stripe.PaymentIntent | null;
+  existingLogId?: string;
 }): Promise<void> {
   const data = await loadReceiptData(params.orderId, params.paymentIntent);
   if (!data?.buyer.email?.trim()) {
@@ -55,6 +56,15 @@ export async function sendOrderReceiptEmail(params: {
         },
         ...qrAttachments,
       ],
+      log: {
+        existingLogId: params.existingLogId,
+        kind: 'receipt',
+        projectId: data.event.id,
+        meta: {
+          orderId: params.orderId,
+          attachments: { pdf: true, tickets: qrAttachments.length },
+        },
+      },
     });
     console.info('[receipt] Sent receipt email', {
       orderId: params.orderId,

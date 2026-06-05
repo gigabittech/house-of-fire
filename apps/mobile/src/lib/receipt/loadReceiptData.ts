@@ -184,6 +184,7 @@ export async function loadReceiptData(
       phone: buyerPhone,
     },
     event: {
+      id: event.id,
       name: event.name,
       editionNumber: event.edition_number,
       dateLine: formatEventDateTime(event.date, event.doors_open),
