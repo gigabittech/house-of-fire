@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   countdownParts,
   eventDoorsTimestamp,
@@ -600,7 +601,8 @@ export default function HomeScreen() {
             </div>
           </div>
 
-          {/* From the house */}
+          {/* From the house — COMMUNITY_FEATURE */}
+          {COMMUNITY_FEATURE_ENABLED ? (
           <div style={{ padding: sectionPad }}>
             <div
               style={{
@@ -693,6 +695,7 @@ export default function HomeScreen() {
               )}
             </div>
           </div>
+          ) : null}
 
           {/* Photo strip — from the last night */}
           <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
@@ -729,6 +732,7 @@ export default function HomeScreen() {
                   Theme 23 · May 30
                 </div>
               </div>
+              {COMMUNITY_FEATURE_ENABLED ? (
               <span
                 onClick={() => router.push('/community')}
                 style={{
@@ -741,6 +745,7 @@ export default function HomeScreen() {
               >
                 See all →
               </span>
+              ) : null}
             </div>
             <div
               className="hof-scroll"
@@ -907,10 +912,14 @@ export default function HomeScreen() {
         <NotificationsSheet
           open={notifsOpen}
           onClose={() => setNotifsOpen(false)}
-          onOpenPost={(id) => {
-            setNotifsOpen(false);
-            router.push('/community/' + id);
-          }}
+          onOpenPost={
+            COMMUNITY_FEATURE_ENABLED
+              ? (id) => {
+                  setNotifsOpen(false);
+                  router.push('/community/' + id);
+                }
+              : undefined
+          }
         />
       </div>
   );

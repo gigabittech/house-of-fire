@@ -1,4 +1,5 @@
 import { use } from 'react';
+import { CommunityFeatureGate } from '@/components/CommunityFeatureGate';
 import PostScreen from '../../../screens/PostScreen';
 
 interface Props {
@@ -7,5 +8,9 @@ interface Props {
 
 export default function Page({ params }: Props) {
   const { postId } = use(params);
-  return <PostScreen postId={postId} />;
+  return (
+    <CommunityFeatureGate>
+      <PostScreen postId={postId} />
+    </CommunityFeatureGate>
+  );
 }

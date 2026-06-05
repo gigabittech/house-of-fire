@@ -1,29 +1,27 @@
 import { colors, fontFamilies, layoutChrome } from '@hof/design-tokens';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
+import { filterMemberNavItems, type MemberNavItem, type NavId } from './memberNav';
 
-export type NavId = 'home' | 'events' | 'community' | 'profile';
+export type { NavId } from './memberNav';
 
 export interface HofBottomNavProps {
   active?: NavId;
   onChange?: (id: NavId) => void;
+  /** Hide nav tabs (e.g. Community when feature is off). */
+  excludeNavIds?: NavId[];
 }
 
-interface NavItem {
-  id: NavId;
-  label: string;
-  icon: IconName;
+interface NavItem extends MemberNavItem {
   soon?: boolean;
 }
 
-const items: NavItem[] = [
-  { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'events', label: 'Events', icon: 'calendar' },
-  { id: 'community', label: 'Community', icon: 'chat' },
-  { id: 'profile', label: 'Profile', icon: 'user' },
-];
-
 /** Floating capsule tab bar — PWA-safe-area aware. */
-export function HofBottomNav({ active = 'home', onChange }: HofBottomNavProps) {
+export function HofBottomNav({
+  active = 'home',
+  onChange,
+  excludeNavIds = [],
+}: HofBottomNavProps) {
+  const items: NavItem[] = filterMemberNavItems(excludeNavIds);
   return (
     <nav
       aria-label="Main navigation"
@@ -43,7 +41,13 @@ export function HofBottomNav({ active = 'home', onChange }: HofBottomNavProps) {
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${items.length}, 1fr)`,
+          gap: 2,
+        }}
+      >
         {items.map((it) => {
           const isActive = active === it.id;
           const c = isActive ? colors.amber : it.soon ? colors.textDis : colors.textSec;

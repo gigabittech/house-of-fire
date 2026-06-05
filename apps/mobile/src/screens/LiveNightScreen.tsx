@@ -13,6 +13,7 @@ import {
   useResponsive,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { NO_EVENTS_MESSAGE } from '@/lib/eventDisplay';
@@ -571,7 +572,8 @@ export default function LiveNightScreen() {
             </div>
           </div>
 
-          {/* Live thread strip */}
+          {/* Live thread strip — COMMUNITY_FEATURE */}
+          {COMMUNITY_FEATURE_ENABLED ? (
           <div style={{ padding: '24px 16px 0' }}>
             <div
               style={{
@@ -754,6 +756,7 @@ export default function LiveNightScreen() {
               )}
             </div>
           </div>
+          ) : null}
 
           {/* Set times */}
           <div style={{ padding: '24px 16px 0' }}>
