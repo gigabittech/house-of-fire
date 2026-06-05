@@ -30,7 +30,15 @@ if (!response.ok) {
 
 const config = JSON.parse(text);
 const siteUrl = config.site_url ?? '';
-const allowList = config.uri_allow_list ?? [];
+const rawAllowList = config.uri_allow_list ?? [];
+const allowList = Array.isArray(rawAllowList)
+  ? rawAllowList
+  : typeof rawAllowList === 'string'
+    ? rawAllowList
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean)
+    : [];
 
 console.log(`Project: ${PROJECT_REF}`);
 console.log(`  site_url: ${siteUrl || '(not set)'}`);
@@ -44,7 +52,8 @@ if (allowList.length === 0) {
 }
 
 const issues = [];
-if (siteUrl.includes('localhost')) {
+const isLocalDev = expectedAppUrl?.includes('localhost') ?? false;
+if (!isLocalDev && siteUrl.includes('localhost')) {
   issues.push('site_url still points at localhost — run pnpm configure:auth-urls with production NEXT_PUBLIC_APP_URL');
 }
 if (expectedAppUrl && siteUrl !== expectedAppUrl) {

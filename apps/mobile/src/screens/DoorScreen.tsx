@@ -2,7 +2,8 @@
 
 import { colors } from '@hof/design-tokens';
 import { useResponsive } from '@hof/ui';
-import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1059,16 +1060,43 @@ export default function DoorScreen() {
     null,
   );
   const { isWide } = useResponsive();
-  const [editionName, setThemeName] = useState('Tonight');
 
-  useEffect(() => {
-    fetch('/api/events/upcoming')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.event?.name) setThemeName(d.event.name);
-      })
-      .catch(console.error);
-  }, []);
+  const headerActions = useMemo(
+    () => (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '5px 9px',
+          borderRadius: 4,
+          background: 'rgba(76,175,110,0.12)',
+          border: `1px solid rgba(76,175,110,0.35)`,
+          fontFamily: 'Inter',
+          fontSize: 10,
+          color: colors.success,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          fontWeight: 500,
+        }}
+      >
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: 3,
+            background: colors.success,
+            display: 'inline-block',
+            animation: 'hof-pulse 1.4s ease-in-out infinite',
+          }}
+        />
+        Live
+      </div>
+    ),
+    [],
+  );
+
+  useAppHeader({ title: 'Door', actions: headerActions });
 
   useEffect(() => {
     fetch('/api/door/activity')
@@ -1121,83 +1149,6 @@ export default function DoorScreen() {
         overflow: 'hidden',
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: isWide ? 0 : 54,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? `min(100%, ${DOOR_MAX_WIDTH}px)` : 'auto',
-          boxSizing: 'border-box',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
-          background: 'rgba(10,10,8,0.85)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 10,
-              color: colors.textSec,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Door · Th. 24
-          </div>
-          <div
-            style={{
-              fontFamily: 'Clash Display',
-              fontWeight: 600,
-              fontSize: 16,
-              color: colors.text,
-              letterSpacing: '-0.01em',
-              marginTop: 2,
-            }}
-          >
-            {editionName}
-          </div>
-        </div>
-        {/* Live pill */}
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 9px',
-            borderRadius: 4,
-            background: 'rgba(76,175,110,0.12)',
-            border: `1px solid rgba(76,175,110,0.35)`,
-            fontFamily: 'Inter',
-            fontSize: 10,
-            color: colors.success,
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            fontWeight: 500,
-          }}
-        >
-          <span
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: 3,
-              background: colors.success,
-              display: 'inline-block',
-              animation: 'hof-pulse 1.4s ease-in-out infinite',
-            }}
-          />
-          Live
-        </div>
-      </div>
-
       {/* Scan result toast */}
       <ScanToast result={scanToast} onDismiss={() => setScanToast(null)} isWide={isWide} />
 

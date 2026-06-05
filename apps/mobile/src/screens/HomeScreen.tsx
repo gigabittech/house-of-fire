@@ -1,19 +1,13 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
-import type { NavId, Post as UiPost } from '@hof/ui';
-import {
-  EmptyState,
-  FeedPost,
-  FeedSkeletonCard,
-  HofAppShell,
-  HofLogoMark,
-  Icon,
-  useResponsive,
-} from '@hof/ui';
+import { colors, layoutChrome, layoutWidth, spacing } from '@hof/design-tokens';
+import type { Post as UiPost } from '@hof/ui';
+import { EmptyState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import {
   countdownParts,
   eventDoorsTimestamp,
@@ -25,7 +19,6 @@ import {
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';
 
 type ApiPost = {
@@ -220,9 +213,68 @@ export default function HomeScreen() {
   const countdown = countdownParts(eventTs, now);
   const { days: dd, hours: hh, minutes: mm, seconds: ss } = countdown;
 
-  const { isWide, isDesktop } = useResponsive();
+  const { isWide, isDesktop, isMobile } = useResponsive();
 
   const heroSrc = resolveEventHeroImage(upcomingEvent?.hero_image_url);
+  const sectionPad = isMobile ? `${spacing[5]}px 0 ${spacing[1]}px` : `${spacing[6]}px 0 ${spacing[2]}px`;
+
+  const headerActions = useMemo(
+    () => (
+      <>
+        <AppHeaderIconButton
+          icon="calendar"
+          label="Add to calendar"
+          onClick={() => setCalOpen(true)}
+          badge={
+            <span
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                background: colors.amber,
+                color: colors.bg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'Inter',
+                fontSize: 9,
+                fontWeight: 700,
+                lineHeight: '1',
+                border: `2px solid ${colors.bg}`,
+              }}
+            >
+              +
+            </span>
+          }
+        />
+        <AppHeaderIconButton
+          icon="bell"
+          label="Notifications"
+          onClick={() => setNotifsOpen(true)}
+          badge={
+            <span
+              style={{
+                position: 'absolute',
+                top: 5,
+                right: 5,
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                background: colors.amber,
+                border: `2px solid ${colors.surface}`,
+              }}
+            />
+          }
+        />
+      </>
+    ),
+    [],
+  );
+
+  useAppHeader({ title: 'Home', actions: headerActions });
 
   const pageColumn: CSSProperties = useMemo(() => {
     const horizontalPad = isWide ? 32 : 16;
@@ -243,7 +295,6 @@ export default function HomeScreen() {
   }, [isWide, isDesktop]);
 
   return (
-    <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
@@ -253,103 +304,6 @@ export default function HomeScreen() {
           overflow: 'hidden',
         }}
       >
-        {/* Sticky transparent top */}
-        <div
-          style={{
-            position: 'absolute',
-            top: isWide ? 8 : 40,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            padding: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            style={{
-              ...pageColumn,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isWide ? 'flex-end' : 'space-between',
-            }}
-          >
-          {!isWide && <HofLogoMark size={90} />}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => setCalOpen(true)}
-              aria-label="Add to calendar"
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                background: 'rgba(20,20,18,0.7)',
-                backdropFilter: 'blur(12px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1px solid ${colors.border}`,
-                position: 'relative',
-              }}
-            >
-              <Icon name="calendar" size={18} color={colors.text} />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  background: colors.amber,
-                  color: colors.bg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  lineHeight: '1',
-                  border: `2px solid ${colors.bg}`,
-                }}
-              >
-                +
-              </span>
-            </button>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => setNotifsOpen(true)}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                background: 'rgba(20,20,18,0.7)',
-                backdropFilter: 'blur(12px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1px solid ${colors.border}`,
-                position: 'relative',
-              }}
-            >
-              <Icon name="bell" size={18} color={colors.text} />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 6,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  background: colors.amber,
-                  border: `2px solid rgba(20,20,18,0.85)`,
-                }}
-              />
-            </button>
-          </div>
-          </div>
-        </div>
-
         {/* Scrollable content — hero full bleed; body in centered column */}
         <div
           className="hof-scroll"
@@ -357,14 +311,14 @@ export default function HomeScreen() {
             position: 'absolute',
             inset: 0,
             overflowY: 'auto',
-            paddingBottom: isWide ? 40 : 80,
+            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
           {/* Hero — full-width cover image */}
           <div
             style={{
               position: 'relative',
-              height: isDesktop ? 'min(62vh, 620px)' : isWide ? 580 : 540,
+              height: isDesktop ? 'min(58vh, 580px)' : isWide ? 520 : 460,
               overflow: 'hidden',
               width: '100%',
             }}
@@ -412,13 +366,13 @@ export default function HomeScreen() {
                 bottom: 0,
               }}
             >
-              <div style={{ ...pageColumn, paddingBottom: 12 }}>
+              <div style={{ ...pageColumn, paddingBottom: spacing[3] }}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 16,
+                  marginBottom: spacing[3],
                 }}
               >
                 <Pill tone="warning">
@@ -455,7 +409,7 @@ export default function HomeScreen() {
                   <span
                     style={{
                       display: 'block',
-                      marginTop: 12,
+                      marginTop: spacing[2],
                       color: colors.glow,
                       fontWeight: 500,
                     }}
@@ -469,7 +423,7 @@ export default function HomeScreen() {
                   fontFamily: 'Inter',
                   fontSize: 13,
                   color: colors.textSec,
-                  marginTop: 20,
+                  marginTop: spacing[3],
                   letterSpacing: '0.04em',
                 }}
               >
@@ -485,7 +439,7 @@ export default function HomeScreen() {
 
           <div style={pageColumn}>
           {/* Countdown */}
-          <div style={{ padding: '24px 0 8px' }}>
+          <div style={{ padding: sectionPad }}>
             <div
               style={{
                 fontFamily: 'Inter',
@@ -493,7 +447,7 @@ export default function HomeScreen() {
                 color: colors.textSec,
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
-                marginBottom: 12,
+                marginBottom: spacing[3],
               }}
             >
               Doors in
@@ -556,10 +510,10 @@ export default function HomeScreen() {
           {/* CTAs */}
           <div
             style={{
-              padding: '16px 0 8px',
+              padding: `${spacing[3]}px 0 ${spacing[1]}px`,
               display: 'flex',
               flexDirection: 'column',
-              gap: 10,
+              gap: spacing[2],
             }}
           >
             <PrimaryBtn onClick={() => router.push('/checkout')}>
@@ -572,8 +526,8 @@ export default function HomeScreen() {
           {/* Trust strip */}
           <div
             style={{
-              marginTop: 24,
-              padding: '16px 18px',
+              marginTop: spacing[5],
+              padding: `${spacing[4]}px ${spacing[4]}px`,
               background: colors.surface,
               border: `1px solid ${colors.border}`,
               borderRadius: 12,
@@ -618,7 +572,7 @@ export default function HomeScreen() {
           </div>
 
           {/* About */}
-          <div style={{ padding: '28px 0 8px' }}>
+          <div style={{ padding: sectionPad }}>
             <div
               style={{
                 fontFamily: 'Inter',
@@ -647,13 +601,13 @@ export default function HomeScreen() {
           </div>
 
           {/* From the house */}
-          <div style={{ padding: '32px 0 8px' }}>
+          <div style={{ padding: sectionPad }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
-                marginBottom: 14,
+                marginBottom: spacing[3],
               }}
             >
               <div>
@@ -741,13 +695,13 @@ export default function HomeScreen() {
           </div>
 
           {/* Photo strip — from the last night */}
-          <div style={{ padding: '28px 0 16px' }}>
+          <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
-                marginBottom: 14,
+                marginBottom: spacing[3],
               }}
             >
               <div>
@@ -841,8 +795,8 @@ export default function HomeScreen() {
           {/* Newsletter */}
           <div
             style={{
-              margin: '16px 0 24px',
-              padding: '20px',
+              margin: `${spacing[4]}px 0 ${spacing[5]}px`,
+              padding: spacing[5],
               background: colors.surface,
               border: `1px solid ${colors.border}`,
               borderRadius: 12,
@@ -941,7 +895,7 @@ export default function HomeScreen() {
             )}
           </div>
 
-          <div style={{ height: 24 }} />
+          <div style={{ height: spacing[2] }} />
           </div>
         </div>
 
@@ -959,6 +913,5 @@ export default function HomeScreen() {
           }}
         />
       </div>
-    </HofAppShell>
   );
 }

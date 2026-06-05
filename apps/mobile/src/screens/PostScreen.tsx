@@ -1,10 +1,11 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { ReactionKey, Post as UiPost } from '@hof/ui';
 import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { photoSrc } from '../data/photos';
 import { parseMediaUrls } from '../lib/postMedia';
 
@@ -101,6 +102,10 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [fetchError, setFetchError] = useState(false);
   const { isWide } = useResponsive();
 
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Post', onBack: handleBack });
+
   const loadPost = useCallback(() => {
     if (!postId) return;
     setFetchDone(false);
@@ -144,7 +149,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '100dvh',
+          height: '100%',
           background: colors.bg,
           gap: 12,
         }}
@@ -177,7 +182,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
       style={{
         position: 'relative',
         width: '100%',
-        height: '100dvh',
+        height: '100%',
         overflow: 'hidden',
         background: colors.bg,
       }}
@@ -195,63 +200,9 @@ export default function PostScreen({ postId }: PostScreenProps) {
           width: isWide ? 'min(100%, 720px)' : 'auto',
           overflowY: 'auto',
           paddingBottom: 80,
-          paddingTop: 54,
+          paddingTop: isWide ? 8 : layoutChrome.mobilePageHeaderInset,
         }}
       >
-        {/* Back header */}
-        <div
-          style={{
-            position: isWide ? 'sticky' : 'fixed',
-            top: 0,
-            left: isWide ? undefined : '50%',
-            transform: isWide ? undefined : 'translateX(-50%)',
-            width: '100%',
-            maxWidth: isWide ? undefined : 480,
-            marginTop: isWide ? -54 : undefined,
-            zIndex: 20,
-            background: 'rgba(10,10,8,0.85)',
-            backdropFilter: 'blur(20px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-            borderBottom: `1px solid ${colors.border}`,
-            padding: isWide ? '16px 16px 12px' : '54px 16px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <button
-            className="hof-btn hof-press"
-            onClick={() => router.back()}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              background: colors.elevated,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon
-              name="chev"
-              size={16}
-              color={colors.text}
-              style={{ transform: 'rotate(180deg)' }}
-            />
-          </button>
-          <div
-            style={{
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 15,
-              color: colors.text,
-            }}
-          >
-            Post
-          </div>
-        </div>
-
         {/* Post card */}
         {!fetchDone && !fetchError && (
           <div style={{ padding: '0 16px 8px' }}>

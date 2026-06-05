@@ -1,11 +1,13 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { ToastKind } from '@hof/ui';
 import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
 import { QR_RENDER_OPTIONS } from '@/lib/qrRenderOptions';
 import RefundSheet from '../sheets/RefundSheet';
@@ -142,6 +144,21 @@ export default function TicketScreen() {
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
   const { isWide } = useResponsive();
+
+  const headerActions = useMemo(
+    () => (
+      <AppHeaderIconButton
+        icon="share"
+        label="Share ticket"
+        onClick={() => setShareOpen(true)}
+      />
+    ),
+    [],
+  );
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Ticket', actions: headerActions, onBack: handleBack });
 
   useEffect(() => {
     if (purchasedFromUrl) setJustPurchased(true);
@@ -284,72 +301,6 @@ export default function TicketScreen() {
         overflow: 'hidden',
       }}
     >
-      {/* Top bar */}
-      <div
-        className="hof-no-print"
-        style={{
-          position: 'absolute',
-          top: isWide ? 0 : 54,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 620px)' : 'auto',
-          boxSizing: 'border-box',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: 'rgba(10,10,8,0.94)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <button
-          className="hof-btn hof-press"
-          onClick={() => router.back()}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
-        </button>
-        <span
-          style={{
-            fontFamily: 'Inter',
-            fontWeight: 500,
-            fontSize: 16,
-            color: colors.text,
-          }}
-        >
-          Your Ticket
-        </span>
-        <button
-          className="hof-btn hof-press"
-          onClick={() => setShareOpen(true)}
-          aria-label="Share ticket"
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="share" size={20} color={colors.text} />
-        </button>
-      </div>
-
       {/* Scrollable content — centered column on tablet/desktop */}
       <div
         className="hof-scroll hof-ticket-scroll"
@@ -365,7 +316,10 @@ export default function TicketScreen() {
           paddingBottom: 40,
         }}
       >
-        <div className="hof-no-print" style={{ height: isWide ? 64 : 102 }} />
+        <div
+          className="hof-no-print"
+          style={{ height: isWide ? 8 : layoutChrome.mobilePageHeaderInset }}
+        />
 
         {loading ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>

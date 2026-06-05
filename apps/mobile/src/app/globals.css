@@ -36,7 +36,7 @@ body {
 /* ─── App container — full-viewport, adaptive across all devices ────────────
    Fills the viewport at every size. Navigation chrome (bottom tab bar on
    mobile, left sidebar on tablet/desktop) is provided per-screen by
-   <HofAppShell> from @hof/ui. A definite height is required so screens that
+   <AppChrome> / <HofAppShell> from @hof/ui. A definite height is required so screens that
    use height:100% / position:absolute;inset:0 resolve correctly. */
 .hof-app-frame {
   position: relative;
