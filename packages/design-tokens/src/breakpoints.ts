@@ -13,6 +13,14 @@ export const breakpoints = {
 
 export type BreakpointToken = keyof typeof breakpoints;
 
+/** App-shell sidebar rail widths — shared by the member and admin shells. */
+export const sidebarWidth = {
+  /** Full sidebar with labels (desktop). */
+  full: 240,
+  /** Icon-only rail (tablet). */
+  rail: 76,
+} as const;
+
 /** Content column caps — app shell vs marketing/standalone pages. */
 export const layoutWidth = {
   /** Authenticated app screens (sidebar + main column). */

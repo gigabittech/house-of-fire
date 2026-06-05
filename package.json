@@ -32,7 +32,11 @@
     "configure:auth-smtp": "node scripts/configure-supabase-auth-smtp.mjs",
     "verify:auth-smtp": "node scripts/verify-supabase-auth-smtp.mjs",
     "configure:auth-urls": "node scripts/configure-supabase-auth-urls.mjs",
-    "verify:auth-urls": "node scripts/verify-supabase-auth-urls.mjs"
+    "verify:auth-urls": "node scripts/verify-supabase-auth-urls.mjs",
+    "configure:auth-smtp:staging": "node scripts/configure-supabase-auth-smtp.mjs --env staging",
+    "verify:auth-smtp:staging": "node scripts/verify-supabase-auth-smtp.mjs --env staging",
+    "configure:auth-urls:staging": "node scripts/configure-supabase-auth-urls.mjs --env staging",
+    "verify:auth-urls:staging": "node scripts/verify-supabase-auth-urls.mjs --env staging"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
