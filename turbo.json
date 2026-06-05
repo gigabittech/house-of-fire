@@ -1,6 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "daemon": false,
   "globalDependencies": [".env.local", ".env.*.local", "tsconfig.base.json"],
+  "globalEnv": ["NODE_ENV", "NODE_OPTIONS"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -8,7 +10,8 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": []
     },
     "lint": {
       "dependsOn": ["^build"]

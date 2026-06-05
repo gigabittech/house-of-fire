@@ -1,9 +1,10 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
-import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
+import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import { HofButton, HofPill, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { formatEventDate, NO_EVENTS_MESSAGE, remainingTickets, type UpcomingEvent } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 
@@ -61,6 +62,31 @@ export default function LandingScreen() {
   const onGetStarted = () => router.push('/onboarding');
   const onSignIn = () => router.push('/sign-in');
 
+  const headerActions = useMemo(
+    () => (
+      <button
+        type="button"
+        className="hof-btn hof-press"
+        onClick={onSignIn}
+        style={{
+          fontFamily: 'Inter',
+          fontSize: 13,
+          fontWeight: 500,
+          color: colors.text,
+          padding: '7px 14px',
+          borderRadius: 6,
+          background: colors.surface,
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        Sign in
+      </button>
+    ),
+    [onSignIn],
+  );
+
+  useAppHeader({ title: 'House of Fire', actions: headerActions });
+
   const sectionLabel: CSSProperties = {
     fontFamily: 'Inter',
     fontSize: 10,
@@ -84,7 +110,7 @@ export default function LandingScreen() {
       style={{
         position: 'relative',
         width: '100%',
-        height: '100dvh',
+        height: '100%',
         overflow: 'hidden',
         background: colors.bg,
       }}
@@ -95,6 +121,7 @@ export default function LandingScreen() {
           position: 'absolute',
           inset: 0,
           overflowY: 'auto',
+          paddingBottom: layoutChrome.mobileScrollBottom,
         }}
       >
         {/* Hero — full-bleed image; chrome + copy share pageColumn */}
@@ -145,39 +172,6 @@ export default function LandingScreen() {
               flexDirection: 'column',
             }}
           >
-            {/* Top bar */}
-            <div
-              style={{
-                ...pageColumn,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: isWide ? 8 : 40,
-                paddingBottom: 0,
-              }}
-            >
-              <HofLogoMark size={90} />
-              <button
-                type="button"
-                className="hof-btn hof-press"
-                onClick={onSignIn}
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: colors.text,
-                  padding: '8px 14px',
-                  borderRadius: 6,
-                  background: 'rgba(20,20,18,0.6)',
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${colors.border}`,
-                }}
-              >
-                Sign in
-              </button>
-            </div>
-
             {/* Hero copy — pinned to bottom of hero, same column */}
             <div style={{ flex: 1 }} />
             <div style={{ ...pageColumn, paddingBottom: 28 }}>

@@ -18,5 +18,14 @@
     "allowJs": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", ".next"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "../../design/**",
+    "../../docs/**",
+    "../../supabase/**",
+    "../mobile/**",
+    "../../packages/ui/src/**/*.stories.tsx",
+    "../../packages/ui/src/**/*.test.tsx"
+  ]
 }

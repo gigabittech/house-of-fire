@@ -3,12 +3,17 @@
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { formatEventDate, type UpcomingEvent } from '@/lib/eventDisplay';
 
 export default function ArtistsPage() {
   const router = useRouter();
   const [event, setEvent] = useState<UpcomingEvent | null>(null);
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Artists', onBack: handleBack });
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -29,50 +34,6 @@ export default function ArtistsPage() {
         paddingBottom: 48,
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '56px 16px 12px',
-          background: 'rgba(10,10,8,0.92)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <Icon name="chev" size={18} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
-        </button>
-        <span
-          style={{
-            fontFamily: 'Inter',
-            fontWeight: 500,
-            fontSize: 16,
-            color: colors.text,
-          }}
-        >
-          Artists
-        </span>
-        <div style={{ width: 38 }} />
-      </div>
-
       {/* Content */}
       <div
         style={{

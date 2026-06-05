@@ -399,6 +399,55 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['content_reports']['Insert']>;
         Relationships: [];
       };
+      email_logs: {
+        Row: {
+          id: string;
+          created_at: string;
+          sent_at: string | null;
+          status: 'queued' | 'sent' | 'failed';
+          provider: string;
+          provider_message_id: string | null;
+          app: 'mobile' | 'admin';
+          kind: string | null;
+          project_id: string | null;
+          to_address: string;
+          subject: string;
+          text_body: string | null;
+          html_body: string | null;
+          from_email: string | null;
+          reply_to: string | null;
+          error_message: string | null;
+          meta: Json | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          sent_at?: string | null;
+          status: 'queued' | 'sent' | 'failed';
+          provider?: string;
+          provider_message_id?: string | null;
+          app: 'mobile' | 'admin';
+          kind?: string | null;
+          project_id?: string | null;
+          to_address: string;
+          subject: string;
+          text_body?: string | null;
+          html_body?: string | null;
+          from_email?: string | null;
+          reply_to?: string | null;
+          error_message?: string | null;
+          meta?: Json | null;
+        };
+        Update: Partial<Database['public']['Tables']['email_logs']['Insert']>;
+        Relationships: [
+          {
+            foreignKeyName: 'email_logs_project_id_fkey';
+            columns: ['project_id'];
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
