@@ -29,8 +29,27 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "env(NEXT_PUBLIC_APP_URL)"
-additional_redirect_urls = ["env(SUPABASE_AUTH_REDIRECT_URLS)"]
+# Literal values: the Supabase branching executor cannot resolve env() from the
+# (gitignored) repo .env, which left these unset and failed the branch workflow.
+# Staging branch auth is configured here; production auth config is managed via
+# the dashboard / scripts (branch deploys to production ignore auth config).
+site_url = "https://staging.houseoffire.events"
+# GoTrue matches redirect URLs as globs against the FULL URL, so each callback
+# needs a bare entry AND a `?*` variant for query params.
+additional_redirect_urls = [
+  "https://staging.houseoffire.events/auth/callback",
+  "https://staging.houseoffire.events/auth/callback?*",
+  "https://staging.houseoffire.events/auth/callback/client",
+  "https://staging.houseoffire.events/auth/callback/client?*",
+  "https://houseoffire.events/auth/callback",
+  "https://houseoffire.events/auth/callback?*",
+  "https://houseoffire.events/auth/callback/client",
+  "https://houseoffire.events/auth/callback/client?*",
+  "http://localhost:3000/auth/callback",
+  "http://localhost:3000/auth/callback?*",
+  "http://localhost:3000/auth/callback/client",
+  "http://localhost:3000/auth/callback/client?*",
+]
 enable_signup = true
 
 [auth.email]
@@ -45,6 +64,8 @@ enabled = true
 host = "smtp.resend.com"
 port = 465
 user = "resend"
+# Secret — set on the staging branch with:
+#   supabase secrets set --project-ref ejsgltkyqyecnbshoecv RESEND_API_KEY=<staging key>
 pass = "env(RESEND_API_KEY)"
-admin_email = "env(RESEND_FROM_EMAIL)"
+admin_email = "tickets@houseoffire.events"
 sender_name = "House of Fire"
