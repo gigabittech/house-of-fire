@@ -81,3 +81,18 @@ export async function uploadPostMediaBatch(files: File[]): Promise<string[]> {
   }
   return urls;
 }
+
+export async function uploadProfileAvatar(file: File): Promise<string> {
+  const err = validateImageFile(file);
+  if (err) throw new Error(err);
+
+  const body = new FormData();
+  body.append('file', file);
+
+  const res = await fetch('/api/profile/avatar', { method: 'POST', body });
+  const data = (await res.json()) as { publicUrl?: string; error?: string };
+  if (!res.ok || !data.publicUrl) {
+    throw new Error(data.error ?? 'Could not upload photo');
+  }
+  return data.publicUrl;
+}

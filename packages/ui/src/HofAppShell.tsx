@@ -1,7 +1,7 @@
 'use client';
 
-import { colors, fontFamilies, shadows, sidebarWidth } from '@hof/design-tokens';
-import type { ReactNode } from 'react';
+import { colors, fontFamilies, sidebarWidth } from '@hof/design-tokens';
+import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from './feed/Avatar';
 import type { HofAppHeaderUser } from './HofAppHeader';
 import { HofBottomNav, type NavId } from './HofBottomNav';
@@ -14,55 +14,43 @@ import { useResponsive } from './useBreakpoint';
 
 const SIDEBAR_WIDTH = sidebarWidth.full;
 const SIDEBAR_WIDTH_TABLET = sidebarWidth.rail;
-const SIDEBAR_PAD_FULL = 14;
-const SIDEBAR_PAD_RAIL = 10;
+/** Align logo, nav icons, and footer avatar to the same column (matches admin inset). */
+const SIDEBAR_INSET_X = 10;
+const SIDEBAR_PAD_TOP = 14;
+const SIDEBAR_ACCENT_W = 2;
 
-function SidebarLogoHeader({ compact }: { compact: boolean }) {
-  const sidePad = compact ? SIDEBAR_PAD_RAIL : SIDEBAR_PAD_FULL;
+function sidebarNavItemStyle(compact: boolean, isActive: boolean): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: compact ? 0 : 10,
+    padding: compact ? '10px 0' : `9px 10px 9px ${SIDEBAR_INSET_X}px`,
+    justifyContent: compact ? 'center' : 'flex-start',
+    borderRadius: 6,
+    width: '100%',
+    background: isActive ? colors.elevated : 'transparent',
+    color: isActive ? colors.text : colors.textSec,
+    border: 'none',
+    transition: 'background 100ms',
+    position: 'relative',
+    boxSizing: 'border-box',
+  };
+}
 
+function SidebarActiveAccent() {
   return (
-    <div
+    <span
+      aria-hidden
       style={{
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: compact ? 'center' : 'flex-start',
-        borderBottom: `1px solid ${colors.border}`,
-        padding: compact ? '14px 10px' : '18px 14px 16px 20px',
-        boxSizing: 'border-box',
+        position: 'absolute',
+        left: 0,
+        top: 5,
+        bottom: 5,
+        width: SIDEBAR_ACCENT_W,
+        borderRadius: 1,
+        background: colors.amber,
       }}
-    >
-      <a
-        href="/"
-        aria-label="Home"
-        className="hof-btn hof-press"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: compact ? 'center' : 'flex-start',
-          lineHeight: 0,
-          maxWidth: '100%',
-        }}
-      >
-        {compact ? (
-          <HofLogoMark size={40} alt="House of Fire" />
-        ) : (
-          <img
-            src="/assets/hof-logo.png"
-            alt=""
-            style={{
-              display: 'block',
-              height: 40,
-              width: 'auto',
-              maxWidth: `calc(${SIDEBAR_WIDTH}px - ${sidePad + 20}px)`,
-              objectFit: 'contain',
-              objectPosition: 'left center',
-              filter: shadows.logoGlow,
-            }}
-          />
-        )}
-      </a>
-    </div>
+    />
   );
 }
 
@@ -77,56 +65,136 @@ function initialsFromName(name: string): string {
   );
 }
 
+function SidebarSignOutButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      className="hof-btn hof-press"
+      onClick={onClick}
+      title="Sign out"
+      aria-label="Sign out"
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        flexShrink: 0,
+        background: 'transparent',
+        border: `1px solid ${colors.border}`,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          stroke={colors.textSec}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+        />
+      </svg>
+    </button>
+  );
+}
+
 function SidebarUserFooter({
   user,
   compact,
+  onSignOut,
+  onProfileClick,
 }: {
   user: HofAppHeaderUser;
   compact: boolean;
+  onSignOut?: () => void;
+  onProfileClick?: () => void;
 }) {
   return (
     <div
       style={{
         marginTop: 'auto',
         borderTop: `1px solid ${colors.border}`,
-        padding: compact ? '12px 0 14px' : `12px ${SIDEBAR_PAD_FULL}px 14px`,
         display: 'flex',
         alignItems: 'center',
-        gap: compact ? 0 : 10,
+        gap: compact ? 0 : 8,
+        paddingTop: 12,
+        paddingLeft: compact ? 0 : SIDEBAR_INSET_X,
         justifyContent: compact ? 'center' : 'flex-start',
       }}
       title={compact ? `${user.name} · ${user.email}` : undefined}
     >
-      <Avatar initials={initialsFromName(user.name)} size={compact ? 30 : 32} />
-      {!compact && (
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div
+      {compact ? (
+        <button
+          type="button"
+          className="hof-btn hof-press"
+          aria-label="Open profile"
+          onClick={onProfileClick}
+          style={{ padding: 0, background: 'transparent', border: 'none' }}
+        >
+          <Avatar
+            initials={initialsFromName(user.name)}
+            src={user.avatarUrl}
+            alt={user.name}
+            size={32}
+          />
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="hof-btn hof-press"
+            aria-label="Open profile"
+            onClick={onProfileClick}
             style={{
-              fontFamily: fontFamilies.body,
-              fontSize: 12,
-              fontWeight: 500,
-              color: colors.text,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              textAlign: 'left',
             }}
           >
-            {user.name}
-          </div>
-          <div
-            style={{
-              fontFamily: fontFamilies.body,
-              fontSize: 10,
-              color: colors.textSec,
-              marginTop: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {user.email}
-          </div>
-        </div>
+            <Avatar
+              initials={initialsFromName(user.name)}
+              src={user.avatarUrl}
+              alt={user.name}
+              size={32}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: fontFamilies.body,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: colors.text,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user.name}
+              </div>
+              <div
+                style={{
+                  fontFamily: fontFamilies.body,
+                  fontSize: 10,
+                  color: colors.textSec,
+                  marginTop: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user.email}
+              </div>
+            </div>
+          </button>
+          {onSignOut ? <SidebarSignOutButton onClick={onSignOut} /> : null}
+        </>
       )}
     </div>
   );
@@ -137,15 +205,18 @@ function HofSidebar({
   onChange,
   compact,
   user,
+  onSignOut,
   excludeNavIds = [],
 }: {
   active?: NavId;
   onChange?: (id: NavId) => void;
   compact: boolean;
   user?: HofAppHeaderUser | null;
+  onSignOut?: () => void;
   excludeNavIds?: NavId[];
 }) {
   const navItems = filterMemberNavItems(excludeNavIds);
+  const sidebarPadding = compact ? '2px 0 16px' : `${SIDEBAR_PAD_TOP}px 12px 16px`;
 
   return (
     <nav
@@ -154,58 +225,74 @@ function HofSidebar({
         flexShrink: 0,
         width: compact ? SIDEBAR_WIDTH_TABLET : SIDEBAR_WIDTH,
         height: '100%',
-        background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`,
+        background: colors.surface,
         borderRight: `1px solid ${colors.border}`,
+        padding: sidebarPadding,
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      <SidebarLogoHeader compact={compact} />
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: compact ? `14px ${SIDEBAR_PAD_RAIL}px 0` : `16px ${SIDEBAR_PAD_FULL}px 0`,
-          minHeight: 0,
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <button
+          type="button"
+          className="hof-btn hof-press"
+          aria-label="Home"
+          onClick={() => onChange?.('home')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: compact ? 'center' : 'flex-start',
+            width: '100%',
+            flexShrink: 0,
+            padding: compact ? '0 0 8px' : `10px 0 0 ${SIDEBAR_INSET_X}px`,
+            lineHeight: 0,
+            boxSizing: 'border-box',
+            background: 'transparent',
+            border: 'none',
+          }}
+        >
+          {compact ? (
+            <HofLogoMark size={24} alt="House of Fire" />
+          ) : (
+            <HofLogoMark
+              fit="wordmark"
+              variant="sidebar"
+              width={132}
+              src="/assets/hof-logo.png"
+              alt="House of Fire"
+            />
+          )}
+        </button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: compact ? 0 : 8 }}>
           {navItems.map((it) => {
             const isActive = active === it.id;
             return (
               <button
                 key={it.id}
                 type="button"
-                className={`hof-btn hof-press hof-sidebar-nav-item${compact ? ' hof-sidebar-nav-item--compact' : ''}`}
-                data-active={isActive ? 'true' : 'false'}
+                className="hof-btn hof-press"
                 onClick={() => onChange?.(it.id)}
                 title={compact ? it.label : undefined}
                 aria-current={isActive ? 'page' : undefined}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: compact ? 0 : 10,
-                  justifyContent: compact ? 'center' : 'flex-start',
-                  padding: compact ? '10px 0' : '9px 12px',
-                  borderRadius: 10,
-                  width: '100%',
-                }}
+                style={sidebarNavItemStyle(compact, isActive)}
               >
+                {isActive && !compact ? <SidebarActiveAccent /> : null}
                 <Icon
                   name={it.icon}
-                  size={compact ? 18 : 16}
+                  size={16}
                   color={isActive ? colors.amber : colors.textSec}
                 />
                 {!compact && (
                   <span
                     style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: fontFamilies.body,
                       fontSize: 13,
-                      fontWeight: isActive ? 600 : 500,
-                      color: isActive ? colors.text : colors.textSec,
-                      letterSpacing: '0.01em',
+                      fontWeight: 500,
+                      flex: 1,
+                      textAlign: 'left',
                     }}
                   >
                     {it.label}
@@ -217,7 +304,14 @@ function HofSidebar({
         </div>
       </div>
 
-      {user ? <SidebarUserFooter user={user} compact={compact} /> : null}
+      {user ? (
+        <SidebarUserFooter
+          user={user}
+          compact={compact}
+          onSignOut={onSignOut}
+          onProfileClick={() => onChange?.('profile')}
+        />
+      ) : null}
     </nav>
   );
 }
@@ -226,6 +320,7 @@ export interface HofAppShellProps {
   active?: NavId;
   onNav?: (id: NavId) => void;
   user?: HofAppHeaderUser | null;
+  onSignOut?: () => void;
   pageTitle?: string;
   headerActions?: ReactNode;
   onBack?: () => void;
@@ -246,6 +341,7 @@ export function HofAppShell({
   active,
   onNav,
   user,
+  onSignOut,
   pageTitle = 'Home',
   headerActions,
   onBack,
@@ -331,6 +427,7 @@ export function HofAppShell({
         onChange={onNav}
         compact={isTablet}
         user={user}
+        onSignOut={onSignOut}
         excludeNavIds={excludeNavIds}
       />
       {mainColumn}

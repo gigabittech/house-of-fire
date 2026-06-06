@@ -3,6 +3,7 @@
 import { colors } from '@hof/design-tokens';
 import { Avatar, Icon } from '@hof/ui';
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { CHANNELS } from '../data/posts';
 import { uploadPostMediaBatch } from '../lib/storageUpload';
 import { useSheet } from './useSheet';
@@ -23,6 +24,7 @@ export default function ComposerSheet({
   defaultChannel = 'general',
   onPost,
 }: ComposerSheetProps) {
+  const user = useAuthUser();
   const { mounted, shown } = useSheet(open);
   const [channel, setChannel] = useState(defaultChannel);
   const [title, setTitle] = useState('');
@@ -416,10 +418,25 @@ export default function ComposerSheet({
               color: colors.textSec,
             }}
           >
-            <Avatar initials={anon ? '?' : 'SB'} userRole="member" size={20} />
+            <Avatar
+              initials={
+                anon
+                  ? '?'
+                  : (user?.name ?? 'M')
+                      .split(' ')
+                      .map((p) => p[0] ?? '')
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()
+              }
+              userRole="member"
+              src={anon ? undefined : user?.avatarUrl}
+              alt={user?.name}
+              size={20}
+            />
             Posting as{' '}
             <span style={{ color: colors.text, fontWeight: 500 }}>
-              {anon ? 'Anonymous member' : 'Sujan Bhuiyan'}
+              {anon ? 'Anonymous member' : (user?.name ?? 'Member')}
             </span>
           </div>
         </div>
