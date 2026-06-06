@@ -120,6 +120,10 @@ export function guestEmail(ticket: AdminGuestTicket): string {
   return '—';
 }
 
+export function guestAvatarUrl(ticket: AdminGuestTicket): string | null {
+  return ticket.profiles?.avatar_url ?? null;
+}
+
 export function guestTierLabel(ticket: AdminGuestTicket): string {
   return ticket.ticket_tiers?.display_name ?? ticket.ticket_tiers?.name ?? 'General';
 }

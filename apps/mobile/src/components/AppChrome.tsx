@@ -2,10 +2,13 @@
 
 import { HofAppShell, type NavId } from '@hof/ui';
 import { usePathname, useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { AppHeaderProvider, useAppHeaderContext } from '@/context/AppHeaderContext';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { COMMUNITY_EXCLUDED_NAV_IDS, COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { navHref } from '@/lib/nav';
+import { clearProfileCache } from '@/lib/profileCache';
+import { createClient } from '@/lib/supabase';
 
 const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing'];
 
@@ -53,11 +56,20 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
   const { config } = useAppHeaderContext();
   const hideBottomNav = pathname.startsWith('/checkout');
 
+  const handleSignOut = useCallback(async () => {
+    clearProfileCache();
+    await createClient().auth.signOut();
+    router.push('/landing');
+  }, [router]);
+
   return (
     <HofAppShell
       active={activeFromPath(pathname)}
       onNav={(id: NavId) => router.push(navHref[id])}
       user={user}
+      onSignOut={() => {
+        void handleSignOut();
+      }}
       pageTitle={config.title ?? titleFromPath(pathname)}
       headerActions={config.actions}
       onBack={config.onBack}

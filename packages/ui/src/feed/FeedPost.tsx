@@ -70,6 +70,8 @@ export function FeedPost({
         <Avatar
           initials={post.author.initials}
           userRole={post.author.role}
+          src={post.author.avatarUrl}
+          alt={post.author.name}
           size={compact ? 28 : 32}
         />
         <div style={{ flex: 1, minWidth: 0 }}>

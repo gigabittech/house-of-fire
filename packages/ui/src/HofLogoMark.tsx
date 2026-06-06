@@ -9,6 +9,8 @@ export interface HofLogoMarkProps {
   /** Resolved URL for the emblem (app supplies, e.g. /assets/hof-emblem.png). */
   src?: string;
   alt?: string;
+  /** Sidebar wordmark — no glow or negative crop margins (avoids seam under logo). */
+  variant?: 'default' | 'sidebar';
 }
 
 // Small emblem for nav. Image src is app-supplied so the library stays
@@ -19,8 +21,10 @@ export function HofLogoMark({
   width = '100%',
   src = '/assets/hof-emblem.png',
   alt = '',
+  variant = 'default',
 }: HofLogoMarkProps) {
   if (fit === 'wordmark') {
+    const sidebar = variant === 'sidebar';
     return (
       <img
         src={src}
@@ -29,9 +33,9 @@ export function HofLogoMark({
           width,
           height: 'auto',
           display: 'block',
-          marginTop: -16,
-          marginBottom: -16,
-          filter: shadows.logoGlow,
+          marginTop: sidebar ? 0 : -16,
+          marginBottom: sidebar ? 0 : -16,
+          filter: sidebar ? undefined : shadows.logoGlow,
         }}
       />
     );

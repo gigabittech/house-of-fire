@@ -4,6 +4,7 @@ export interface MemberRow {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   tier: string;
   role: 'member' | 'crew';
   joined: string;
@@ -17,6 +18,7 @@ export interface MemberApiPayload {
   id: string;
   handle: string;
   display_name: string;
+  avatar_url: string | null;
   member_since: string;
   role: 'member' | 'crew' | 'admin';
   settings: Record<string, unknown> | null;
@@ -43,6 +45,7 @@ export function mapMemberRow(m: MemberApiPayload): MemberRow {
     id: m.id,
     name: m.display_name,
     email: `${m.handle}@…`,
+    avatarUrl: m.avatar_url,
     tier,
     role: m.role === 'crew' || m.role === 'admin' ? 'crew' : 'member',
     joined: formatJoined(m.member_since),
