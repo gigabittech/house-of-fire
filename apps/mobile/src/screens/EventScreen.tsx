@@ -71,7 +71,12 @@ function apiPostToUi(p: ApiPost): UiPost {
     id: p.id,
     channel: p.channel,
     kind: 'quick',
-    author: { name: displayName, initials, role },
+    author: {
+      name: displayName,
+      initials,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
+    },
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,

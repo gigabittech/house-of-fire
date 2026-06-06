@@ -238,7 +238,7 @@ export default function MembersPage() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <Avatar initials={initials} size={28} />
+                    <Avatar initials={initials} src={m.avatarUrl} alt={m.name} size={28} />
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}

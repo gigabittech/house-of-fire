@@ -2,6 +2,7 @@
 
 import type { HofAppHeaderUser } from '@hof/ui';
 import { useEffect, useState } from 'react';
+import { PROFILE_UPDATED_EVENT } from '@/lib/profileCache';
 import { createClient } from '@/lib/supabase';
 
 export function useAuthUser(): HofAppHeaderUser | null {
@@ -22,7 +23,7 @@ export function useAuthUser(): HofAppHeaderUser | null {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name')
+        .select('display_name, avatar_url')
         .eq('id', authUser.id)
         .maybeSingle();
 
@@ -32,7 +33,11 @@ export function useAuthUser(): HofAppHeaderUser | null {
         authUser.email.split('@')[0] ||
         'Member';
 
-      setUser({ name, email: authUser.email });
+      setUser({
+        name,
+        email: authUser.email,
+        avatarUrl: profile?.avatar_url ?? null,
+      });
     }
 
     void load();
@@ -43,7 +48,15 @@ export function useAuthUser(): HofAppHeaderUser | null {
       void load();
     });
 
-    return () => subscription.unsubscribe();
+    const onProfileUpdated = () => {
+      void load();
+    };
+    window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+    };
   }, []);
 
   return user;

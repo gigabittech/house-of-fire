@@ -7,7 +7,7 @@ export async function GET() {
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, handle, display_name, member_since, role, settings')
+    .select('id, handle, display_name, member_since, role, settings, avatar_url')
     .order('member_since', { ascending: false });
 
   if (profilesError) {
@@ -73,6 +73,7 @@ export async function GET() {
     id: p.id,
     handle: p.handle,
     display_name: p.display_name,
+    avatar_url: p.avatar_url,
     member_since: p.member_since,
     role: p.role,
     settings: (p.settings as Record<string, unknown> | null) ?? null,

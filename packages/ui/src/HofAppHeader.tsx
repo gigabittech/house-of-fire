@@ -8,6 +8,7 @@ import { useResponsive } from './useBreakpoint';
 export interface HofAppHeaderUser {
   name: string;
   email: string;
+  avatarUrl?: string | null;
 }
 
 export interface HofAppHeaderProps {
@@ -93,7 +94,12 @@ export function HofAppHeader({ user }: HofAppHeaderProps) {
                 {user.email}
               </div>
             </div>
-            <Avatar initials={initialsFromName(user.name)} size={28} />
+            <Avatar
+              initials={initialsFromName(user.name)}
+              src={user.avatarUrl}
+              alt={user.name}
+              size={28}
+            />
           </div>
         ) : null}
       </div>

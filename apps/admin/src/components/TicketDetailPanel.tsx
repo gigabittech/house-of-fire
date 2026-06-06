@@ -8,6 +8,7 @@ import { Pill } from '@/components/Pill';
 import {
   formatCents,
   formatPurchasedAt,
+  guestAvatarUrl,
   guestDisplayName,
   guestEmail,
   guestTierLabel,
@@ -498,7 +499,7 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
           <div style={{ ...card, marginTop: 16, padding: '14px 16px' }}>
             <div style={{ ...eyebrow, marginBottom: 10 }}>Guest</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Avatar initials={initials} size={40} />
+              <Avatar initials={initials} src={guestAvatarUrl(ticket)} alt={name} size={40} />
               <div style={{ minWidth: 0 }}>
                 <div
                   style={{

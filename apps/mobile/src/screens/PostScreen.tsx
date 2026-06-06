@@ -6,6 +6,7 @@ import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } f
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { photoSrc } from '../data/photos';
 import { parseMediaUrls } from '../lib/postMedia';
 
@@ -36,7 +37,7 @@ type ApiReply = {
   body: string;
   is_anonymous: boolean;
   created_at: string;
-  profiles: { handle: string; display_name: string; role: string } | null;
+  profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
 };
 
 function timeAgo(isoStr: string): string {
@@ -71,7 +72,12 @@ function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
     id: p.id,
     channel: p.channel,
     kind: 'quick',
-    author: { name: displayName, initials, role },
+    author: {
+      name: displayName,
+      initials,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
+    },
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
@@ -92,6 +98,7 @@ const REACTION_OPTIONS: { key: ReactionKey; emoji: string }[] = [
 
 export default function PostScreen({ postId }: PostScreenProps) {
   const router = useRouter();
+  const authUser = useAuthUser();
   const [apiPost, setApiPost] = useState<ApiPost | null>(null);
   const [replies, setReplies] = useState<ApiReply[]>([]);
   const [sending, setSending] = useState(false);
@@ -328,7 +335,13 @@ export default function PostScreen({ postId }: PostScreenProps) {
                   borderBottom: i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
                 }}
               >
-                <Avatar initials={rInitials} userRole={rRole} size={30} />
+                <Avatar
+                  initials={rInitials}
+                  userRole={rRole}
+                  src={r.is_anonymous ? undefined : (r.profiles?.avatar_url ?? undefined)}
+                  alt={rName}
+                  size={30}
+                />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
@@ -413,7 +426,20 @@ export default function PostScreen({ postId }: PostScreenProps) {
           alignItems: 'center',
         }}
       >
-        <Avatar initials="SB" userRole="member" size={28} />
+        <Avatar
+          initials={
+            (authUser?.name ?? 'M')
+              .split(' ')
+              .map((p) => p[0] ?? '')
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()
+          }
+          userRole="member"
+          src={authUser?.avatarUrl}
+          alt={authUser?.name}
+          size={28}
+        />
         <input
           value={reply}
           onChange={(e) => setReply(e.target.value)}
