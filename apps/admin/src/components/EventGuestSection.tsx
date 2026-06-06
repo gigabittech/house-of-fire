@@ -6,6 +6,7 @@ import { Pill } from '@/components/Pill';
 import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
 import {
   formatPurchasedAt,
+  guestAvatarUrl,
   guestDisplayName,
   guestEmail,
   guestTierLabel,
@@ -189,7 +190,12 @@ export function EventGuestSection({
                   {t.code}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Avatar initials={initials} size={28} />
+                  <Avatar
+                    initials={initials}
+                    src={guestAvatarUrl(t)}
+                    alt={name}
+                    size={28}
+                  />
                   <span style={{ fontWeight: 500 }}>{name}</span>
                 </div>
                 <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{guestEmail(t)}</div>

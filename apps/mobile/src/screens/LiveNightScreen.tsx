@@ -68,6 +68,7 @@ interface PostItem {
   i: string; // initials
   n: string; // display name
   role: 'crew' | 'member';
+  avatarUrl?: string | null;
   t: string; // relative time
   b: string; // body text
 }
@@ -212,6 +213,7 @@ export default function LiveNightScreen() {
             i: initialsFrom(displayName),
             n: displayName,
             role,
+            avatarUrl: p.is_anonymous ? undefined : (profile?.avatar_url ?? undefined),
             t: relativeTime(p.created_at),
             b: p.body ?? p.title,
           };
@@ -696,7 +698,13 @@ export default function LiveNightScreen() {
                       borderRadius: 10,
                     }}
                   >
-                    <Avatar initials={p.i} userRole={p.role} size={28} />
+                    <Avatar
+                      initials={p.i}
+                      userRole={p.role}
+                      src={p.avatarUrl}
+                      alt={p.n}
+                      size={28}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}

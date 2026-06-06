@@ -1,8 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
+import {
+  comingSoonBypassCookieOptions,
+  isComingSoonBypass,
+  isComingSoonMode,
+  isInfrastructureRoute,
+  isLandingOnlyRoute,
+} from './lib/comingSoon.server';
+import { getLiveEvent } from './lib/liveEvent.server';
 
-// Routes that should be reachable without a session.
-// Note: `/` is intentionally NOT public (it's the member dashboard).
+// Routes that should be reachable without a session (when the site is not locked).
 const PUBLIC_ROUTES = [
   '/landing',
   '/sign-in',
@@ -14,6 +21,14 @@ const PUBLIC_ROUTES = [
   '/live',
   '/accept-transfer',
 ];
+
+async function shouldLockToLanding(request: NextRequest, supabase: ReturnType<typeof createServerClient>) {
+  if (isComingSoonBypass(request)) return false;
+  if (isComingSoonMode()) return true;
+
+  const { data: liveEvent } = await getLiveEvent(supabase, 'id');
+  return !liveEvent;
+}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -49,6 +64,18 @@ export async function proxy(request: NextRequest) {
     },
   );
 
+  const pathname = request.nextUrl.pathname;
+
+  if (!isInfrastructureRoute(pathname) && !isLandingOnlyRoute(pathname)) {
+    const lockToLanding = await shouldLockToLanding(request, supabase);
+    if (lockToLanding) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/landing';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Gracefully handle missing/placeholder Supabase credentials — treat as
   // unauthenticated so public routes still render during local dev without .env.local.
   let user: { id: string } | null = null;
@@ -59,17 +86,23 @@ export async function proxy(request: NextRequest) {
     user = null;
   }
 
-  const pathname = request.nextUrl.pathname;
   const isPublic =
     PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/')) ||
-    // COMMUNITY_FEATURE: uncomment when enabling Community (apps/mobile/src/lib/features.ts).
-    // pathname.startsWith('/community') ||
-    pathname.startsWith('/dev/login'); // dev-only impersonation route (guarded by NODE_ENV)
+    pathname.startsWith('/dev/login');
 
   if (!user && !isPublic && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
     const url = request.nextUrl.clone();
     url.pathname = '/landing';
     return NextResponse.redirect(url);
+  }
+
+  const bypassSecret = process.env.HOF_COMING_SOON_BYPASS?.trim();
+  if (
+    bypassSecret &&
+    request.nextUrl.searchParams.get('hof_preview') === bypassSecret &&
+    !request.cookies.get('hof_preview')
+  ) {
+    supabaseResponse.cookies.set('hof_preview', bypassSecret, comingSoonBypassCookieOptions());
   }
 
   return supabaseResponse;

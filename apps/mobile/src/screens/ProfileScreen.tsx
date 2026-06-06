@@ -11,11 +11,28 @@ import {
   useResponsive,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { formatDoorsRange } from '@/lib/eventDisplay';
+import {
+  clearProfileCache,
+  notifyProfileUpdated,
+  patchProfileCache,
+  readProfileCache,
+  writeProfileCache,
+} from '@/lib/profileCache';
+import type { ProfileData, ProfileTicket } from '@/lib/profileTypes';
+import { uploadProfileAvatar } from '@/lib/storageUpload';
 import { photoSrc } from '../data/photos';
 import { parseMediaUrls } from '../lib/postMedia';
 import { createClient } from '../lib/supabase';
@@ -38,36 +55,128 @@ type ApiPost = {
   } | null;
 };
 
-type ProfileTicket = {
-  id: string;
-  code: string;
-  status: string;
-  purchased_at: string;
-  amount_cents: number;
-  fee_cents: number;
-  used_at: string | null;
-  events: {
-    name: string;
-    date: string;
-    edition_number: number;
-    venue_name: string;
-    doors_open: string;
-    doors_close?: string;
-  } | null;
-  ticket_tiers: { display_name: string; name: string } | null;
-};
+function ProfileNameField({
+  displayName,
+  editing,
+  onEditingChange,
+  onSave,
+  saving,
+}: {
+  displayName: string;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onSave: (name: string) => Promise<void>;
+  saving: boolean;
+}) {
+  const [draft, setDraft] = useState(displayName);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-type ProfileData = {
-  handle: string;
-  display_name: string;
-  member_since: string;
-  role: string;
-  avatar_url: string | null;
-  email: string | null;
-  phone: string | null;
-  tickets_count: number;
-  editions_attended: number;
-};
+  useEffect(() => {
+    if (!editing) setDraft(displayName);
+  }, [displayName, editing]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const cancel = () => {
+    setDraft(displayName);
+    onEditingChange(false);
+  };
+
+  const save = async () => {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === displayName) {
+      cancel();
+      return;
+    }
+    await onSave(trimmed);
+    onEditingChange(false);
+  };
+
+  if (!editing) {
+    return (
+      <div
+        style={{
+          fontFamily: 'Clash Display',
+          fontWeight: 600,
+          fontSize: 22,
+          color: colors.text,
+          letterSpacing: '-0.01em',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {displayName}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') void save();
+          if (e.key === 'Escape') cancel();
+        }}
+        maxLength={80}
+        disabled={saving}
+        style={{
+          width: '100%',
+          padding: '6px 0 8px',
+          border: 'none',
+          borderBottom: `2px solid ${colors.amber}`,
+          background: 'transparent',
+          fontFamily: 'Clash Display',
+          fontWeight: 600,
+          fontSize: 22,
+          color: colors.text,
+          outline: 'none',
+        }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button
+          type="button"
+          className="hof-btn hof-press"
+          disabled={saving}
+          onClick={() => {
+            void save();
+          }}
+          style={{
+            padding: 0,
+            background: 'transparent',
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: 600,
+            color: colors.amber,
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          className="hof-btn hof-press"
+          disabled={saving}
+          onClick={cancel}
+          style={{
+            padding: 0,
+            background: 'transparent',
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: 500,
+            color: colors.textSec,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function formatTicketPrice(cents: number, feeCents: number): string {
   return `$${((cents + feeCents) / 100).toFixed(2)}`;
@@ -131,7 +240,12 @@ function apiPostToUi(p: ApiPost): UiPost {
     id: p.id,
     channel: p.channel,
     kind: 'quick',
-    author: { name: displayName, initials, role },
+    author: {
+      name: displayName,
+      initials,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
+    },
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
@@ -139,6 +253,63 @@ function apiPostToUi(p: ApiPost): UiPost {
     reactions,
     replyCount: p.reply_count,
   };
+}
+
+function ProfileRoleBadge({ role }: { role: string | undefined }) {
+  const roleLabel = role === 'crew' ? 'Crew' : role === 'admin' ? 'Admin' : 'Member';
+  const isStaff = role === 'crew' || role === 'admin';
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '5px 12px',
+        background: isStaff ? 'rgba(232,101,26,0.14)' : 'rgba(201,148,42,0.12)',
+        border: `1px solid ${isStaff ? colors.amber : colors.gold}`,
+        borderRadius: 6,
+        fontFamily: 'Inter',
+        fontSize: 10,
+        fontWeight: 600,
+        color: isStaff ? colors.amber : colors.gold,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        boxShadow: isStaff
+          ? '0 0 20px rgba(232,101,26,0.15)'
+          : '0 0 16px rgba(201,148,42,0.12)',
+      }}
+    >
+      <Icon name="star" size={10} color={isStaff ? colors.amber : colors.gold} />
+      {roleLabel}
+    </span>
+  );
+}
+
+function ProfileSectionLabel({
+  children,
+  accent,
+  style,
+}: {
+  children: ReactNode;
+  accent?: boolean;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: 'Inter',
+        fontSize: 10,
+        color: accent ? colors.amber : colors.textSec,
+        letterSpacing: '0.22em',
+        textTransform: 'uppercase',
+        marginBottom: 10,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function ProfileTicketRow({ ticket, onOpen }: { ticket: ProfileTicket; onOpen: () => void }) {
@@ -160,10 +331,12 @@ function ProfileTicketRow({ ticket, onOpen }: { ticket: ProfileTicket; onOpen: (
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        padding: 12,
+        padding: 14,
         background: colors.surface,
         border: `1px solid ${colors.border}`,
-        borderRadius: 10,
+        borderRadius: 12,
+        transition: 'border-color 150ms, box-shadow 150ms',
+        boxShadow: '0 1px 0 rgba(255,255,255,0.02)',
       }}
     >
       <div
@@ -492,21 +665,34 @@ function ProfilePosts({
 export default function ProfileScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'overview' | 'posts'>('overview');
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [tickets, setTickets] = useState<ProfileTicket[]>([]);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileData | null>(
+    () => readProfileCache()?.profile ?? null,
+  );
+  const [tickets, setTickets] = useState<ProfileTicket[]>(() => readProfileCache()?.tickets ?? []);
+  const [profileLoading, setProfileLoading] = useState(() => !readProfileCache()?.profile);
   const [profileError, setProfileError] = useState(false);
-  const [profileReactions, setProfileReactions] = useState({ fire: 0, eyes: 0, heart: 0 });
+  const [profileReactions, setProfileReactions] = useState(
+    () => readProfileCache()?.reactions ?? { fire: 0, eyes: 0, heart: 0 },
+  );
   const [referral, setReferral] = useState<{
     referral_code: string;
     referral_count: number;
     conversions: number;
-  } | null>(null);
+  } | null>(() => readProfileCache()?.referral ?? null);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const loadProfile = useCallback(() => {
-    setProfileLoading(true);
-    setProfileError(false);
+  const loadProfile = useCallback((options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? Boolean(readProfileCache()?.profile);
+    if (!silent) {
+      setProfileLoading(true);
+      setProfileError(false);
+    }
     fetch('/api/profile')
       .then(async (r) => {
         if (!r.ok) throw new Error('profile fetch failed');
@@ -520,35 +706,89 @@ export default function ProfileScreen() {
         if (d.profile) setProfile(d.profile);
         setTickets(d.tickets ?? []);
         if (d.reactions) setProfileReactions(d.reactions);
+        writeProfileCache({
+          profile: d.profile ?? null,
+          tickets: d.tickets ?? [],
+          reactions: d.reactions ?? { fire: 0, eyes: 0, heart: 0 },
+          referral: readProfileCache()?.referral ?? null,
+        });
       })
-      .catch(() => setProfileError(true))
-      .finally(() => setProfileLoading(false));
+      .catch(() => {
+        if (!silent) setProfileError(true);
+      })
+      .finally(() => {
+        if (!silent) setProfileLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    loadProfile();
-    fetch('/api/profile/referral')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.referral_code)
-          setReferral(d as { referral_code: string; referral_count: number; conversions: number });
-      })
-      .catch(() => {});
-
-    const refreshOnFocus = () => {
-      if (document.visibilityState === 'visible') loadProfile();
-    };
-    window.addEventListener('focus', refreshOnFocus);
-    document.addEventListener('visibilitychange', refreshOnFocus);
-    return () => {
-      window.removeEventListener('focus', refreshOnFocus);
-      document.removeEventListener('visibilitychange', refreshOnFocus);
-    };
+    const snapshot = readProfileCache();
+    loadProfile({ silent: Boolean(snapshot?.profile) });
+    if (!snapshot?.referral) {
+      fetch('/api/profile/referral')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.referral_code) {
+            const next = d as { referral_code: string; referral_count: number; conversions: number };
+            setReferral(next);
+            writeProfileCache({ referral: next });
+          }
+        })
+        .catch(() => {});
+    }
   }, [loadProfile]);
 
+  const saveDisplayName = useCallback(async (trimmed: string) => {
+    setSavingName(true);
+    setProfileSaveError(null);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: trimmed }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? 'Could not save name');
+      }
+      const data = (await res.json()) as { profile?: { display_name: string } };
+      if (data.profile?.display_name) {
+        const nextName = data.profile.display_name;
+        setProfile((prev) => (prev ? { ...prev, display_name: nextName } : prev));
+        patchProfileCache({ display_name: nextName });
+        notifyProfileUpdated();
+      }
+    } catch (err) {
+      setProfileSaveError(err instanceof Error ? err.message : 'Could not save name');
+      throw err;
+    } finally {
+      setSavingName(false);
+    }
+  }, []);
+
+  const handleAvatarSelect = useCallback(async (file: File | undefined) => {
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview(preview);
+    setAvatarUploading(true);
+    setProfileSaveError(null);
+    try {
+      const publicUrl = await uploadProfileAvatar(file);
+      setAvatarPreview(null);
+      setProfile((prev) => (prev ? { ...prev, avatar_url: publicUrl } : prev));
+      patchProfileCache({ avatar_url: publicUrl });
+      notifyProfileUpdated();
+    } catch (err) {
+      setAvatarPreview(null);
+      setProfileSaveError(err instanceof Error ? err.message : 'Could not update photo');
+    } finally {
+      setAvatarUploading(false);
+      URL.revokeObjectURL(preview);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }, []);
+
   const upcomingTicket = tickets.find(isUpcomingTicket);
-  const roleLabel =
-    profile?.role === 'crew' ? 'Crew' : profile?.role === 'admin' ? 'Admin' : 'Member';
 
   const initials = (profile?.display_name ?? 'M')
     .split(' ')
@@ -665,65 +905,135 @@ export default function ProfileScreen() {
                     pointerEvents: 'none',
                   }}
                 />
+                <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+                  <ProfileRoleBadge role={profile?.role} />
+                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    void handleAvatarSelect(file);
+                  }}
+                />
                 <div
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
+                    alignItems: 'flex-start',
+                    gap: 16,
                     position: 'relative',
+                    paddingRight: 88,
                   }}
                 >
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={profile.display_name}
-                      style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        flexShrink: 0,
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
+                  <button
+                    type="button"
+                    className="hof-btn hof-press"
+                    aria-label="Change profile photo"
+                    disabled={avatarUploading}
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{
+                      position: 'relative',
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      flexShrink: 0,
+                      padding: 0,
+                      overflow: 'hidden',
+                      border: `2px solid ${colors.borderHi}`,
+                      background: colors.elevated,
+                    }}
+                  >
+                    {(avatarPreview || profile?.avatar_url) ? (
+                      <img
+                        src={avatarPreview ?? profile?.avatar_url ?? ''}
+                        alt={profile?.display_name ?? 'Profile photo'}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          background: `linear-gradient(135deg, ${colors.amber}, ${colors.ember})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontFamily: 'Clash Display',
+                          fontWeight: 700,
+                          fontSize: 28,
+                          color: colors.bg,
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {initials}
+                      </div>
+                    )}
                     <div
                       style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        flexShrink: 0,
-                        background: `linear-gradient(135deg, ${colors.amber}, ${colors.ember})`,
+                        position: 'absolute',
+                        inset: 0,
+                        background: avatarUploading ? 'rgba(0,0,0,0.45)' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontFamily: 'Clash Display',
-                        fontWeight: 700,
-                        fontSize: 28,
-                        color: colors.bg,
-                        letterSpacing: '-0.02em',
+                        transition: 'background 150ms',
                       }}
                     >
-                      {initials}
+                      {avatarUploading ? (
+                        <span
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: colors.text,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Saving
+                        </span>
+                      ) : null}
                     </div>
-                  )}
-                  <div>
                     <div
                       style={{
-                        fontFamily: 'Clash Display',
-                        fontWeight: 600,
-                        fontSize: 22,
-                        color: colors.text,
-                        letterSpacing: '-0.01em',
+                        position: 'absolute',
+                        right: 2,
+                        bottom: 2,
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        background: colors.bg,
+                        border: `1px solid ${colors.borderHi}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
                       }}
                     >
-                      {profile?.display_name ?? 'Member'}
+                      <Icon name="camera" size={12} color={colors.amber} />
                     </div>
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
+                    <ProfileNameField
+                      displayName={profile?.display_name ?? 'Member'}
+                      editing={editingName}
+                      onEditingChange={setEditingName}
+                      saving={savingName}
+                      onSave={saveDisplayName}
+                    />
                     <div
                       style={{
                         fontFamily: 'Inter',
                         fontSize: 12,
                         color: colors.textSec,
-                        marginTop: 2,
+                        marginTop: 4,
+                        lineHeight: 1.4,
                       }}
                     >
                       {profile?.handle ? `@${profile.handle}` : '@member'} · Member since{' '}
@@ -758,42 +1068,36 @@ export default function ProfileScreen() {
                         {profile.phone}
                       </div>
                     )}
-                    <div style={{ marginTop: 8 }}>
-                      <span
+                    {!editingName && (
+                      <button
+                        type="button"
+                        className="hof-btn hof-press"
+                        onClick={() => setEditingName(true)}
                         style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '4px 10px',
-                          background:
-                            profile?.role === 'crew' || profile?.role === 'admin'
-                              ? 'rgba(232,101,26,0.12)'
-                              : 'rgba(201,148,42,0.1)',
-                          border: `1px solid ${profile?.role === 'crew' || profile?.role === 'admin' ? colors.amber : colors.gold}`,
-                          borderRadius: 4,
+                          marginTop: 10,
+                          padding: 0,
+                          background: 'transparent',
                           fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color:
-                            profile?.role === 'crew' || profile?.role === 'admin'
-                              ? colors.amber
-                              : colors.gold,
-                          letterSpacing: '0.16em',
-                          textTransform: 'uppercase',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: colors.amber,
                         }}
                       >
-                        <Icon
-                          name="star"
-                          size={10}
-                          color={
-                            profile?.role === 'crew' || profile?.role === 'admin'
-                              ? colors.amber
-                              : colors.gold
-                          }
-                        />
-                        {roleLabel}
-                      </span>
-                    </div>
+                        Edit name
+                      </button>
+                    )}
+                    {profileSaveError && (
+                      <div
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: colors.error,
+                          marginTop: 8,
+                        }}
+                      >
+                        {profileSaveError}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -802,28 +1106,38 @@ export default function ProfileScreen() {
                   style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 8,
-                    marginTop: 18,
-                    padding: '14px 0 0',
+                    gap: 10,
+                    marginTop: 20,
+                    paddingTop: 16,
                     borderTop: `1px solid ${colors.border}`,
                     position: 'relative',
                   }}
                 >
                   {(
                     [
-                      [String(profile?.editions_attended ?? 0), 'Themes'],
-                      [String(profile?.tickets_count ?? 0), 'Tickets'],
-                      ['—', 'Photos'],
-                    ] as [string, string][]
-                  ).map(([n, l]) => (
-                    <div key={l}>
+                      [String(profile?.editions_attended ?? 0), 'Themes', colors.amber],
+                      [String(profile?.tickets_count ?? 0), 'Tickets', colors.gold],
+                      ['—', 'Photos', colors.textSec],
+                    ] as [string, string, string][]
+                  ).map(([n, l, accent]) => (
+                    <div
+                      key={l}
+                      style={{
+                        background: colors.elevated,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 10,
+                        padding: '12px 10px',
+                        textAlign: 'center',
+                      }}
+                    >
                       <div
                         style={{
                           fontFamily: 'Clash Display',
                           fontWeight: 600,
-                          fontSize: 22,
-                          color: colors.text,
+                          fontSize: 24,
+                          color: accent,
                           letterSpacing: '-0.01em',
+                          lineHeight: 1,
                         }}
                       >
                         {n}
@@ -833,7 +1147,7 @@ export default function ProfileScreen() {
                           fontFamily: 'Inter',
                           fontSize: 10,
                           color: colors.textSec,
-                          marginTop: 2,
+                          marginTop: 6,
                           letterSpacing: '0.14em',
                           textTransform: 'uppercase',
                         }}
@@ -899,18 +1213,7 @@ export default function ProfileScreen() {
             <>
               {/* Upcoming ticket */}
               <div style={{ padding: '24px 16px 0' }}>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    color: colors.amber,
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                    marginBottom: 10,
-                  }}
-                >
-                  Upcoming ticket
-                </div>
+                <ProfileSectionLabel accent>Upcoming ticket</ProfileSectionLabel>
                 {upcomingTicket && upcomingTicket.events ? (
                   <button
                     className="hof-btn hof-press"
@@ -921,9 +1224,10 @@ export default function ProfileScreen() {
                       padding: 0,
                       background: colors.surface,
                       border: `1px solid ${colors.border}`,
-                      borderRadius: 12,
+                      borderRadius: 14,
                       overflow: 'hidden',
                       display: 'block',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                     }}
                   >
                     <div style={{ display: 'flex' }}>
@@ -1098,34 +1402,38 @@ export default function ProfileScreen() {
               {/* Referral card */}
               {referral !== null && (
                 <div style={{ padding: '24px 16px 0' }}>
+                  <ProfileSectionLabel accent>Referral</ProfileSectionLabel>
                   <div
                     style={{
-                      fontFamily: 'Inter',
-                      fontSize: 10,
-                      color: colors.amber,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                      marginBottom: 10,
-                    }}
-                  >
-                    Referral
-                  </div>
-                  <div
-                    style={{
-                      background: '#141412',
-                      border: '1px solid #2A2826',
-                      borderRadius: 10,
-                      padding: 16,
+                      position: 'relative',
+                      background: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: 14,
+                      padding: 18,
+                      overflow: 'hidden',
                     }}
                   >
                     <div
                       style={{
+                        position: 'absolute',
+                        top: -40,
+                        left: -20,
+                        width: 160,
+                        height: 160,
+                        borderRadius: 80,
+                        background: 'radial-gradient(circle, rgba(201,148,42,0.12), transparent 70%)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    <div
+                      style={{
                         fontFamily: 'Inter',
                         fontSize: 9,
-                        color: '#8A8880',
+                        color: colors.textSec,
                         letterSpacing: '0.18em',
                         textTransform: 'uppercase',
-                        marginBottom: 6,
+                        marginBottom: 8,
+                        position: 'relative',
                       }}
                     >
                       Your code
@@ -1135,15 +1443,17 @@ export default function ProfileScreen() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: 10,
+                        gap: 12,
+                        marginBottom: 12,
+                        position: 'relative',
                       }}
                     >
                       <span
                         style={{
                           fontFamily: 'JetBrains Mono',
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: 600,
-                          color: '#F0EDE6',
+                          color: colors.text,
                           letterSpacing: '0.08em',
                         }}
                       >
@@ -1158,15 +1468,16 @@ export default function ProfileScreen() {
                           });
                         }}
                         style={{
-                          padding: '5px 12px',
-                          background: 'transparent',
-                          border: '1px solid #2A2826',
-                          borderRadius: 6,
+                          padding: '6px 14px',
+                          background: copiedCode ? 'rgba(232,101,26,0.12)' : colors.elevated,
+                          border: `1px solid ${copiedCode ? colors.amber : colors.borderHi}`,
+                          borderRadius: 8,
                           fontFamily: 'Inter',
                           fontSize: 12,
-                          fontWeight: 500,
-                          color: copiedCode ? colors.success : colors.text,
+                          fontWeight: 600,
+                          color: copiedCode ? colors.amber : colors.text,
                           cursor: 'pointer',
+                          flexShrink: 0,
                         }}
                       >
                         {copiedCode ? 'Copied!' : 'Copy'}
@@ -1174,21 +1485,59 @@ export default function ProfileScreen() {
                     </div>
                     <div
                       style={{
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: '#8A8880',
-                        marginBottom: 8,
+                        display: 'flex',
+                        gap: 8,
+                        marginBottom: 12,
+                        position: 'relative',
                       }}
                     >
-                      {referral.referral_count} friend{referral.referral_count !== 1 ? 's' : ''}{' '}
-                      joined · {referral.conversions} got tickets
+                      {[
+                        [`${referral.referral_count}`, 'Friends joined'],
+                        [`${referral.conversions}`, 'Got tickets'],
+                      ].map(([n, label]) => (
+                        <div
+                          key={label}
+                          style={{
+                            flex: 1,
+                            background: colors.elevated,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: 8,
+                            padding: '10px 12px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: 'Clash Display',
+                              fontWeight: 600,
+                              fontSize: 18,
+                              color: colors.gold,
+                              lineHeight: 1,
+                            }}
+                          >
+                            {n}
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              color: colors.textSec,
+                              marginTop: 4,
+                              letterSpacing: '0.06em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {label}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     <div
                       style={{
                         fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: '#8A8880',
-                        lineHeight: 1.5,
+                        fontSize: 13,
+                        color: colors.textSec,
+                        lineHeight: 1.55,
+                        position: 'relative',
                       }}
                     >
                       Share the fire — your friends skip the waitlist next theme.
@@ -1207,23 +1556,14 @@ export default function ProfileScreen() {
                     marginBottom: 12,
                   }}
                 >
-                  <div
-                    style={{
-                      fontFamily: 'Inter',
-                      fontSize: 10,
-                      color: colors.textSec,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Your tickets
-                  </div>
+                  <ProfileSectionLabel style={{ marginBottom: 0 }}>Your tickets</ProfileSectionLabel>
                   <span
                     style={{
                       fontFamily: 'Inter',
                       fontSize: 12,
-                      color: colors.textSec,
+                      color: colors.amber,
                       fontVariantNumeric: 'tabular-nums',
+                      letterSpacing: '0.02em',
                     }}
                   >
                     {tickets.length} total
@@ -1277,18 +1617,7 @@ export default function ProfileScreen() {
 
               {/* Account settings */}
               <div style={{ padding: '28px 16px 0' }}>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    color: colors.textSec,
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                    marginBottom: 10,
-                  }}
-                >
-                  Account
-                </div>
+                <ProfileSectionLabel>Account</ProfileSectionLabel>
                 <div
                   style={{
                     background: colors.surface,
@@ -1312,6 +1641,7 @@ export default function ProfileScreen() {
                       onClick={async () => {
                         if (t === 'Log out') {
                           const supabase = createClient();
+                          clearProfileCache();
                           await supabase.auth.signOut();
                           router.push('/landing');
                           return;
