@@ -30,14 +30,19 @@ function requireEnv(name, value) {
   return true;
 }
 
+// GoTrue matches redirect URLs as glob patterns against the FULL URL string,
+// so `…/callback/client` does NOT match `…/callback/client?next=%2F`.
+// Each callback needs a bare entry AND a `?*` wildcard for query params.
+function withQueryWildcards(urls) {
+  return urls.flatMap((u) => [u, `${u}?*`]);
+}
+
+function callbackUrls(base) {
+  return withQueryWildcards([`${base}/auth/callback/client`, `${base}/auth/callback`]);
+}
+
 function defaultRedirectUrls(appUrl) {
-  const urls = [
-    `${appUrl}/auth/callback/client`,
-    `${appUrl}/auth/callback`,
-    'http://localhost:3000/auth/callback/client',
-    'http://localhost:3000/auth/callback',
-  ];
-  return [...new Set(urls)];
+  return [...new Set([...callbackUrls(appUrl), ...callbackUrls('http://localhost:3000')])];
 }
 
 function parseRedirectUrls(appUrl) {
@@ -50,9 +55,10 @@ function parseRedirectUrls(appUrl) {
     .filter(Boolean);
 
   const urls = [
-    `${appUrl}/auth/callback/client`,
-    `${appUrl}/auth/callback`,
-    ...fromEnv,
+    ...callbackUrls(appUrl),
+    // Entries from env: add `?*` variants for callback paths without one
+    ...withQueryWildcards(fromEnv.filter((u) => !u.includes('?') && !u.includes('*'))),
+    ...fromEnv.filter((u) => u.includes('?') || u.includes('*')),
   ];
   return [...new Set(urls)];
 }
