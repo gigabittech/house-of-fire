@@ -7,9 +7,9 @@ const PRECACHE = [
   '/',
   '/',
   '/event',
-  '/community',
   '/archive',
   '/live',
+  // COMMUNITY_FEATURE: restore '/community' when enabling Community (features.ts).
   '/profile',
   '/ticket',
   '/manifest.webmanifest',

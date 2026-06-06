@@ -85,6 +85,22 @@ button.hof-btn {
   color: inherit;
 }
 
+/* ── App shell sidebar nav ──────────────────────────────────────────────── */
+.hof-sidebar-nav-item {
+  position: relative;
+  border: 1px solid transparent;
+  transition:
+    background var(--hof-duration-fade) ease,
+    border-color var(--hof-duration-fade) ease;
+}
+.hof-sidebar-nav-item:hover {
+  background: var(--hof-elevated);
+}
+.hof-sidebar-nav-item[data-active="true"] {
+  background: rgba(232, 101, 26, 0.14);
+  border-color: rgba(232, 101, 26, 0.38);
+}
+
 /* ── Keyframes ──────────────────────────────────────────────────────────── */
 @keyframes hof-shimmer {
   0% {

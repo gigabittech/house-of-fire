@@ -3,7 +3,9 @@
 import { colors } from '@hof/design-tokens';
 import { HofConfirm, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { createClient } from '../lib/supabase';
 
 type View = 'list' | 'notifs' | 'payment' | 'privacy' | 'help';
@@ -213,6 +215,7 @@ function SettingsNotifs() {
       <Section title="Topics">
         <ActionRow
           label="Lineup & schedule alerts"
+          last={!COMMUNITY_FEATURE_ENABLED}
           right={
             <Toggle
               on={lineupAlerts}
@@ -223,19 +226,21 @@ function SettingsNotifs() {
             />
           }
         />
-        <ActionRow
-          label="Community mentions"
-          last
-          right={
-            <Toggle
-              on={communityMentions}
-              onChange={(v) => {
-                setCommunityMentions(v);
-                persist('community_mentions', v);
-              }}
-            />
-          }
-        />
+        {COMMUNITY_FEATURE_ENABLED ? (
+          <ActionRow
+            label="Community mentions"
+            last
+            right={
+              <Toggle
+                on={communityMentions}
+                onChange={(v) => {
+                  setCommunityMentions(v);
+                  persist('community_mentions', v);
+                }}
+              />
+            }
+          />
+        ) : null}
       </Section>
     </>
   );
@@ -320,6 +325,7 @@ function SettingsPrivacy() {
 
   return (
     <>
+      {COMMUNITY_FEATURE_ENABLED ? (
       <Section title="Community">
         <ActionRow
           label="Post anonymously by default"
@@ -347,6 +353,7 @@ function SettingsPrivacy() {
           }
         />
       </Section>
+      ) : null}
       <Section title="Data">
         <ActionRow
           label="Download my data"
@@ -421,20 +428,22 @@ export default function SettingsScreen() {
     help: 'Help & contact',
   };
 
-  function handleBack() {
+  const handleBack = useCallback(() => {
     if (view === 'list') {
       router.back();
     } else {
       setView('list');
     }
-  }
+  }, [view, router]);
+
+  useAppHeader({ title: viewTitles[view], onBack: handleBack });
 
   return (
     <div
       style={{
         position: 'relative',
         width: '100%',
-        height: '100dvh',
+        height: '100%',
         overflow: 'hidden',
         background: colors.bg,
       }}
@@ -454,50 +463,7 @@ export default function SettingsScreen() {
           paddingBottom: 40,
         }}
       >
-        {/* Top bar */}
-        <div
-          style={{
-            padding: '54px 16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            borderBottom: `1px solid ${colors.border}`,
-            marginBottom: 24,
-          }}
-        >
-          <button
-            className="hof-btn hof-press"
-            onClick={handleBack}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              background: colors.elevated,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon
-              name="chev"
-              size={16}
-              color={colors.text}
-              style={{ transform: 'rotate(180deg)' }}
-            />
-          </button>
-          <div
-            style={{
-              fontFamily: 'Clash Display',
-              fontWeight: 600,
-              fontSize: 22,
-              color: colors.text,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {viewTitles[view]}
-          </div>
-        </div>
+        <div style={{ height: isWide ? 8 : 12 }} />
 
         {view === 'list' && (
           <>

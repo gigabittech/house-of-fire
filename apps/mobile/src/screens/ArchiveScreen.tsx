@@ -1,12 +1,11 @@
 'use client';
 
 import { colors, layoutWidth } from '@hof/design-tokens';
-import type { NavId } from '@hof/ui';
-import { EmptyState, FeedSkeletonCard, HofAppShell, Icon, useResponsive } from '@hof/ui';
+import { EmptyState, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { photoSrc } from '../data/photos';
-import { navHref } from '../lib/nav';
 import PhotoSubmitSheet from '../sheets/PhotoSubmitSheet';
 
 interface ApiEvent {
@@ -72,12 +71,13 @@ export default function ArchiveScreen() {
 
   const { isWide, isDesktop } = useResponsive();
 
+  useAppHeader({ title: 'Archive' });
+
   return (
-    <HofAppShell active="events" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
-          height: '100dvh',
+          height: '100%',
           overflow: 'hidden',
           background: colors.bg,
         }}
@@ -99,55 +99,10 @@ export default function ArchiveScreen() {
             overflowY: 'auto',
           }}
         >
-          <div style={{ height: 54 }} />
-
-          {/* Title */}
-          <div style={{ padding: '12px 16px 4px' }}>
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 10,
-                color: colors.amber,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-              }}
-            >
-              The Archive
-            </div>
-            <div
-              style={{
-                fontFamily: 'Clash Display',
-                fontWeight: 700,
-                fontSize: 44,
-                color: colors.text,
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-                marginTop: 6,
-                textTransform: 'uppercase',
-              }}
-            >
-              Every
-              <br />
-              theme.
-            </div>
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: colors.textSec,
-                marginTop: 12,
-                lineHeight: 1.5,
-                maxWidth: 280,
-              }}
-            >
-              Every event. Every month. Since April 2024.
-            </div>
-          </div>
-
           {/* Year filter */}
           <div
             style={{
-              padding: '20px 16px 16px',
+              padding: isWide ? '12px 16px 16px' : '12px 16px 16px',
               display: 'flex',
               gap: 6,
               overflowX: 'auto',
@@ -342,6 +297,5 @@ export default function ArchiveScreen() {
           edition={uploadEdition}
         />
       </div>
-    </HofAppShell>
   );
 }

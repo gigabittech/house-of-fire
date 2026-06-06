@@ -32,5 +32,16 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "exclude": ["node_modules", "dist", "build", ".next", ".turbo"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    ".turbo",
+    "design",
+    "docs",
+    "supabase",
+    "assets",
+    "index.html"
+  ]
 }

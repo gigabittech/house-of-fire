@@ -1,21 +1,21 @@
 'use client';
 
 import { colors, layoutWidth } from '@hof/design-tokens';
-import type { IconName, NavId } from '@hof/ui';
+import type { IconName } from '@hof/ui';
 import {
   Avatar,
   EmptyState,
   ErrorState,
   FakeQR,
   FeedSkeletonCard,
-  HofAppShell,
   HofPill,
   Icon,
   useResponsive,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
+import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { useEffect, useState } from 'react';
-import { navHref } from '../lib/nav';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { NO_EVENTS_MESSAGE } from '@/lib/eventDisplay';
 import { MapSheet } from '../sheets/MapSheet';
 
@@ -68,6 +68,7 @@ interface PostItem {
   i: string; // initials
   n: string; // display name
   role: 'crew' | 'member';
+  avatarUrl?: string | null;
   t: string; // relative time
   b: string; // body text
 }
@@ -212,6 +213,7 @@ export default function LiveNightScreen() {
             i: initialsFrom(displayName),
             n: displayName,
             role,
+            avatarUrl: p.is_anonymous ? undefined : (profile?.avatar_url ?? undefined),
             t: relativeTime(p.created_at),
             b: p.body ?? p.title,
           };
@@ -296,6 +298,8 @@ export default function LiveNightScreen() {
 
   const { isWide, isDesktop } = useResponsive();
 
+  useAppHeader({ title: 'Live' });
+
   const hh = new Date(now).getHours();
   const mm = String(new Date(now).getMinutes()).padStart(2, '0');
 
@@ -308,12 +312,11 @@ export default function LiveNightScreen() {
 
   if (!lineupLoading && !eventId) {
     return (
-      <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
         <div
           style={{
             position: 'relative',
             width: '100%',
-            height: '100dvh',
+            height: '100%',
             background: colors.bg,
             display: 'flex',
             alignItems: 'center',
@@ -343,17 +346,15 @@ export default function LiveNightScreen() {
             }
           />
         </div>
-      </HofAppShell>
     );
   }
 
   return (
-    <HofAppShell active="home" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
           width: '100%',
-          height: '100dvh',
+          height: '100%',
           overflow: 'hidden',
           background: colors.bg,
         }}
@@ -362,7 +363,7 @@ export default function LiveNightScreen() {
         <div
           style={{
             position: 'absolute',
-            top: isWide ? 12 : 54,
+            top: isWide ? 12 : 8,
             left: isWide ? '50%' : 0,
             right: isWide ? 'auto' : 0,
             transform: isWide ? 'translateX(-50%)' : undefined,
@@ -573,7 +574,8 @@ export default function LiveNightScreen() {
             </div>
           </div>
 
-          {/* Live thread strip */}
+          {/* Live thread strip — COMMUNITY_FEATURE */}
+          {COMMUNITY_FEATURE_ENABLED ? (
           <div style={{ padding: '24px 16px 0' }}>
             <div
               style={{
@@ -639,7 +641,7 @@ export default function LiveNightScreen() {
               </div>
               <button
                 className="hof-btn"
-                onClick={() => router.push(navHref.community)}
+                onClick={() => router.push('/community')}
                 style={{ fontFamily: 'Inter', fontSize: 12, color: colors.amber, fontWeight: 500 }}
               >
                 Open →
@@ -696,7 +698,13 @@ export default function LiveNightScreen() {
                       borderRadius: 10,
                     }}
                   >
-                    <Avatar initials={p.i} userRole={p.role} size={28} />
+                    <Avatar
+                      initials={p.i}
+                      userRole={p.role}
+                      src={p.avatarUrl}
+                      alt={p.n}
+                      size={28}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}
@@ -756,6 +764,7 @@ export default function LiveNightScreen() {
               )}
             </div>
           </div>
+          ) : null}
 
           {/* Set times */}
           <div style={{ padding: '24px 16px 0' }}>
@@ -1005,6 +1014,5 @@ export default function LiveNightScreen() {
 
         <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
       </div>
-    </HofAppShell>
   );
 }

@@ -18,6 +18,7 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
     { id: 'members', href: '/members', icon: 'user', label: 'Members' },
     { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation' },
     { id: 'announce', href: '/announce', icon: 'bell', label: 'Announcements' },
+    { id: 'email-log', href: '/email-log', icon: 'mail', label: 'Email log' },
     { id: 'codes', href: '/codes', icon: 'tag', label: 'Codes & comps' },
     { id: 'financials', href: '/financials', icon: 'wallet', label: 'Financials' },
   ];

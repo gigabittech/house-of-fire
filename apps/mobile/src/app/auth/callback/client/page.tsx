@@ -59,9 +59,14 @@ export default function AuthCallbackClientPage() {
       return Boolean(data.session);
     };
 
-    const finish = () => {
+    const finish = async () => {
       if (finishedRef.current) return;
       finishedRef.current = true;
+      try {
+        await fetch('/api/auth/sync-oauth-profile', { method: 'POST' });
+      } catch {
+        /* profile sync is best-effort */
+      }
       router.replace(next);
       router.refresh();
     };

@@ -176,6 +176,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
           .eq('order_id', racedOrder.id)
           .order('code', { ascending: true });
 
+        await trySendReceipt(racedOrder.id, pi);
         return {
           ok: true,
           tickets: (racedTickets ?? []) as TicketRow[],

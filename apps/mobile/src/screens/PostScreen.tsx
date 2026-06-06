@@ -1,10 +1,12 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { ReactionKey, Post as UiPost } from '@hof/ui';
 import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useAppHeader } from '@/hooks/useAppHeader';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { photoSrc } from '../data/photos';
 import { parseMediaUrls } from '../lib/postMedia';
 
@@ -35,7 +37,7 @@ type ApiReply = {
   body: string;
   is_anonymous: boolean;
   created_at: string;
-  profiles: { handle: string; display_name: string; role: string } | null;
+  profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
 };
 
 function timeAgo(isoStr: string): string {
@@ -70,7 +72,12 @@ function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
     id: p.id,
     channel: p.channel,
     kind: 'quick',
-    author: { name: displayName, initials, role },
+    author: {
+      name: displayName,
+      initials,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
+    },
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
@@ -91,6 +98,7 @@ const REACTION_OPTIONS: { key: ReactionKey; emoji: string }[] = [
 
 export default function PostScreen({ postId }: PostScreenProps) {
   const router = useRouter();
+  const authUser = useAuthUser();
   const [apiPost, setApiPost] = useState<ApiPost | null>(null);
   const [replies, setReplies] = useState<ApiReply[]>([]);
   const [sending, setSending] = useState(false);
@@ -100,6 +108,10 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [fetchDone, setFetchDone] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const { isWide } = useResponsive();
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  useAppHeader({ title: 'Post', onBack: handleBack });
 
   const loadPost = useCallback(() => {
     if (!postId) return;
@@ -144,7 +156,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '100dvh',
+          height: '100%',
           background: colors.bg,
           gap: 12,
         }}
@@ -177,7 +189,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
       style={{
         position: 'relative',
         width: '100%',
-        height: '100dvh',
+        height: '100%',
         overflow: 'hidden',
         background: colors.bg,
       }}
@@ -195,63 +207,9 @@ export default function PostScreen({ postId }: PostScreenProps) {
           width: isWide ? 'min(100%, 720px)' : 'auto',
           overflowY: 'auto',
           paddingBottom: 80,
-          paddingTop: 54,
+          paddingTop: isWide ? 8 : layoutChrome.mobilePageHeaderInset,
         }}
       >
-        {/* Back header */}
-        <div
-          style={{
-            position: isWide ? 'sticky' : 'fixed',
-            top: 0,
-            left: isWide ? undefined : '50%',
-            transform: isWide ? undefined : 'translateX(-50%)',
-            width: '100%',
-            maxWidth: isWide ? undefined : 480,
-            marginTop: isWide ? -54 : undefined,
-            zIndex: 20,
-            background: 'rgba(10,10,8,0.85)',
-            backdropFilter: 'blur(20px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-            borderBottom: `1px solid ${colors.border}`,
-            padding: isWide ? '16px 16px 12px' : '54px 16px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <button
-            className="hof-btn hof-press"
-            onClick={() => router.back()}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              background: colors.elevated,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon
-              name="chev"
-              size={16}
-              color={colors.text}
-              style={{ transform: 'rotate(180deg)' }}
-            />
-          </button>
-          <div
-            style={{
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 15,
-              color: colors.text,
-            }}
-          >
-            Post
-          </div>
-        </div>
-
         {/* Post card */}
         {!fetchDone && !fetchError && (
           <div style={{ padding: '0 16px 8px' }}>
@@ -377,7 +335,13 @@ export default function PostScreen({ postId }: PostScreenProps) {
                   borderBottom: i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
                 }}
               >
-                <Avatar initials={rInitials} userRole={rRole} size={30} />
+                <Avatar
+                  initials={rInitials}
+                  userRole={rRole}
+                  src={r.is_anonymous ? undefined : (r.profiles?.avatar_url ?? undefined)}
+                  alt={rName}
+                  size={30}
+                />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
@@ -462,7 +426,20 @@ export default function PostScreen({ postId }: PostScreenProps) {
           alignItems: 'center',
         }}
       >
-        <Avatar initials="SB" userRole="member" size={28} />
+        <Avatar
+          initials={
+            (authUser?.name ?? 'M')
+              .split(' ')
+              .map((p) => p[0] ?? '')
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()
+          }
+          userRole="member"
+          src={authUser?.avatarUrl}
+          alt={authUser?.name}
+          size={28}
+        />
         <input
           value={reply}
           onChange={(e) => setReply(e.target.value)}

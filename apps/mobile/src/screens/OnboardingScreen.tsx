@@ -1,13 +1,26 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { HofButton, HofLogoMark, Icon, useResponsive } from '@hof/ui';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { HofButton, Icon } from '@hof/ui';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import {
+  // AuthDivider,
+  AuthErrorBanner,
+  AuthInput,
+  AuthLabel,
+  AuthLegalFooter,
+  AuthPhoneRow,
+  authContentPadding,
+  authHeadlineStyle,
+  authSubtextStyle,
+} from '../components/auth/AuthFormPrimitives';
+import { useAuthNavigation } from '../components/auth/AuthNavigation';
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
 import { CHANNELS } from '../data/posts';
+// import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
+import { displayNameFromGoogleMetadata } from '../lib/auth/googleOAuth';
 import { createClient } from '../lib/supabase';
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatPhoneFn(raw: string): string {
   const d = raw.replace(/\D/g, '').slice(0, 10);
@@ -15,102 +28,6 @@ function formatPhoneFn(raw: string): string {
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
-
-// ─── Local atoms ────────────────────────────────────────────────────────────
-
-function OnboardLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontFamily: 'Inter',
-        fontSize: 11,
-        color: colors.textSec,
-        letterSpacing: '0.16em',
-        textTransform: 'uppercase',
-        marginBottom: 8,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-interface OnboardInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-function OnboardInput(props: OnboardInputProps) {
-  const { style, ...rest } = props;
-  return (
-    <input
-      {...rest}
-      style={{
-        width: '100%',
-        boxSizing: 'border-box',
-        height: 48,
-        padding: '0 14px',
-        background: colors.surface,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 8,
-        fontFamily: 'Inter',
-        fontSize: 14,
-        color: colors.text,
-        outline: 'none',
-        ...style,
-      }}
-    />
-  );
-}
-
-function PhoneRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'stretch',
-        background: colors.surface,
-        borderRadius: 8,
-        border: `1px solid ${colors.border}`,
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 12px 0 14px',
-          background: colors.elevated,
-          color: colors.textSec,
-          fontFamily: 'JetBrains Mono',
-          fontSize: 13,
-          borderRight: `1px solid ${colors.border}`,
-          letterSpacing: '0.04em',
-        }}
-      >
-        +1
-      </div>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="(555) 123-4567"
-        type="tel"
-        inputMode="tel"
-        style={{
-          flex: 1,
-          height: 48,
-          padding: '0 14px',
-          background: 'transparent',
-          border: 0,
-          outline: 'none',
-          fontFamily: 'Inter',
-          fontSize: 14,
-          color: colors.text,
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      />
-    </div>
-  );
-}
-
-// ─── State shape ────────────────────────────────────────────────────────────
 
 interface FormData {
   first: string;
@@ -120,8 +37,6 @@ interface FormData {
   displayName: string;
   channels: string[];
 }
-
-// ─── Step 1: account info ────────────────────────────────────────────────────
 
 function StepSignup({
   data,
@@ -138,87 +53,31 @@ function StepSignup({
   loading: boolean;
   error: string;
 }) {
-  const supabase = createClient();
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
   const phoneOk = data.phone.replace(/\D/g, '').length >= 10;
   const valid = data.first.trim().length > 0 && data.last.trim().length > 0 && emailOk && phoneOk;
 
   return (
-    <div style={{ padding: '24px 20px' }}>
-      <HofLogoMark size={90} />
-      <div
-        style={{
-          fontFamily: 'Clash Display',
-          fontWeight: 700,
-          fontSize: 32,
-          color: colors.text,
-          marginTop: 18,
-          letterSpacing: '-0.02em',
-          lineHeight: 1.05,
-          textTransform: 'uppercase',
-        }}
-      >
-        Let&apos;s get you in.
-      </div>
-      <div
-        style={{
-          fontFamily: 'Inter',
-          fontSize: 14,
-          color: colors.textSec,
-          marginTop: 8,
-          lineHeight: 1.5,
-        }}
-      >
+    <div style={{ padding: authContentPadding }}>
+      <div style={authHeadlineStyle}>Let&apos;s get you in.</div>
+      <div style={authSubtextStyle}>
         Members get first crack at tickets, photos, and the discussion board.
       </div>
 
-      {/* Apple SSO */}
-      <div style={{ marginTop: 22 }}>
-        <HofButton
-          variant="quiet"
-          full
-          size="lg"
-          icon={<Icon name="apple" size={18} color={colors.text} />}
-          onClick={() => {
-            void supabase.auth.signInWithOAuth({
-              provider: 'apple',
-              options: {
-                redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
-              },
-            });
-          }}
-        >
-          Continue with Apple
-        </HofButton>
-      </div>
+      {/* <div style={{ marginTop: 22 }}>
+        <GoogleSignInButton
+          flow="sign_up"
+          next="/onboarding?oauth=complete"
+          disabled={loading}
+        />
+      </div> */}
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          margin: '22px 0',
-        }}
-      >
-        <div style={{ flex: 1, height: 1, background: colors.border }} />
-        <span
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 11,
-            color: colors.textSec,
-            textTransform: 'uppercase',
-            letterSpacing: '0.16em',
-          }}
-        >
-          or with email
-        </span>
-        <div style={{ flex: 1, height: 1, background: colors.border }} />
-      </div>
+      {/* <AuthDivider /> */}
 
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <OnboardLabel>First name</OnboardLabel>
-          <OnboardInput
+          <AuthLabel>First name</AuthLabel>
+          <AuthInput
             value={data.first}
             onChange={(e) => setField('first', e.target.value)}
             placeholder="First"
@@ -226,8 +85,8 @@ function StepSignup({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <OnboardLabel>Last name</OnboardLabel>
-          <OnboardInput
+          <AuthLabel>Last name</AuthLabel>
+          <AuthInput
             value={data.last}
             onChange={(e) => setField('last', e.target.value)}
             placeholder="Last"
@@ -236,17 +95,18 @@ function StepSignup({
         </div>
       </div>
       <div style={{ marginTop: 14 }}>
-        <OnboardLabel>Email</OnboardLabel>
-        <OnboardInput
+        <AuthLabel>Email</AuthLabel>
+        <AuthInput
           value={data.email}
           onChange={(e) => setField('email', e.target.value)}
           placeholder="you@example.com"
           type="email"
+          autoComplete="email"
         />
       </div>
       <div style={{ marginTop: 14 }}>
-        <OnboardLabel>Phone</OnboardLabel>
-        <PhoneRow value={data.phone} onChange={(v) => setField('phone', formatPhoneFn(v))} />
+        <AuthLabel>Phone</AuthLabel>
+        <AuthPhoneRow value={data.phone} onChange={(v) => setField('phone', formatPhoneFn(v))} />
         <div
           style={{
             fontFamily: 'Inter',
@@ -260,25 +120,9 @@ function StepSignup({
         </div>
       </div>
 
-      {error.length > 0 && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: '10px 14px',
-            background: 'rgba(220,38,38,0.1)',
-            border: '1px solid rgba(220,38,38,0.3)',
-            borderRadius: 8,
-            fontFamily: 'Inter',
-            fontSize: 13,
-            color: '#f87171',
-            lineHeight: 1.45,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      <AuthErrorBanner message={error} />
 
-      <div style={{ marginTop: 28 }}>
+      <div style={{ marginTop: error ? 16 : 28 }}>
         <HofButton variant="primary" full disabled={!valid || loading} onClick={onNext}>
           {loading ? 'Sending link…' : valid ? 'Continue' : 'Fill in your details'}
         </HofButton>
@@ -309,23 +153,10 @@ function StepSignup({
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 28,
-          textAlign: 'center',
-          fontFamily: 'Inter',
-          fontSize: 11,
-          color: colors.textDis,
-          lineHeight: 1.6,
-        }}
-      >
-        By continuing you agree to our Terms and Privacy. We don&apos;t sell data, ever.
-      </div>
+      <AuthLegalFooter />
     </div>
   );
 }
-
-// ─── Step 2: channel picker ──────────────────────────────────────────────────
 
 function StepChannels({
   data,
@@ -346,31 +177,13 @@ function StepChannels({
   const nonLockedChannels = CHANNELS.filter((c) => !c.locked);
 
   return (
-    <div style={{ padding: '24px 20px' }}>
-      <div
-        style={{
-          fontFamily: 'Clash Display',
-          fontWeight: 700,
-          fontSize: 32,
-          color: colors.text,
-          letterSpacing: '-0.02em',
-          lineHeight: 1.05,
-          textTransform: 'uppercase',
-        }}
-      >
+    <div style={{ padding: authContentPadding }}>
+      <div style={authHeadlineStyle}>
         What do you want
         <br />
         to follow?
       </div>
-      <div
-        style={{
-          fontFamily: 'Inter',
-          fontSize: 14,
-          color: colors.textSec,
-          marginTop: 10,
-          lineHeight: 1.5,
-        }}
-      >
+      <div style={{ ...authSubtextStyle, marginTop: 10 }}>
         Pick the channels that should land on your home feed. Change this anytime.
       </div>
 
@@ -460,11 +273,17 @@ function StepChannels({
   );
 }
 
-// ─── Step 3: welcome ─────────────────────────────────────────────────────────
-
-function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => void }) {
+function StepWelcome({
+  data,
+  onComplete,
+  viaGoogle,
+}: {
+  data: FormData;
+  onComplete: () => void;
+  viaGoogle: boolean;
+}) {
   return (
-    <div style={{ padding: '40px 20px 24px', textAlign: 'center' }}>
+    <div style={{ padding: authContentPadding, textAlign: 'center' }}>
       <div
         style={{
           width: 80,
@@ -525,53 +344,55 @@ function StepWelcome({ data, onComplete }: { data: FormData; onComplete: () => v
         </HofButton>
       </div>
 
-      <div
-        style={{
-          marginTop: 28,
-          padding: 16,
-          background: colors.surface,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 12,
-        }}
-      >
+      {!viaGoogle ? (
         <div
           style={{
-            fontFamily: 'Inter',
-            fontSize: 11,
-            color: colors.amber,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            marginBottom: 8,
+            marginTop: 28,
+            padding: 16,
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 12,
           }}
         >
-          What&apos;s next
+          <div
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 11,
+              color: colors.amber,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              marginBottom: 8,
+            }}
+          >
+            What&apos;s next
+          </div>
+          <div
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: colors.text,
+              lineHeight: 1.5,
+              textAlign: 'left',
+            }}
+          >
+            We just sent a verification link to{' '}
+            <span style={{ fontWeight: 500 }}>
+              {data.email.length > 0 ? data.email : 'your email'}
+            </span>
+            . Click it to confirm — or keep going, you can verify later.
+          </div>
         </div>
-        <div
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 13,
-            color: colors.text,
-            lineHeight: 1.5,
-            textAlign: 'left',
-          }}
-        >
-          We just sent a verification link to{' '}
-          <span style={{ fontWeight: 500 }}>
-            {data.email.length > 0 ? data.email : 'your email'}
-          </span>
-          . Click it to confirm — or keep going, you can verify later.
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }
 
-// ─── Root screen ─────────────────────────────────────────────────────────────
-
 export default function OnboardingScreen() {
   const router = useRouter();
-  const supabase = createClient();
+  const { navigate, replace } = useAuthNavigation();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [viaGoogle, setViaGoogle] = useState(false);
   const [data, setData] = useState<FormData>({
     first: '',
     last: '',
@@ -585,113 +406,94 @@ export default function OnboardingScreen() {
 
   const setField = (k: keyof FormData, v: string | string[]) => setData((d) => ({ ...d, [k]: v }));
 
-  const { isWide } = useResponsive();
+  useEffect(() => {
+    if (searchParams.get('oauth') !== 'complete') return;
+
+    const supabase = createClient();
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) return;
+
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const fullName = displayNameFromGoogleMetadata(meta, user.email);
+      const parts = fullName.split(/\s+/);
+      const first = parts[0] ?? '';
+      const last = parts.slice(1).join(' ');
+
+      setData((d) => ({
+        ...d,
+        first: first || d.first,
+        last: last || d.last,
+        email: user.email ?? d.email,
+        displayName: fullName,
+      }));
+      setViaGoogle(true);
+      setStep(2);
+      replace('/onboarding');
+    })();
+  }, [searchParams, replace]);
 
   const onComplete = () => router.push('/');
-  const onSignIn = () => router.push('/sign-in');
+  const onSignIn = () => navigate('/sign-in');
 
   async function handleStep1Next() {
     setLoading(true);
     setError('');
-    const { error: authErr } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}`,
-        data: {
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: data.email,
+        flow: 'sign_up',
+        redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent('/')}&flow=sign_up`,
+        userData: {
           first_name: data.first,
           last_name: data.last,
           display_name: `${data.first} ${data.last}`.trim(),
           phone: data.phone,
         },
-      },
+      }),
     });
     setLoading(false);
-    if (authErr) {
-      setError(authErr.message);
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(payload.error ?? 'Could not send confirmation email.');
       return;
     }
     setStep(2);
   }
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100dvh',
-        overflow: 'hidden',
-        background: colors.bg,
-      }}
-    >
-      <div
-        className="hof-scroll"
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 520px)' : 'auto',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ height: 54 }} />
-
-        {/* Progress dots */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '14px 0 0',
+    <AuthScreenShell progressStep={step}>
+      {step === 1 && (
+        <StepSignup
+          data={data}
+          setField={setField}
+          onSignIn={onSignIn}
+          onNext={() => {
+            void handleStep1Next();
           }}
-        >
-          {([1, 2, 3] as const).map((i) => (
-            <div
-              key={i}
-              style={{
-                width: i === step ? 22 : 6,
-                height: 6,
-                borderRadius: 3,
-                background: i <= step ? colors.amber : colors.elevated,
-                transition: 'width 200ms',
-              }}
-            />
-          ))}
-        </div>
-
-        {step === 1 && (
-          <StepSignup
-            data={data}
-            setField={setField}
-            onSignIn={onSignIn}
-            onNext={handleStep1Next}
-            loading={loading}
-            error={error}
-          />
-        )}
-        {step === 2 && (
-          <StepChannels
-            data={data}
-            setField={setField}
-            onBack={() => setStep(1)}
-            onNext={() => {
-              fetch('/api/user/settings', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ home_channels: data.channels }),
-              }).catch(console.error);
-              setStep(3);
-            }}
-          />
-        )}
-        {step === 3 && <StepWelcome data={data} onComplete={onComplete} />}
-
-        {/* Bottom home area spacer */}
-        <div style={{ height: 32 }} />
-      </div>
-    </div>
+          loading={loading}
+          error={error}
+        />
+      )}
+      {step === 2 && (
+        <StepChannels
+          data={data}
+          setField={setField}
+          onBack={() => setStep(1)}
+          onNext={() => {
+            fetch('/api/user/settings', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ home_channels: data.channels }),
+            }).catch(console.error);
+            setStep(3);
+          }}
+        />
+      )}
+      {step === 3 && <StepWelcome data={data} onComplete={onComplete} viaGoogle={viaGoogle} />}
+    </AuthScreenShell>
   );
 }

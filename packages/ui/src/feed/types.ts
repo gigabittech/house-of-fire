@@ -9,6 +9,7 @@ export interface PostAuthor {
   initials: string;
   role: UserRole;
   verified?: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface Post {

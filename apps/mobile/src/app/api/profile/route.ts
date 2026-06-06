@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import type { Json } from '../../../lib/database.types';
 import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
@@ -69,4 +69,46 @@ export async function GET() {
     tickets,
     reactions: { fire: totalFire, eyes: totalEyes, heart: totalHeart },
   });
+}
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = (await request.json()) as { display_name?: string; avatar_url?: string | null };
+  const updates: { display_name?: string; avatar_url?: string | null } = {};
+
+  if (typeof body.display_name === 'string') {
+    const trimmed = body.display_name.trim();
+    if (trimmed.length < 1 || trimmed.length > 80) {
+      return NextResponse.json({ error: 'Display name must be 1–80 characters' }, { status: 400 });
+    }
+    updates.display_name = trimmed;
+  }
+
+  if (body.avatar_url === null) {
+    updates.avatar_url = null;
+  } else if (typeof body.avatar_url === 'string' && body.avatar_url.trim()) {
+    updates.avatar_url = body.avatar_url.trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', user.id)
+    .select('handle, display_name, member_since, role, avatar_url')
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ profile: data });
 }

@@ -292,7 +292,7 @@ function GuestListWidget({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Avatar initials={initials} size={28} />
+                  <Avatar initials={initials} src={g.profiles?.avatar_url} alt={name} size={28} />
                   {name}
                 </div>
                 <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{email}</div>

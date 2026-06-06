@@ -1,21 +1,14 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
-import type { NavId, Post as UiPost } from '@hof/ui';
-import {
-  EmptyState,
-  ErrorState,
-  FeedPost,
-  FeedSkeletonCard,
-  HofAppShell,
-  Icon,
-  useResponsive,
-} from '@hof/ui';
+import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import type { Post as UiPost } from '@hof/ui';
+import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { useAppHeader } from '@/hooks/useAppHeader';
 import { photoSrc } from '../data/photos';
 import { CHANNELS } from '../data/posts';
-import { navHref } from '../lib/nav';
 import { parseMediaUrls } from '../lib/postMedia';
 import ComposerSheet from '../sheets/ComposerSheet';
 import NotificationsSheet from '../sheets/NotificationsSheet';
@@ -69,7 +62,12 @@ function apiPostToUi(p: ApiPost): UiPost {
     id: p.id,
     channel: p.channel,
     kind: 'quick',
-    author: { name: displayName, initials, role },
+    author: {
+      name: displayName,
+      initials,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
+    },
     time: timeAgo(p.created_at),
     title: p.title || undefined,
     body: p.body ?? undefined,
@@ -114,13 +112,39 @@ export default function CommunityScreen() {
 
   const channelPosts = apiPosts.map(apiPostToUi);
 
+  const headerActions = useMemo(
+    () => (
+      <AppHeaderIconButton
+        icon="bell"
+        label="Notifications"
+        onClick={() => setNotifsOpen(true)}
+        badge={
+          <span
+            style={{
+              position: 'absolute',
+              top: 5,
+              right: 5,
+              width: 7,
+              height: 7,
+              borderRadius: 4,
+              background: colors.amber,
+              border: `2px solid ${colors.surface}`,
+            }}
+          />
+        }
+      />
+    ),
+    [],
+  );
+
+  useAppHeader({ title: 'Community', actions: headerActions });
+
   return (
-    <HofAppShell active="community" onNav={(id: NavId) => router.push(navHref[id])}>
       <div
         style={{
           position: 'relative',
           width: '100%',
-          height: '100dvh',
+          height: '100%',
           overflow: 'hidden',
           background: colors.bg,
         }}
@@ -129,7 +153,7 @@ export default function CommunityScreen() {
         <div
           style={{
             position: 'absolute',
-            top: 0,
+            top: isWide ? layoutChrome.wideActionsInset : 0,
             left: isWide ? '50%' : 0,
             right: isWide ? 'auto' : 0,
             transform: isWide ? 'translateX(-50%)' : undefined,
@@ -144,61 +168,9 @@ export default function CommunityScreen() {
             backdropFilter: 'blur(20px) saturate(150%)',
             WebkitBackdropFilter: 'blur(20px) saturate(150%)',
             borderBottom: `1px solid ${colors.border}`,
-            paddingTop: isWide ? 12 : 54,
+            paddingTop: isWide ? 0 : layoutChrome.mobilePageHeaderInset,
           }}
         >
-          {/* Header row */}
-          <div
-            style={{
-              padding: '10px 16px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  color: colors.textSec,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Community
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 600,
-                  fontSize: 22,
-                  color: colors.text,
-                  letterSpacing: '-0.01em',
-                  marginTop: 2,
-                }}
-              >
-                Board
-              </div>
-            </div>
-            <button
-              className="hof-btn hof-press"
-              onClick={() => setNotifsOpen(true)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon name="bell" size={16} color={colors.text} />
-            </button>
-          </div>
-
           {/* Channel pills */}
           <div
             className="hof-scroll"
@@ -258,8 +230,10 @@ export default function CommunityScreen() {
                 : `min(100%, ${layoutWidth.app}px)`
               : 'auto',
             overflowY: 'auto',
-            paddingBottom: isWide ? 40 : 80,
-            paddingTop: isWide ? 120 : 160, // space for sticky header
+            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
+            paddingTop: isWide
+              ? layoutChrome.wideActionsInset + layoutChrome.wideChannelBarHeight
+              : 108,
           }}
         >
           {loadingPosts ? (
@@ -376,6 +350,5 @@ export default function CommunityScreen() {
           }}
         />
       </div>
-    </HofAppShell>
   );
 }

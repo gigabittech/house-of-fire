@@ -15,4 +15,12 @@ describe('HofBottomNav', () => {
     fireEvent.click(screen.getByText('Community'));
     expect(onChange).toHaveBeenCalledWith('community');
   });
+
+  it('hides excluded nav ids', () => {
+    render(<HofBottomNav active="home" excludeNavIds={['community']} />);
+    expect(screen.queryByText('Community')).not.toBeInTheDocument();
+    for (const label of ['Home', 'Events', 'Profile']) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
 });
