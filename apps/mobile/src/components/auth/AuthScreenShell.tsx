@@ -21,14 +21,14 @@ export function AuthScreenShell({
                 paddingTop: 28,
                 paddingLeft: 20,
                 paddingRight: 20,
-                paddingBottom: 12,
+                paddingBottom: 8,
               }}
             >
               <div className="hof-auth-logo">
                 <HofLogoMark
                   fit="wordmark"
                   src="/assets/hof-logo.png"
-                  width={108}
+                  width={128}
                   alt="House of Fire"
                 />
               </div>
@@ -41,7 +41,7 @@ export function AuthScreenShell({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  padding: '4px 0 8px',
+                  padding: '24px 0 8px',
                 }}
               >
                 {([1, 2, 3] as const).map((i) => (

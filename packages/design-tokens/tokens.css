@@ -150,13 +150,13 @@ button.hof-btn {
 }
 
 .hof-auth-logo img {
-  width: 108px;
+  width: 128px;
   height: auto;
 }
 
 @media (min-width: 768px) {
   .hof-auth-logo img {
-    width: 120px;
+    width: 144px;
   }
 }
 
