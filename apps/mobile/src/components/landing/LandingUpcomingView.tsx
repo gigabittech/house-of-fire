@@ -23,11 +23,12 @@ function StatusDot() {
 }
 
 export function LandingUpcomingView() {
-  const { isWide, isDesktop, pageColumn } = useLandingLayout();
+  const { pageColumnClassName } = useLandingLayout();
 
   return (
     <LandingChrome centerHeader>
       <div
+        className="hof-landing-upcoming-stage"
         style={{
           flex: 1,
           display: 'flex',
@@ -35,7 +36,6 @@ export function LandingUpcomingView() {
           justifyContent: 'center',
           position: 'relative',
           overflow: 'hidden',
-          padding: isWide ? '24px 0 32px' : '16px 0 28px',
         }}
       >
         {/* Atmospheric photo wash */}
@@ -73,6 +73,7 @@ export function LandingUpcomingView() {
         {/* Watermark emblem */}
         <div
           aria-hidden
+          className="hof-landing-upcoming-watermark"
           style={{
             position: 'absolute',
             left: '50%',
@@ -80,22 +81,23 @@ export function LandingUpcomingView() {
             transform: 'translate(-50%, -50%)',
             opacity: 0.045,
             pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <HofLogoMark size={isDesktop ? 320 : isWide ? 280 : 220} alt="" />
+          <HofLogoMark size={220} alt="" />
         </div>
 
         {/* Glow orb behind card */}
         <div
           aria-hidden
+          className="hof-landing-upcoming-glow"
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
             transform: 'translate(-50%, -50%)',
-            width: isDesktop ? 420 : isWide ? 360 : 300,
-            height: isDesktop ? 420 : isWide ? 360 : 300,
-            borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(232,101,26,0.12) 0%, transparent 68%)',
             animation: 'hof-glow 4s ease-in-out infinite',
             pointerEvents: 'none',
@@ -104,8 +106,8 @@ export function LandingUpcomingView() {
 
         {/* Center card */}
         <div
+          className={pageColumnClassName}
           style={{
-            ...pageColumn,
             position: 'relative',
             zIndex: 1,
             display: 'flex',
@@ -113,15 +115,11 @@ export function LandingUpcomingView() {
           }}
         >
           <div
+            className="hof-landing-upcoming-card"
             style={{
-              width: '100%',
-              maxWidth: isDesktop ? 520 : isWide ? 480 : 400,
-              padding: isWide ? '44px 40px 40px' : '36px 28px 32px',
-              borderRadius: 16,
               background: `linear-gradient(155deg, rgba(232,101,26,0.07) 0%, ${colors.surface} 38%, ${colors.surface} 100%)`,
               border: `1px solid ${colors.border}`,
               boxShadow: '0 24px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(240,237,230,0.04)',
-              textAlign: 'center',
             }}
           >
             <div
@@ -142,29 +140,18 @@ export function LandingUpcomingView() {
             </div>
 
             <h1
+              className="hof-landing-upcoming-title"
               style={{
-                fontFamily: fontFamilies.display,
-                fontWeight: 700,
-                fontSize: isDesktop ? 64 : isWide ? 56 : 48,
                 color: colors.text,
-                letterSpacing: '-0.03em',
-                lineHeight: 0.92,
-                textTransform: 'uppercase',
               }}
             >
               Upcoming
             </h1>
 
             <p
+              className="hof-landing-upcoming-body"
               style={{
-                fontFamily: fontFamilies.body,
-                fontSize: isWide ? 16 : 15,
                 color: colors.textSec,
-                marginTop: 18,
-                lineHeight: 1.6,
-                maxWidth: 380,
-                marginLeft: 'auto',
-                marginRight: 'auto',
               }}
             >
               We&apos;re preparing the next House of Fire experience. Stay tuned for upcoming event

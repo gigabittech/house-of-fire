@@ -1,7 +1,7 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { HofButton, HofLogoMark, HofPill, Icon, useResponsive } from '@hof/ui';
+import { HofButton, HofLogoMark, HofPill, Icon } from '@hof/ui';
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import {
   formatEventDate,
@@ -15,20 +15,24 @@ import { useLandingLayout } from './useLandingLayout';
 
 function LandingSection({
   children,
-  pageColumn,
+  className,
   style,
 }: {
   children: ReactNode;
-  pageColumn: CSSProperties;
+  className: string;
   style?: CSSProperties;
 }) {
-  return <div style={{ ...pageColumn, ...style }}>{children}</div>;
+  return (
+    <div className={className} style={style}>
+      {children}
+    </div>
+  );
 }
 
 /** Full marketing landing — shown when a live event is active. */
 export function LandingExperienceView() {
   const { navigate } = useAuthNavigation();
-  const { isWide, isDesktop, pageColumn } = useLandingLayout();
+  const { pageColumnClassName } = useLandingLayout();
   const [upcoming, setUpcoming] = useState<UpcomingEvent | null>(null);
   const [eventLoaded, setEventLoaded] = useState(false);
 
@@ -55,12 +59,8 @@ export function LandingExperienceView() {
   };
 
   const surfaceCard: CSSProperties = {
-    width: '100%',
-    padding: isWide ? 20 : 16,
     background: colors.surface,
     border: `1px solid ${colors.border}`,
-    borderRadius: 12,
-    boxSizing: 'border-box',
   };
 
   return (
@@ -82,13 +82,7 @@ export function LandingExperienceView() {
           paddingBottom: 40,
         }}
       >
-        <div
-          style={{
-            position: 'relative',
-            height: isDesktop ? 'min(72vh, 720px)' : isWide ? 680 : 620,
-            overflow: 'hidden',
-          }}
-        >
+        <div className="hof-landing-hero">
           <img
             src="/assets/photos/p3-portal-dj.jpg"
             alt=""
@@ -130,8 +124,8 @@ export function LandingExperienceView() {
             }}
           >
             <div
+              className={pageColumnClassName}
               style={{
-                ...pageColumn,
                 paddingTop: `calc(12px + env(safe-area-inset-top, 0px))`,
                 display: 'flex',
                 alignItems: 'center',
@@ -140,12 +134,14 @@ export function LandingExperienceView() {
                 flexShrink: 0,
               }}
             >
-              <HofLogoMark
-                fit="wordmark"
-                src="/assets/hof-logo.png"
-                width={isDesktop ? 140 : isWide ? 128 : 112}
-                alt="House of Fire"
-              />
+              <div className="hof-landing-logo">
+                <HofLogoMark
+                  fit="wordmark"
+                  src="/assets/hof-logo.png"
+                  width={112}
+                  alt="House of Fire"
+                />
+              </div>
               <HofButton
                 variant="ghost"
                 size="sm"
@@ -169,35 +165,14 @@ export function LandingExperienceView() {
             </div>
 
             <div style={{ flex: 1 }} />
-            <div style={{ ...pageColumn, paddingBottom: 28 }}>
+            <div className={pageColumnClassName} style={{ paddingBottom: 28 }}>
               <HofPill tone="amber" size="sm">
                 Boulder · Monthly
               </HofPill>
-              <div
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 700,
-                  fontSize: isDesktop ? 56 : isWide ? 52 : 44,
-                  color: colors.text,
-                  marginTop: 14,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 0.95,
-                  textTransform: 'uppercase',
-                  maxWidth: isDesktop ? 900 : isWide ? 640 : undefined,
-                }}
-              >
+              <div className="hof-landing-hero-title" style={{ color: colors.text }}>
                 The room that keeps the floor full.
               </div>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: isWide ? 16 : 15,
-                  color: colors.textSec,
-                  marginTop: 14,
-                  lineHeight: 1.5,
-                  maxWidth: isDesktop ? 520 : isWide ? 420 : 320,
-                }}
-              >
+              <div className="hof-landing-hero-subtitle" style={{ color: colors.textSec }}>
                 Underground house and techno. One room. One night a month. Tickets sell out, every
                 time. <span style={{ color: colors.text }}>You should be here.</span>
               </div>
@@ -205,37 +180,25 @@ export function LandingExperienceView() {
           </div>
         </div>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 24 }}>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              ...(isWide ? { flexDirection: 'row' } : {}),
-            }}
-          >
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 24 }}>
+          <div className="hof-landing-cta-row">
             <HofButton
               variant="primary"
-              full={!isWide}
+              full
               onClick={onGetStarted}
               icon={<Icon name="flame" size={18} color={colors.bg} />}
-              style={isWide ? { flex: 1, width: 'auto' } : undefined}
             >
               Become a member — free
             </HofButton>
-            <HofButton
-              variant="ghost"
-              full={!isWide}
-              onClick={onGetStarted}
-              style={isWide ? { flex: 1, width: 'auto' } : undefined}
-            >
+            <HofButton variant="ghost" full onClick={onGetStarted}>
               Browse the next event
             </HofButton>
           </div>
         </LandingSection>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 24 }}>
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 24 }}>
           <div
+            className="hof-landing-surface-card"
             style={{
               ...surfaceCard,
               display: 'grid',
@@ -278,33 +241,17 @@ export function LandingExperienceView() {
           </div>
         </LandingSection>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 32 }}>
           <div style={sectionLabel}>What it is</div>
-          <div
-            style={{
-              fontFamily: 'Clash Display',
-              fontWeight: 500,
-              fontSize: isWide ? 24 : 22,
-              lineHeight: 1.25,
-              color: colors.text,
-              letterSpacing: '-0.01em',
-              maxWidth: isDesktop ? 720 : undefined,
-            }}
-          >
+          <div className="hof-landing-section-heading" style={{ color: colors.text }}>
             A monthly gathering of the people who keep coming back. Underground house and techno.
             One room. Always at the Junkyard.
           </div>
         </LandingSection>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 32 }}>
           <div style={{ ...sectionLabel, marginBottom: 14 }}>How it works</div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr',
-              gap: isDesktop ? 20 : 14,
-            }}
-          >
+          <div className="hof-landing-steps-grid">
             {(
               [
                 ['01', 'Become a member', 'Free. 30 seconds. Email + phone.'],
@@ -355,28 +302,11 @@ export function LandingExperienceView() {
           </div>
         </LandingSection>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32 }}>
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 32 }}>
           <div style={{ ...sectionLabel, marginBottom: 12 }}>From the last 3 themes</div>
-          <div
-            className="hof-scroll"
-            style={{
-              display: 'flex',
-              gap: isWide ? 10 : 6,
-              overflowX: 'auto',
-              paddingBottom: 4,
-            }}
-          >
+          <div className="hof-scroll hof-landing-photo-strip">
             {([0, 1, 2, 3, 0, 1] as number[]).map((s, i) => (
-              <div
-                key={i}
-                style={{
-                  flex: '0 0 auto',
-                  width: isDesktop ? 280 : isWide ? 240 : 200,
-                  height: isDesktop ? 340 : isWide ? 300 : 260,
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                }}
-              >
+              <div key={i} className="hof-landing-photo-tile">
                 <img
                   src={photoSrc(s)}
                   alt=""
@@ -391,12 +321,11 @@ export function LandingExperienceView() {
           </div>
         </LandingSection>
 
-        <LandingSection pageColumn={pageColumn} style={{ paddingTop: 32, paddingBottom: 16 }}>
+        <LandingSection className={pageColumnClassName} style={{ paddingTop: 32, paddingBottom: 16 }}>
           <div
+            className="hof-landing-surface-card hof-landing-promo-card"
             style={{
               ...surfaceCard,
-              borderRadius: 14,
-              padding: isWide ? 24 : 22,
               background: `linear-gradient(135deg, rgba(232,101,26,0.15) 0%, ${colors.surface} 60%)`,
             }}
           >
@@ -454,7 +383,7 @@ export function LandingExperienceView() {
         </LandingSection>
 
         <LandingSection
-          pageColumn={pageColumn}
+          className={pageColumnClassName}
           style={{
             paddingTop: 20,
             paddingBottom: 40,

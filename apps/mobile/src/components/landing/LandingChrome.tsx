@@ -12,11 +12,10 @@ export function LandingChrome({
   children: ReactNode;
   centerHeader?: boolean;
 }) {
-  const { isWide, isDesktop, pageColumn } = useLandingLayout();
+  const { pageColumnClassName } = useLandingLayout();
 
   const footerStyle: CSSProperties = {
     flexShrink: 0,
-    ...pageColumn,
     paddingTop: 20,
     paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
     fontFamily: fontFamilies.body,
@@ -47,22 +46,24 @@ export function LandingChrome({
         }}
       >
         <header
+          className={pageColumnClassName}
           style={{
             flexShrink: 0,
-            ...pageColumn,
             paddingTop: `calc(12px + env(safe-area-inset-top, 0px))`,
             paddingBottom: 12,
             display: 'flex',
             justifyContent: centerHeader ? 'center' : 'flex-start',
           }}
         >
-          <HofLogoMark
-            fit="wordmark"
-            variant="sidebar"
-            src="/assets/hof-logo.png"
-            width={isDesktop ? 140 : isWide ? 128 : 112}
-            alt="House of Fire"
-          />
+          <div className="hof-landing-logo">
+            <HofLogoMark
+              fit="wordmark"
+              variant="sidebar"
+              src="/assets/hof-logo.png"
+              width={112}
+              alt="House of Fire"
+            />
+          </div>
         </header>
 
         <main
@@ -77,7 +78,9 @@ export function LandingChrome({
           {children}
         </main>
 
-        <footer style={footerStyle}>houseoffire.events · Boulder, CO</footer>
+        <footer className={pageColumnClassName} style={footerStyle}>
+          houseoffire.events · Boulder, CO
+        </footer>
       </div>
     </div>
   );
