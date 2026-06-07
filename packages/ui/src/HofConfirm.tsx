@@ -1,3 +1,5 @@
+'use client';
+
 import { colors, fontFamilies } from '@hof/design-tokens';
 import { useEffect, useState } from 'react';
 import { HofButton } from './HofButton';

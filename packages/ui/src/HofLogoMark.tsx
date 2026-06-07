@@ -29,6 +29,8 @@ export function HofLogoMark({
       <img
         src={src}
         alt={alt}
+        loading="eager"
+        decoding="async"
         style={{
           width,
           height: 'auto',
