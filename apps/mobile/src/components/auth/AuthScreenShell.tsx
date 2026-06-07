@@ -19,6 +19,7 @@ export function AuthScreenShell({
         position: 'relative',
         width: '100%',
         height: '100%',
+        minHeight: '100dvh',
         overflow: 'hidden',
         background: colors.bg,
       }}
@@ -34,51 +35,63 @@ export function AuthScreenShell({
           transform: isWide ? 'translateX(-50%)' : undefined,
           width: isWide ? 'min(100%, 520px)' : 'auto',
           overflowY: 'auto',
-          paddingBottom: 32,
         }}
       >
         <div
           style={{
-            paddingTop: 'calc(28px + env(safe-area-inset-top, 0px))',
-            paddingLeft: 20,
-            paddingRight: 20,
-            paddingBottom: 12,
+            minHeight: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box',
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
           }}
         >
-          <HofLogoMark
-            fit="wordmark"
-            src="/assets/hof-logo.png"
-            width={isWide ? 120 : 108}
-            alt="House of Fire"
-          />
-        </div>
-
-        {progressStep ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '4px 0 8px',
-            }}
-          >
-            {([1, 2, 3] as const).map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: i === progressStep ? 22 : 6,
-                  height: 6,
-                  borderRadius: 3,
-                  background: i <= progressStep ? colors.amber : colors.elevated,
-                  transition: 'width 200ms',
-                }}
+          <div style={{ margin: 'auto 0', width: '100%' }}>
+            <div
+              style={{
+                paddingTop: 28,
+                paddingLeft: 20,
+                paddingRight: 20,
+                paddingBottom: 12,
+              }}
+            >
+              <HofLogoMark
+                fit="wordmark"
+                src="/assets/hof-logo.png"
+                width={isWide ? 120 : 108}
+                alt="House of Fire"
               />
-            ))}
-          </div>
-        ) : null}
+            </div>
 
-        {children}
+            {progressStep ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '4px 0 8px',
+                }}
+              >
+                {([1, 2, 3] as const).map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: i === progressStep ? 22 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: i <= progressStep ? colors.amber : colors.elevated,
+                      transition: 'width 200ms',
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );
