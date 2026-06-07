@@ -158,7 +158,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {compact ? (
             <HofLogoMark size={24} alt="House of Fire" />
           ) : (
-            <HofLogoMark fit="wordmark" width={140} alt="House of Fire" />
+            <HofLogoMark fit="wordmark" variant="sidebar" src="/assets/hof-logo.png" width={140} alt="House of Fire" />
           )}
         </div>
 

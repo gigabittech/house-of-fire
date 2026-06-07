@@ -23,7 +23,8 @@
     "clean": "rm -rf dist .turbo storybook-static"
   },
   "dependencies": {
-    "@hof/design-tokens": "workspace:*"
+    "@hof/design-tokens": "workspace:*",
+    "@zxing/browser": "^0.1.5"
   },
   "peerDependencies": {
     "react": "^18.3 || ^19.0",

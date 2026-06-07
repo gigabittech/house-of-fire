@@ -3,12 +3,11 @@
 import { colors } from '@hof/design-tokens';
 import { HofLogoMark } from '@hof/ui';
 
-export function AuthScreenShell({
+export function AdminAuthScreenShell({
   children,
   progressStep,
 }: {
   children: React.ReactNode;
-  /** Active step (1–3) for the progress dots below the logo. */
   progressStep?: 1 | 2 | 3;
 }) {
   return (

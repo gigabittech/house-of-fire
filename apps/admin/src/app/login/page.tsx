@@ -1,8 +1,18 @@
 'use client';
 
-import { HofLogoMark } from '@hof/ui';
+import { HofButton } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import {
+  AuthErrorBanner,
+  AuthInput,
+  AuthLabel,
+  AuthLegalFooter,
+  authContentPadding,
+  authHeadlineStyle,
+  authSubtextStyle,
+} from '@/components/auth/adminAuthForm';
+import { AdminAuthScreenShell } from '@/components/auth/AdminAuthScreenShell';
 import { createClient } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -32,52 +42,14 @@ export default function LoginPage() {
     }
   }
 
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--hof-bg)',
-      }}
-    >
-      <div
-        style={{
-          width: 400,
-          padding: '24px 32px 28px',
-          background: 'var(--hof-surface)',
-          border: '1px solid var(--hof-border)',
-          borderRadius: 14,
-        }}
-      >
-        <div style={{ marginBottom: 20, textAlign: 'center' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              lineHeight: 0,
-              overflow: 'hidden',
-              marginTop: -10,
-              marginBottom: -6,
-            }}
-          >
-            <div style={{ transform: 'translateX(-8px)' }}>
-              <HofLogoMark fit="wordmark" width={150} alt="House of Fire" />
-            </div>
-          </div>
-          <div
-            style={{
-              fontFamily: 'Clash Display, system-ui',
-              fontWeight: 600,
-              fontSize: 28,
-              color: 'var(--hof-text)',
-              marginTop: 8,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            Sign in
-          </div>
+    <AdminAuthScreenShell progressStep={1}>
+      <div style={{ padding: authContentPadding }}>
+        <div style={authHeadlineStyle}>Sign in.</div>
+        <div style={authSubtextStyle}>
+          Admin access for events, guests, door ops, and the rest of the house.
         </div>
 
         <form
@@ -85,116 +57,39 @@ export default function LoginPage() {
             void handleSubmit(e);
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@example.com"
-                required
-                style={{
-                  width: '100%',
-                  height: 44,
-                  padding: '0 14px',
-                  background: 'var(--hof-bg)',
-                  border: '1px solid var(--hof-border)',
-                  borderRadius: 8,
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 14,
-                  color: 'var(--hof-text)',
-                  outline: 'none',
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                style={{
-                  width: '100%',
-                  height: 44,
-                  padding: '0 14px',
-                  background: 'var(--hof-bg)',
-                  border: '1px solid var(--hof-border)',
-                  borderRadius: 8,
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 14,
-                  color: 'var(--hof-text)',
-                  outline: 'none',
-                }}
-              />
-            </div>
+          <AuthLabel>Email</AuthLabel>
+          <AuthInput
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+          />
+
+          <div style={{ marginTop: 14 }}>
+            <AuthLabel>Password</AuthLabel>
+            <AuthInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+            />
           </div>
 
-          {error && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '10px 14px',
-                background: 'rgba(232,74,26,0.12)',
-                border: '1px solid rgba(232,74,26,0.3)',
-                borderRadius: 8,
-                fontFamily: 'Inter, system-ui',
-                fontSize: 13,
-                color: 'var(--hof-error)',
-              }}
-            >
-              {error}
-            </div>
-          )}
+          <AuthErrorBanner message={error} />
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: 20,
-              width: '100%',
-              height: 46,
-              background: loading ? 'var(--hof-elevated)' : 'var(--hof-amber)',
-              border: 'none',
-              borderRadius: 8,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 14,
-              fontWeight: 600,
-              color: loading ? 'var(--hof-text-sec)' : 'var(--hof-bg)',
-              transition: 'background 120ms',
-            }}
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
+          <div style={{ marginTop: error ? 16 : 28 }}>
+            <HofButton variant="primary" full disabled={!canSubmit} type="submit">
+              {loading ? 'Signing in…' : 'Sign in'}
+            </HofButton>
+          </div>
         </form>
+
+        <AuthLegalFooter />
       </div>
-    </div>
+    </AdminAuthScreenShell>
   );
 }

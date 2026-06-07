@@ -9,7 +9,6 @@ import {
   useMemo,
   useTransition,
 } from 'react';
-import { AuthRouteLoading } from './AuthRouteLoading';
 
 interface AuthNavigationContextValue {
   isPending: boolean;
@@ -45,7 +44,17 @@ export function AuthNavigationProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthNavigationContext.Provider value={value}>
-      {isPending ? <AuthRouteLoading /> : children}
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight: '100dvh',
+          opacity: isPending ? 0.72 : 1,
+          transition: 'opacity 150ms ease',
+        }}
+      >
+        {children}
+      </div>
     </AuthNavigationContext.Provider>
   );
 }

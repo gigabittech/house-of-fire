@@ -4,7 +4,7 @@ import { colors } from '@hof/design-tokens';
 import { HofButton } from '@hof/ui';
 import { useMemo, useState } from 'react';
 import {
-  // AuthDivider,
+  AuthDivider,
   AuthErrorBanner,
   AuthInput,
   AuthLabel,
@@ -15,7 +15,7 @@ import {
 } from '../components/auth/AuthFormPrimitives';
 import { useAuthNavigation } from '../components/auth/AuthNavigation';
 import { AuthScreenShell } from '../components/auth/AuthScreenShell';
-// import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 export default function SignInScreen() {
   const { navigate } = useAuthNavigation();
@@ -70,11 +70,11 @@ export default function SignInScreen() {
           Members get first crack at tickets, photos, and the discussion board.
         </div>
 
-        {/* <div style={{ marginTop: 22 }}>
+        <div style={{ marginTop: 22 }}>
           <GoogleSignInButton flow="sign_in" next="/" disabled={loading} />
-        </div> */}
+        </div>
 
-        {/* <AuthDivider /> */}
+        <AuthDivider />
 
         {!sent ? (
           <>

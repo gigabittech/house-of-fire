@@ -1,7 +1,7 @@
 'use client';
 
 import { breakpoints } from '@hof/design-tokens';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 
@@ -11,28 +11,34 @@ function fromWidth(w: number): Breakpoint {
   return 'mobile';
 }
 
+function subscribe(onStoreChange: () => void) {
+  window.addEventListener('resize', onStoreChange);
+  return () => window.removeEventListener('resize', onStoreChange);
+}
+
+function getSnapshot(): Breakpoint {
+  return fromWidth(window.innerWidth);
+}
+
+function getServerSnapshot(): Breakpoint {
+  return 'mobile';
+}
+
 /**
- * SSR-safe responsive breakpoint hook.
+ * Responsive breakpoint hook backed by `useSyncExternalStore`.
  *
- * Returns 'mobile' during SSR and the very first client render (so server and
- * client markup match — no hydration mismatch), then updates to the real
- * breakpoint after mount and on every resize.
- *
- * Consumers that need to avoid a mobile→desktop layout flash can read `mounted`
- * and defer layout-specific rendering until it's true.
+ * Reads `window.innerWidth` synchronously on the client (including the first
+ * hydration render) so wide layouts don't wait for a post-mount effect.
+ * SSR still emits the mobile snapshot; pair structural layout with CSS media
+ * queries (see tokens.css) to avoid a flash before hydration.
  */
 export function useBreakpoint(): { bp: Breakpoint; mounted: boolean } {
-  const [bp, setBp] = useState<Breakpoint>('mobile');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const update = () => setBp(fromWidth(window.innerWidth));
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
+  const bp = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   return { bp, mounted };
 }
 
