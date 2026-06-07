@@ -1,13 +1,18 @@
 'use client';
 
+import { DoorQrScanner, DoorScanResult, type DoorScanResultData } from '@hof/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { DoorCheckInQueueBanner } from '@/components/DoorCheckInQueueBanner';
 import { DoorLiveGuests } from '@/components/DoorLiveGuests';
 import {
   DoorQueueBanner,
   SellAtDoorModal,
   type DoorTierOption,
 } from '@/components/SellAtDoorModal';
+import { drainCheckInQueue } from '@/lib/doorCheckInQueue';
+import { prefetchGuestCache } from '@/lib/doorGuestCache';
 import { drainDoorSaleQueue } from '@/lib/doorSaleQueue';
+import { processDoorScan } from '@/lib/doorScanFlow';
 import { formatDoorsTime } from '@/lib/formatters';
 
 const EVENT_STORAGE_KEY = 'hof-door-event-id';
@@ -79,8 +84,8 @@ type DoorEventOption = {
 };
 
 export default function DoorPage() {
-  const [scanCode, setScanCode] = useState('');
-  const [scanResult, setScanResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [scanResult, setScanResult] = useState<DoorScanResultData | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [guestsRefreshKey, setGuestsRefreshKey] = useState(0);
   const [tiers, setTiers] = useState<DoorTierOption[]>([]);
@@ -159,6 +164,7 @@ export default function DoorPage() {
         doors_open: data.event.doors_open,
         doors_close: data.event.doors_close,
       });
+      void prefetchGuestCache(data.event.id);
     } catch {
       /* keep placeholders */
     }
@@ -200,7 +206,7 @@ export default function DoorPage() {
   }, [loadStats]);
 
   useEffect(() => {
-    void drainDoorSaleQueue().then(() => void loadStats());
+    void Promise.all([drainDoorSaleQueue(), drainCheckInQueue()]).then(() => void loadStats());
   }, [loadStats]);
 
   function onEventChange(eventId: string) {
@@ -208,29 +214,19 @@ export default function DoorPage() {
     sessionStorage.setItem(EVENT_STORAGE_KEY, eventId);
   }
 
-  async function handleScan(e: React.FormEvent) {
-    e.preventDefault();
-    if (!scanCode.trim()) return;
-    const code = scanCode.trim();
-    try {
-      const res = await fetch('/api/admin/door/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-      if (res.ok) {
-        await res.json();
-        setScanResult({ ok: true, message: 'Checked in successfully.' });
-        void loadStats();
-        bumpGuests();
-      } else {
-        const data = (await res.json()) as { error?: string };
-        setScanResult({ ok: false, message: data.error ?? 'Error checking in.' });
-      }
-    } catch {
-      setScanResult({ ok: false, message: 'Network error.' });
+  async function handleScan(rawCode: string) {
+    setScanning(true);
+    setScanResult({ state: 'loading' });
+
+    const flow = await processDoorScan(rawCode, selectedEventId);
+    setScanResult(flow.result);
+
+    if (flow.result.state === 'success' || flow.result.state === 'offline_queued') {
+      void loadStats();
+      bumpGuests();
     }
-    setScanCode('');
+
+    setScanning(false);
   }
 
   return (
@@ -337,6 +333,7 @@ export default function DoorPage() {
       </div>
 
       <DoorQueueBanner onSynced={() => void loadStats()} />
+      <DoorCheckInQueueBanner onSynced={() => { void loadStats(); bumpGuests(); }} />
 
       <div style={{ padding: '20px 28px 28px' }}>
         <div
@@ -348,88 +345,11 @@ export default function DoorPage() {
         >
           {/* Scanner side */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Scanner input */}
-            <div
-              style={{
-                background: 'var(--hof-surface)',
-                border: '1px solid var(--hof-border)',
-                borderRadius: 12,
-                padding: 20,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-amber)',
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  marginBottom: 12,
-                }}
-              >
-                QR Scanner
-              </div>
-              <form
-                onSubmit={(e) => {
-                  void handleScan(e);
-                }}
-                style={{ display: 'flex', gap: 8 }}
-              >
-                <input
-                  value={scanCode}
-                  onChange={(e) => setScanCode(e.target.value)}
-                  placeholder="Scan or type ticket code (e.g. HOF-24-0001)"
-                  autoFocus
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    padding: '0 14px',
-                    background: 'var(--hof-bg)',
-                    border: '1px solid var(--hof-border)',
-                    borderRadius: 8,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 13,
-                    color: 'var(--hof-text)',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    padding: '0 20px',
-                    height: 44,
-                    borderRadius: 8,
-                    background: 'var(--hof-amber)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, system-ui',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: 'var(--hof-bg)',
-                  }}
-                >
-                  Check In
-                </button>
-              </form>
-              {scanResult && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: scanResult.ok ? 'rgba(76,175,110,0.12)' : 'rgba(232,74,26,0.12)',
-                    border: scanResult.ok
-                      ? '1px solid rgba(76,175,110,0.3)'
-                      : '1px solid rgba(232,74,26,0.3)',
-                    fontFamily: 'Inter, system-ui',
-                    fontSize: 13,
-                    color: scanResult.ok ? 'var(--hof-success)' : 'var(--hof-error)',
-                  }}
-                >
-                  {scanResult.message}
-                </div>
-              )}
-            </div>
+            <DoorQrScanner height={420} onScan={handleScan} scanning={scanning} />
+            <DoorScanResult
+              result={scanResult}
+              onDismiss={() => setScanResult(null)}
+            />
 
             {/* Door stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>

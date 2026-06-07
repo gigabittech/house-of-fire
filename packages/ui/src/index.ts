@@ -1,6 +1,10 @@
 // @hof/ui — House of Fire component library, productionized from the prototype
 // (design/prototypes/hof-ui.jsx + posts-data.jsx). Consumes @hof/design-tokens.
 
+export type { DoorQrScannerProps } from './DoorQrScanner';
+export { DoorQrScanner } from './DoorQrScanner';
+export type { DoorScanResultData, DoorScanResultProps, DoorScanResultState } from './DoorScanResult';
+export { DoorScanResult } from './DoorScanResult';
 export type { EmptyStateProps } from './EmptyState';
 export { EmptyState } from './EmptyState';
 export type { ErrorStateProps } from './ErrorState';

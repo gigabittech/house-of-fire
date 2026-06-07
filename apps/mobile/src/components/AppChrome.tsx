@@ -25,8 +25,7 @@ function activeFromPath(pathname: string): NavId | undefined {
   if (
     pathname.startsWith('/profile') ||
     pathname.startsWith('/ticket') ||
-    pathname.startsWith('/checkout') ||
-    pathname.startsWith('/door')
+    pathname.startsWith('/checkout')
   ) {
     return 'profile';
   }
@@ -42,7 +41,6 @@ function titleFromPath(pathname: string): string {
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/checkout')) return 'Checkout';
   if (pathname.startsWith('/ticket')) return 'Ticket';
-  if (pathname.startsWith('/door')) return 'Door';
   if (pathname.startsWith('/artists/')) return 'Artist';
   if (pathname.startsWith('/artists')) return 'Artists';
   if (pathname.startsWith('/landing')) return 'House of Fire';
@@ -63,22 +61,24 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <HofAppShell
-      active={activeFromPath(pathname)}
-      onNav={(id: NavId) => router.push(navHref[id])}
-      user={user}
-      onSignOut={() => {
-        void handleSignOut();
-      }}
-      pageTitle={config.title ?? titleFromPath(pathname)}
-      headerActions={config.actions}
-      onBack={config.onBack}
-      hideMobilePageHeader={config.hideMobileHeader}
-      hideBottomNav={hideBottomNav}
-      excludeNavIds={[...COMMUNITY_EXCLUDED_NAV_IDS]}
-    >
-      {children}
-    </HofAppShell>
+    <>
+      <HofAppShell
+        active={activeFromPath(pathname)}
+        onNav={(id: NavId) => router.push(navHref[id])}
+        user={user}
+        onSignOut={() => {
+          void handleSignOut();
+        }}
+        pageTitle={config.title ?? titleFromPath(pathname)}
+        headerActions={config.actions}
+        onBack={config.onBack}
+        hideMobilePageHeader={config.hideMobileHeader}
+        hideBottomNav={hideBottomNav}
+        excludeNavIds={[...COMMUNITY_EXCLUDED_NAV_IDS]}
+      >
+        {children}
+      </HofAppShell>
+    </>
   );
 }
 
