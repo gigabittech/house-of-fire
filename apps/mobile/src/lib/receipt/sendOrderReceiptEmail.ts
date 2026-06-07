@@ -1,7 +1,6 @@
 import type Stripe from 'stripe';
-import type { SendEmailAttachment } from '../resend';
 import { resend } from '../resend';
-import { buildTicketQrAttachments } from './buildTicketQrAttachments';
+import { buildTicketAttachments } from './buildTicketAttachments';
 import { loadReceiptData } from './loadReceiptData';
 import { buildReceiptEmailHtml, buildReceiptEmailText } from './receiptEmail';
 import { renderReceiptPdf } from './renderReceiptPdf';
@@ -19,8 +18,8 @@ export async function sendOrderReceiptEmail(params: {
 
   const to = data.buyer.email.trim();
 
-  // PDF render and QR renders are independent — run them concurrently.
-  // QR failures degrade to "no attachments" and must never block the email.
+  // PDF render and ticket pass renders are independent — run them concurrently.
+  // Ticket render failures degrade to "no ticket attachments" and must never block the email.
   const pdfTimeoutMs = 12_000;
   const pdfPromise = Promise.race([
     renderReceiptPdf(data),
@@ -28,12 +27,10 @@ export async function sendOrderReceiptEmail(params: {
       setTimeout(() => reject(new Error('PDF render timeout')), pdfTimeoutMs);
     }),
   ]);
-  const qrPromise: Promise<SendEmailAttachment[]> = buildTicketQrAttachments(data.tickets).catch(
-    (err) => {
-      console.error('[receipt] QR attachment build failed:', err);
-      return [];
-    },
-  );
+  const ticketPromise = buildTicketAttachments(data.tickets).catch((err) => {
+    console.error('[receipt] Ticket attachment build failed:', err);
+    return [];
+  });
 
   let pdfBase64 = '';
   try {
@@ -43,11 +40,11 @@ export async function sendOrderReceiptEmail(params: {
     console.error('[receipt] PDF render failed:', err);
     throw new Error('Receipt PDF could not be generated');
   }
-  const qrAttachments = await qrPromise;
+  const ticketAttachments = await ticketPromise;
 
   // Copy is built after the attachments so it reflects what actually shipped.
-  const html = buildReceiptEmailHtml(data, qrAttachments.length);
-  const text = buildReceiptEmailText(data, qrAttachments.length);
+  const html = buildReceiptEmailHtml(data, ticketAttachments.length);
+  const text = buildReceiptEmailText(data, ticketAttachments.length);
 
   const subject = `Your House of Fire receipt — ${data.event.name} (Th. ${data.event.editionNumber})`;
 
@@ -65,7 +62,7 @@ export async function sendOrderReceiptEmail(params: {
           filename: 'House-of-Fire-Receipt.pdf',
           content: pdfBase64,
         },
-        ...qrAttachments,
+        ...ticketAttachments,
       ],
       log: {
         existingLogId: params.existingLogId,
@@ -73,7 +70,7 @@ export async function sendOrderReceiptEmail(params: {
         projectId: data.event.id,
         meta: {
           orderId: params.orderId,
-          attachments: { pdf: true, tickets: qrAttachments.length },
+          attachments: { pdf: true, tickets: ticketAttachments.length },
         },
       },
     });
@@ -81,7 +78,7 @@ export async function sendOrderReceiptEmail(params: {
       orderId: params.orderId,
       to,
       id: result.id,
-      qrAttachments: qrAttachments.length,
+      ticketAttachments: ticketAttachments.length,
     });
   } catch (err) {
     console.error('[receipt] Failed to send receipt email:', { to, from, err });
