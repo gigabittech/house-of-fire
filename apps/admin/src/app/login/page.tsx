@@ -52,18 +52,15 @@ export default function LoginPage() {
         }}
       >
         <div style={{ marginBottom: 20, textAlign: 'center' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              lineHeight: 0,
-              overflow: 'hidden',
-              marginTop: -10,
-              marginBottom: -6,
-            }}
-          >
+          <div style={{ display: 'flex', justifyContent: 'center', lineHeight: 0 }}>
             <div style={{ transform: 'translateX(-8px)' }}>
-              <HofLogoMark fit="wordmark" width={150} alt="House of Fire" />
+              <HofLogoMark
+                fit="wordmark"
+                variant="sidebar"
+                src="/assets/hof-logo.png"
+                width={150}
+                alt="House of Fire"
+              />
             </div>
           </div>
           <div
