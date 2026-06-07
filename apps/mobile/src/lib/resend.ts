@@ -2,6 +2,8 @@ export interface SendEmailAttachment {
   filename: string;
   /** Base64-encoded file content (Resend API). */
   content: string;
+  /** When set, the attachment can be referenced inline as `cid:{contentId}` in HTML. */
+  contentId?: string;
 }
 
 export interface SendEmailParams {
@@ -85,7 +87,15 @@ async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
       subject: email.subject,
       html: email.html,
       ...(email.text ? { text: email.text } : {}),
-      ...(email.attachments?.length ? { attachments: email.attachments } : {}),
+      ...(email.attachments?.length
+        ? {
+            attachments: email.attachments.map((a) => ({
+              filename: a.filename,
+              content: a.content,
+              ...(a.contentId ? { content_id: a.contentId } : {}),
+            })),
+          }
+        : {}),
     }),
   });
 

@@ -1,16 +1,6 @@
 import { formatIssuedDate, formatReceiptCents } from './format';
 import type { OrderReceiptData } from './types';
 
-/** ImgBB-hosted House of Fire wordmark. */
-export const HOF_EMBLEM_URL = 'https://i.ibb.co.com/mVWGxtVM/hof-emblem.png';
-export const HOF_EMBLEM_WIDTH = 200;
-
-function buildEmailLogoHtml(): string {
-  return `<tr><td align="center" style="padding:0 0 28px;">
-          <img src="${escapeHtml(HOF_EMBLEM_URL)}" width="${HOF_EMBLEM_WIDTH}" alt="House of Fire" style="display:block;margin:0 auto;border:0;"/>
-        </td></tr>`;
-}
-
 function ticketQty(data: OrderReceiptData): number {
   return data.lineItems.find((i) => !i.isFee && !i.isDiscount)?.qty ?? 1;
 }
@@ -50,27 +40,26 @@ function buildLineItemsHtml(data: OrderReceiptData): string {
 </tr>`;
 }
 
-/** Mentions QR attachments only when they actually made it onto the email. */
-function qrAttachmentLine(qrCount: number): string {
-  if (qrCount === 0) return '';
-  return qrCount === 1
-    ? 'Your receipt PDF and ticket image are attached — show the QR code at the door.'
-    : `Your receipt PDF and ${qrCount} ticket images are attached (one PNG per ticket). Show your QR at the door.`;
+function ticketSectionLine(ticketCount: number): string {
+  if (ticketCount === 0) return '';
+  return ticketCount === 1
+    ? 'Your ticket pass and receipt PDF are attached — show the QR code at the door.'
+    : `Your ${ticketCount} ticket passes are attached (one PNG per ticket). Show your QR at the door. Your receipt PDF is also attached.`;
 }
 
-/** Branded confirmation email — matches House of Fire auth email UI. PDF + QR PNGs attached separately. */
-export function buildReceiptEmailHtml(data: OrderReceiptData, qrCount: number): string {
+/** Branded confirmation email — receipt PDF and ticket pass PNGs attached. */
+export function buildReceiptEmailHtml(data: OrderReceiptData, ticketCount: number): string {
   const qty = ticketQty(data);
-  const qrLine = qrAttachmentLine(qrCount);
+  const ticketLine = ticketSectionLine(ticketCount);
   const appUrl = appBaseUrl();
   const eventTitle = `${data.event.name} · Theme ${data.event.editionNumber}`;
   const venueLine = [data.event.venueName, data.event.venueAddress].filter(Boolean).join(' · ');
   const issued = formatIssuedDate(data.issuedAt);
 
-  const qrNoticeHtml = qrLine
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  const ticketNoticeHtml = ticketLine
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 18px;">
                 <tr><td style="background:rgba(232,162,26,0.08);border:1px solid rgba(232,162,26,0.25);border-left:3px solid #E8A21A;border-radius:0 10px 10px 0;padding:14px 18px;">
-                  <p style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#cdcabf;">${escapeHtml(qrLine)}</p>
+                  <p style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#cdcabf;">${escapeHtml(ticketLine)}</p>
                 </td></tr>
               </table>`
     : '';
@@ -104,8 +93,6 @@ export function buildReceiptEmailHtml(data: OrderReceiptData, qrCount: number): 
     <tr><td align="center" style="padding:40px 16px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
 
-        ${buildEmailLogoHtml()}
-
         <tr><td bgcolor="#141412" style="background:#141412;border:1px solid #2A2826;border-radius:18px;overflow:hidden;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
             <td height="3" style="height:3px;line-height:3px;font-size:0;background:#E8651A;background:linear-gradient(90deg,#F5942A,#E8651A 45%,#C4401A);">&nbsp;</td>
@@ -135,7 +122,7 @@ export function buildReceiptEmailHtml(data: OrderReceiptData, qrCount: number): 
               <p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8880;">Receipt · ${escapeHtml(data.receiptCode)}</p>
               <p style="margin:0 0 22px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.55;color:#8A8880;">${escapeHtml(data.paymentLine)} · Issued ${escapeHtml(issued)}</p>
 
-              ${qrNoticeHtml}
+              ${ticketNoticeHtml}
 
             </td>
           </tr></table>
@@ -161,11 +148,11 @@ export function buildReceiptEmailHtml(data: OrderReceiptData, qrCount: number): 
 </html>`;
 }
 
-export function buildReceiptEmailText(data: OrderReceiptData, qrCount: number): string {
+export function buildReceiptEmailText(data: OrderReceiptData, ticketCount: number): string {
   const qty = ticketQty(data);
   const ticketPhrase = qty === 1 ? '1 ticket' : `${qty} tickets`;
   const appUrl = appBaseUrl();
-  const qrLine = qrAttachmentLine(qrCount);
+  const ticketLine = ticketSectionLine(ticketCount);
 
   return [
     `Hi ${data.buyer.name},`,
@@ -180,8 +167,7 @@ export function buildReceiptEmailText(data: OrderReceiptData, qrCount: number): 
     `Receipt: ${data.receiptCode}`,
     data.paymentLine,
     '',
-    'Your receipt is attached as a PDF.',
-    ...(qrLine ? [qrLine] : []),
+    ...(ticketLine ? [ticketLine] : ['Your receipt is attached as a PDF.']),
     '',
     `View your tickets: ${appUrl}/ticket`,
     '',

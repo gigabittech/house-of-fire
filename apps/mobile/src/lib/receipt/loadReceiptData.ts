@@ -200,7 +200,22 @@ export async function loadReceiptData(
     ),
     tickets: ticketRows
       .filter((t) => t.status === 'valid')
-      .map((t) => ({ code: t.code, qrData: t.qr_data })),
+      .map((t, index, validTickets) => ({
+        code: t.code,
+        qrData: t.qr_data,
+        holderName: holderFromTicket(t, buyerName),
+        tierName: tierRow.display_name,
+        index: index + 1,
+        total: validTickets.length,
+        event: {
+          name: event.name,
+          editionNumber: event.edition_number,
+          date: event.date,
+          venueName: event.venue_name,
+          doorsOpen: event.doors_open,
+          doorsClose: event.doors_close,
+        },
+      })),
     subtotalCents: orderRow.subtotal_cents,
     discountCents: orderRow.discount_cents,
     feeCents: orderRow.fee_cents,

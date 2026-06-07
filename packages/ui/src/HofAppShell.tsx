@@ -20,34 +20,19 @@ function sidebarNavItemStyle(isActive: boolean): CSSProperties {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
-    padding: `9px 10px 9px ${SIDEBAR_INSET_X}px`,
+    padding: '9px 10px',
+    paddingLeft: SIDEBAR_INSET_X,
     justifyContent: 'flex-start',
     borderRadius: 6,
     width: '100%',
     background: isActive ? colors.elevated : 'transparent',
     color: isActive ? colors.text : colors.textSec,
     border: 'none',
+    borderLeft: `${SIDEBAR_ACCENT_W}px solid ${isActive ? colors.amber : 'transparent'}`,
     transition: 'background 100ms',
     position: 'relative',
     boxSizing: 'border-box',
   };
-}
-
-function SidebarActiveAccent() {
-  return (
-    <span
-      aria-hidden
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: 5,
-        bottom: 5,
-        width: SIDEBAR_ACCENT_W,
-        borderRadius: 1,
-        background: colors.amber,
-      }}
-    />
-  );
 }
 
 function initialsFromName(name: string): string {
@@ -274,11 +259,6 @@ function HofSidebar({
                 aria-current={isActive ? 'page' : undefined}
                 style={sidebarNavItemStyle(isActive)}
               >
-                {isActive ? (
-                  <span className="hof-sidebar-active-accent">
-                    <SidebarActiveAccent />
-                  </span>
-                ) : null}
                 <span className="hof-sidebar-nav-item-inner">
                   <Icon
                     name={it.icon}
