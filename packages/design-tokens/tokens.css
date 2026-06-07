@@ -564,8 +564,7 @@ button.hof-btn {
 .hof-sidebar-logo-full,
 .hof-sidebar-nav-label,
 .hof-sidebar-user-full,
-.hof-sidebar-sign-out,
-.hof-sidebar-active-accent {
+.hof-sidebar-sign-out {
   display: none;
 }
 
@@ -601,6 +600,7 @@ button.hof-btn {
     gap: 0 !important;
     padding: 10px 0 !important;
     justify-content: center !important;
+    border-left: none !important;
   }
 }
 
@@ -619,10 +619,6 @@ button.hof-btn {
 
   .hof-sidebar-sign-out {
     display: flex;
-  }
-
-  .hof-sidebar-active-accent {
-    display: block;
   }
 }
 

@@ -1,7 +1,19 @@
-/** Ticket data needed to render a QR email attachment. */
+/** Ticket data needed to render inline / attached ticket passes in the receipt email. */
 export type ReceiptTicket = {
   code: string;
   qrData: string;
+  holderName: string;
+  tierName: string;
+  index: number;
+  total: number;
+  event: {
+    name: string;
+    editionNumber: number;
+    date: string;
+    venueName: string;
+    doorsOpen?: string | null;
+    doorsClose?: string | null;
+  };
 };
 
 export type ReceiptLineItem = {
