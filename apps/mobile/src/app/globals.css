@@ -109,6 +109,23 @@ a {
   }
 }
 
+/*
+ * Tablet rail (768–896px): floating back/share icons sit on the right edge of
+ * main. Shrink the centered column symmetrically so its right edge clears the
+ * chrome — padding-right alone shifted content left and looked off-center on
+ * iPad Air (~820px).
+ */
+@media (min-width: 768px) and (max-width: 896px) {
+  .hof-ticket-scroll {
+    /* 2×(40+8+40+16) — keeps a centered column from overlapping the icon row */
+    width: min(calc(100% - 208px), 620px);
+  }
+
+  .hof-ticket-scroll-top {
+    height: 58px;
+  }
+}
+
 .hof-ticket-toast {
   position: absolute;
   top: 100px;
@@ -123,6 +140,19 @@ a {
     right: auto;
     transform: translateX(-50%);
     width: min(calc(100% - 32px), 588px);
+  }
+}
+
+/* Tonight banner — tighter top spacing on narrow viewports */
+@media (max-width: 776px) {
+  .hof-ticket-tonight-banner {
+    margin: 14px 16px 16px;
+  }
+}
+
+@media (min-width: 777px) {
+  .hof-ticket-tonight-banner {
+    margin: 54px 16px 16px;
   }
 }
 

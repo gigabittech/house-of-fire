@@ -418,9 +418,8 @@ export default function TicketScreen() {
           <>
             {!justPurchased ? (
               <div
-                className="hof-no-print"
+                className="hof-no-print hof-ticket-tonight-banner"
                 style={{
-                  margin: '54px 16px 16px',
                   padding: '12px 14px',
                   background: 'rgba(232,101,26,0.1)',
                   border: `1px solid rgba(232,101,26,0.3)`,
