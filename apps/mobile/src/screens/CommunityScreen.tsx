@@ -184,7 +184,7 @@ export default function CommunityScreen() {
           background: 'rgba(10,10,8,0.85)',
           backdropFilter: 'blur(20px) saturate(150%)',
           WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-          borderBottom: `1px solid ${colors.border}`,
+          // borderBottom: `1px solid ${colors.border}`,
           paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
         }}
       >
