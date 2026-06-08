@@ -232,6 +232,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
               resolvePhoto={photoSrc}
               interactiveReactions={post.moderationStatus === 'approved' || !post.moderationStatus}
               onReact={(emoji) => void toggleReaction(emoji)}
+              pressFeedback={false}
             />
           </div>
         )}

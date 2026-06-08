@@ -12,6 +12,7 @@ import { Icon } from './Icon';
 import { filterMemberNavItems } from './memberNav';
 
 const SIDEBAR_INSET_X = 10;
+const SIDEBAR_HOME_ICON = '/assets/icon.png';
 
 function initialsFromName(name: string): string {
   return (
@@ -190,7 +191,13 @@ function HofSidebar({
           onClick={() => onChange?.('home')}
         >
           <span className="hof-sidebar-logo-compact">
-            <HofLogoMark size={24} alt="House of Fire" />
+            <span className="hof-sidebar-logo-compact-icon" style={hofChromeCircleBtn}>
+              <img
+                src={SIDEBAR_HOME_ICON}
+                alt=""
+                style={{ width: 30, height: 30, display: 'block', objectFit: 'contain' }}
+              />
+            </span>
           </span>
           <span className="hof-sidebar-logo-full">
             <HofLogoMark

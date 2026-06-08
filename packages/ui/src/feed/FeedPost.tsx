@@ -21,6 +21,8 @@ export interface FeedPostProps {
   resolvePhoto?: (seed: number) => string;
   interactiveReactions?: boolean;
   onReact?: (emoji: ReactionKey) => void;
+  /** Scale-down tap feedback on the card shell (default on). */
+  pressFeedback?: boolean;
 }
 
 const MODERATION_LABEL: Record<string, { label: string; tone: 'amber' | 'danger' | 'neutral' }> = {
@@ -37,6 +39,7 @@ export function FeedPost({
   resolvePhoto,
   interactiveReactions = false,
   onReact,
+  pressFeedback = true,
 }: FeedPostProps) {
   const isRecap = post.kind === 'recap';
   const isQuick = post.kind === 'quick';
@@ -62,7 +65,7 @@ export function FeedPost({
   return (
     <>
       <article
-        className="hof-press"
+        className={pressFeedback ? 'hof-press' : undefined}
         style={{
           width: '100%',
           textAlign: 'left',

@@ -408,7 +408,7 @@ function ProfilePosts({
   }, []);
 
   return (
-    <div style={{ padding: '20px 16px 0' }}>
+    <div style={{ padding: '20px 0 0' }}>
       {/* Activity stats */}
       <div
         style={{
@@ -1089,7 +1089,7 @@ export default function ProfileScreen() {
 
           {/* Tabs — COMMUNITY_FEATURE hides Posts tab */}
           {COMMUNITY_FEATURE_ENABLED ? (
-          <div style={{ padding: '20px 16px 0' }}>
+          <div style={{ padding: '20px 0 0' }}>
             <div
               style={{
                 display: 'flex',
@@ -1138,7 +1138,7 @@ export default function ProfileScreen() {
           {tab === 'overview' && (
             <>
               {/* Upcoming ticket */}
-              <div style={{ padding: '24px 16px 0' }}>
+              <div style={{ padding: '24px 0 0' }}>
                 <ProfileSectionLabel accent>Upcoming ticket</ProfileSectionLabel>
                 {upcomingTicket && upcomingTicket.events ? (
                   <button
@@ -1327,7 +1327,7 @@ export default function ProfileScreen() {
 
               {/* Referral card */}
               {referral !== null && (
-                <div style={{ padding: '24px 16px 0' }}>
+                <div style={{ padding: '24px 0 0' }}>
                   <ProfileSectionLabel accent>Referral</ProfileSectionLabel>
                   <div
                     style={{
@@ -1473,7 +1473,7 @@ export default function ProfileScreen() {
               )}
 
               {/* Ticket history */}
-              <div style={{ padding: '28px 16px 0' }}>
+              <div style={{ padding: '28px 0 0' }}>
                 <div
                   style={{
                     display: 'flex',
@@ -1542,7 +1542,7 @@ export default function ProfileScreen() {
               </div>
 
               {/* Account settings */}
-              <div style={{ padding: '28px 16px 0' }}>
+              <div style={{ padding: '28px 0 0' }}>
                 <ProfileSectionLabel>Account</ProfileSectionLabel>
                 <div
                   style={{

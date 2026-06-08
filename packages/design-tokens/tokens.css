@@ -641,6 +641,8 @@ button.hof-btn {
 
 .hof-sidebar-logo-area {
   flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hof-sidebar-logo-btn {
@@ -724,21 +726,36 @@ button.hof-btn {
   }
 }
 
-/* Tablet — icon-only */
-@media (min-width: 768px) and (max-width: 1279px) {
+/* Tablet — compact home icon (matches mobile header), top-right of sidebar */
+@media (min-width: 768px) and (max-width: 1286px) {
   .hof-sidebar-logo-compact {
     display: flex;
+    justify-content: flex-end;
+    width: 100%;
   }
 
-  .hof-sidebar-user-compact {
+  .hof-sidebar-logo-area {
     display: flex;
+    justify-content: flex-end;
+    padding-top: 2px;
+    padding-right: 2px;
   }
 
   .hof-sidebar-logo-btn {
-    justify-content: center;
+    justify-content: flex-end;
+    width: auto;
     padding-bottom: 8px;
   }
 
+  .hof-sidebar-logo-compact-icon {
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .hof-sidebar-user-compact {
+    display: flex;
+  }
 }
 
 /* Desktop — labels outside the rounded capsule */
@@ -763,10 +780,6 @@ button.hof-btn {
     min-width: 0;
   }
 
-  .hof-sidebar-logo-full {
-    display: flex;
-  }
-
   .hof-sidebar-user-full {
     display: flex;
   }
@@ -774,10 +787,18 @@ button.hof-btn {
   .hof-sidebar-sign-out {
     display: flex;
   }
+}
+
+/* Desktop — wordmark logo (text) replaces compact icon */
+@media (min-width: 1287px) {
+  .hof-sidebar-logo-full {
+    display: flex;
+  }
 
   .hof-sidebar-logo-btn {
     justify-content: flex-start;
     padding: 10px 0 0 10px;
+    width: 100%;
   }
 }
 
