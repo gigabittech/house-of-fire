@@ -1,36 +1,18 @@
 'use client';
 
 import { colors, layoutChrome } from '@hof/design-tokens';
-import type { ReactionKey, Post as UiPost } from '@hof/ui';
-import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
+import type { ReactionKey } from '@hof/ui';
+import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, HofToast, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { photoSrc } from '../data/photos';
-import { parseMediaUrls } from '../lib/postMedia';
+import { apiPostToUi, timeAgo, type ApiPost } from '../lib/postUi';
 
 interface PostScreenProps {
   postId: string;
 }
-
-type ApiPost = {
-  id: string;
-  channel: string;
-  title: string;
-  body: string | null;
-  is_anonymous: boolean;
-  reply_count: number;
-  reaction_counts: Record<string, number>;
-  media_urls?: unknown;
-  created_at: string;
-  profiles: {
-    handle: string;
-    display_name: string;
-    role: string;
-    avatar_url: string | null;
-  } | null;
-};
 
 type ApiReply = {
   id: string;
@@ -40,62 +22,6 @@ type ApiReply = {
   profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
 };
 
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function apiPostToUi(p: ApiPost, myReactions: string[]): UiPost {
-  const displayName = p.is_anonymous
-    ? 'Anonymous'
-    : (p.profiles?.display_name ?? p.profiles?.handle ?? 'Member');
-  const initials =
-    displayName
-      .split(' ')
-      .map((w) => w[0] ?? '')
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?';
-  const role = (p.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
-  const reactions: Partial<Record<ReactionKey, number>> = {};
-  for (const [k, v] of Object.entries(p.reaction_counts)) {
-    if (['fire', 'heart', 'pray', 'music', 'eyes'].includes(k)) {
-      (reactions as Record<string, number>)[k] = v;
-    }
-  }
-  const myReaction = (myReactions.find((k) => k in reactions) ?? null) as ReactionKey | null;
-  return {
-    id: p.id,
-    channel: p.channel,
-    kind: 'quick',
-    author: {
-      name: displayName,
-      initials,
-      role,
-      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
-    },
-    time: timeAgo(p.created_at),
-    title: p.title || undefined,
-    body: p.body ?? undefined,
-    imageUrls: parseMediaUrls(p.media_urls),
-    reactions,
-    myReaction,
-    replyCount: p.reply_count,
-  };
-}
-
-const REACTION_OPTIONS: { key: ReactionKey; emoji: string }[] = [
-  { key: 'fire', emoji: '🔥' },
-  { key: 'heart', emoji: '❤️' },
-  { key: 'music', emoji: '🎵' },
-  { key: 'eyes', emoji: '👀' },
-  { key: 'pray', emoji: '🙏' },
-];
-
 export default function PostScreen({ postId }: PostScreenProps) {
   const router = useRouter();
   const authUser = useAuthUser();
@@ -103,25 +29,34 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [replies, setReplies] = useState<ApiReply[]>([]);
   const [sending, setSending] = useState(false);
   const [myReactions, setMyReactions] = useState<string[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [reply, setReply] = useState('');
   const [fetchDone, setFetchDone] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { isWide } = useResponsive();
 
   const handleBack = useCallback(() => router.back(), [router]);
 
-  useAppHeader({ title: 'Post', onBack: handleBack });
+  useAppHeader({
+    title: 'Post',
+    onBack: handleBack,
+  });
 
   const loadPost = useCallback(() => {
     if (!postId) return;
     setFetchDone(false);
     setFetchError(false);
     fetch(`/api/posts/${postId}`)
-      .then((r) => r.json())
-      .then((d: { post?: ApiPost; replies?: ApiReply[] }) => {
+      .then((r) => {
+        if (!r.ok) throw new Error('not found');
+        return r.json();
+      })
+      .then((d: { post?: ApiPost; replies?: ApiReply[]; myReactions?: string[] }) => {
         if (d.post) setApiPost(d.post);
         if (d.replies) setReplies(d.replies);
+        if (d.myReactions) setMyReactions(d.myReactions);
       })
       .catch(() => setFetchError(true))
       .finally(() => setFetchDone(true));
@@ -131,22 +66,37 @@ export default function PostScreen({ postId }: PostScreenProps) {
     loadPost();
   }, [loadPost]);
 
-  const toggleReaction = async (key: string) => {
-    const r = await fetch(`/api/posts/${postId}/reactions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji: key }),
-    });
-    const d = (await r.json()) as { toggled?: boolean; reactionCounts?: Record<string, number> };
-    if (d.toggled !== undefined) {
-      setMyReactions((prev) => (d.toggled ? [...prev, key] : prev.filter((k) => k !== key)));
+  const toggleReaction = async (key: ReactionKey) => {
+    const had = myReactions.includes(key);
+    const prevReactions = myReactions;
+    const nextReactions = had ? myReactions.filter((k) => k !== key) : [...myReactions, key];
+    setMyReactions(nextReactions);
+
+    if (apiPost) {
+      const counts = { ...apiPost.reaction_counts };
+      const current = counts[key] ?? 0;
+      counts[key] = Math.max(0, current + (had ? -1 : 1));
+      if (counts[key] === 0) delete counts[key];
+      setApiPost({ ...apiPost, reaction_counts: counts });
+    }
+
+    try {
+      const r = await fetch(`/api/posts/${postId}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji: key }),
+      });
+      const d = (await r.json()) as { toggled?: boolean; reactionCounts?: Record<string, number> };
       if (d.reactionCounts && apiPost) {
         setApiPost((p) => (p ? { ...p, reaction_counts: d.reactionCounts! } : p));
       }
+    } catch {
+      setMyReactions(prevReactions);
+      loadPost();
     }
   };
 
-  const post = apiPost ? apiPostToUi(apiPost, myReactions) : null;
+  const post = apiPost ? apiPostToUi(apiPost, { myReactions }) : null;
 
   if (fetchDone && !post) {
     return (
@@ -162,9 +112,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
         }}
       >
         <Icon name="chat" size={32} color={colors.textSec} />
-        <div style={{ fontFamily: 'Inter', fontSize: 14, color: colors.textSec }}>
-          Post not found
-        </div>
+        <div style={{ fontFamily: 'Inter', fontSize: 14, color: colors.textSec }}>Post not found</div>
         <button
           className="hof-btn hof-press"
           onClick={() => router.back()}
@@ -194,7 +142,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
         background: colors.bg,
       }}
     >
-      {/* Scrollable content */}
       <div
         className="hof-scroll"
         style={{
@@ -210,7 +157,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
           paddingTop: isWide ? 8 : layoutChrome.mobilePageHeaderInset,
         }}
       >
-        {/* Post card */}
         {!fetchDone && !fetchError && (
           <div style={{ padding: '0 16px 8px' }}>
             <FeedSkeletonCard />
@@ -222,73 +168,74 @@ export default function PostScreen({ postId }: PostScreenProps) {
           </div>
         )}
         {post && (
-          <div style={{ padding: '0 16px 8px' }}>
-            <FeedPost post={post} resolvePhoto={photoSrc} />
+          <div style={{ padding: '0 16px 8px', position: 'relative' }}>
+            <button
+              type="button"
+              className="hof-btn"
+              onClick={() => setMenuOpen((v) => !v)}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 24,
+                zIndex: 2,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                background: colors.elevated,
+                border: `1px solid ${colors.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Post options"
+            >
+              <Icon name="settings" size={14} color={colors.textSec} />
+            </button>
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 44,
+                  right: 24,
+                  zIndex: 3,
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  minWidth: 140,
+                }}
+              >
+                <button
+                  type="button"
+                  className="hof-btn"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setReportOpen(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 14px',
+                    background: 'transparent',
+                    border: 'none',
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.error,
+                  }}
+                >
+                  Report post
+                </button>
+              </div>
+            )}
+            <FeedPost
+              post={post}
+              resolvePhoto={photoSrc}
+              interactiveReactions={post.moderationStatus === 'approved' || !post.moderationStatus}
+              onReact={(emoji) => void toggleReaction(emoji)}
+            />
           </div>
         )}
 
-        {/* Reaction picker trigger */}
-        <div
-          style={{
-            padding: '0 16px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <button
-            className="hof-btn hof-press"
-            onClick={() => setPickerOpen((v) => !v)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              background: pickerOpen ? colors.elevated : 'transparent',
-              border: `1px solid ${pickerOpen ? colors.borderHi : colors.border}`,
-              borderRadius: 20,
-              fontFamily: 'Inter',
-              fontSize: 13,
-              color: colors.textSec,
-            }}
-          >
-            <span>React</span>
-            <Icon name="flame" size={14} color={colors.amber} />
-          </button>
-
-          {/* Picker pills */}
-          {pickerOpen && (
-            <div
-              style={{
-                display: 'flex',
-                gap: 6,
-                flexWrap: 'wrap',
-              }}
-            >
-              {REACTION_OPTIONS.map(({ key, emoji }) => (
-                <button
-                  key={key}
-                  className="hof-btn hof-press"
-                  onClick={() => {
-                    void toggleReaction(key);
-                    setPickerOpen(false);
-                  }}
-                  style={{
-                    padding: '6px 10px',
-                    background: myReactions.includes(key) ? `${colors.amber}22` : colors.elevated,
-                    border: `1px solid ${myReactions.includes(key) ? colors.amber : colors.border}`,
-                    borderRadius: 16,
-                    fontSize: 16,
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Replies divider */}
         <div
           style={{
             padding: '0 16px 12px',
@@ -311,7 +258,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
           <div style={{ flex: 1, height: 1, background: colors.border }} />
         </div>
 
-        {/* Replies */}
         <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
           {replies.map((r, i) => {
             const rName = r.is_anonymous
@@ -405,7 +351,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
         <div style={{ height: 24 }} />
       </div>
 
-      {/* Sticky compose bar at bottom (no bottom nav on post screen) */}
       <div
         style={{
           position: 'absolute',
@@ -468,7 +413,12 @@ export default function PostScreen({ postId }: PostScreenProps) {
               body: JSON.stringify({ body: reply }),
             });
             const d = (await r.json()) as { reply?: ApiReply };
-            if (d.reply) setReplies((prev) => [...prev, d.reply!]);
+            if (d.reply) {
+              setReplies((prev) => [...prev, d.reply!]);
+              if (apiPost) {
+                setApiPost({ ...apiPost, reply_count: apiPost.reply_count + 1 });
+              }
+            }
             setReply('');
             setSending(false);
           }}
@@ -492,6 +442,80 @@ export default function PostScreen({ postId }: PostScreenProps) {
           />
         </button>
       </div>
+
+      {reportOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setReportOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              background: colors.surface,
+              borderRadius: 12,
+              padding: 16,
+              border: `1px solid ${colors.border}`,
+            }}
+          >
+            <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 15, color: colors.text }}>
+              Report this post
+            </div>
+            <div style={{ fontFamily: 'Inter', fontSize: 13, color: colors.textSec, marginTop: 6 }}>
+              Why are you reporting it?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+              {['spam', 'harassment', 'inappropriate', 'off-topic'].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  className="hof-btn hof-press"
+                  onClick={async () => {
+                    await fetch(`/api/posts/${postId}/report`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reason }),
+                    });
+                    setReportOpen(false);
+                    setReportSent(true);
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    background: colors.elevated,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.text,
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {reason.replace('-', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reportSent && (
+        <div style={{ position: 'absolute', left: 16, right: 16, bottom: 100, zIndex: 30 }}>
+          <HofToast kind="success" onDismiss={() => setReportSent(false)}>
+            Report submitted — thanks for helping keep the board honest.
+          </HofToast>
+        </div>
+      )}
     </div>
   );
 }

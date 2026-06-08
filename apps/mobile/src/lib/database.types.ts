@@ -207,7 +207,8 @@ export type Database = {
           body: string | null;
           is_anonymous: boolean;
           is_pinned: boolean;
-          moderation_status: 'pending' | 'approved' | 'hidden' | 'draft';
+          moderation_status: 'pending' | 'approved' | 'hidden' | 'draft' | 'rejected';
+          moderation_note: string | null;
           media_urls: Json;
           reply_count: number;
           reaction_counts: Json;
@@ -223,7 +224,8 @@ export type Database = {
           body?: string | null;
           is_anonymous?: boolean;
           is_pinned?: boolean;
-          moderation_status?: 'pending' | 'approved' | 'hidden' | 'draft';
+          moderation_status?: 'pending' | 'approved' | 'hidden' | 'draft' | 'rejected';
+          moderation_note?: string | null;
           media_urls?: Json;
           reply_count?: number;
           reaction_counts?: Json;

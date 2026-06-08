@@ -12,7 +12,13 @@ interface ComposerSheetProps {
   open: boolean;
   onClose: () => void;
   defaultChannel?: string;
-  onPost?: (channel: string, title: string, body?: string, mediaUrls?: string[]) => Promise<void>;
+  onPost?: (
+    channel: string,
+    title: string,
+    body?: string,
+    mediaUrls?: string[],
+    isAnonymous?: boolean,
+  ) => Promise<void>;
   eventId?: string;
 }
 
@@ -132,7 +138,7 @@ export default function ComposerSheet({
               setUploadError(null);
               try {
                 const mediaUrls = files.length > 0 ? await uploadPostMediaBatch(files) : undefined;
-                await onPost?.(channel, title, body || undefined, mediaUrls);
+                await onPost?.(channel, title, body || undefined, mediaUrls, anon);
                 setTitle('');
                 setBody('');
                 setFiles([]);

@@ -12,6 +12,8 @@ export interface PostAuthor {
   avatarUrl?: string | null;
 }
 
+export type ModerationStatus = 'pending' | 'approved' | 'rejected' | 'hidden' | 'draft';
+
 export interface Post {
   id: string;
   channel: string;
@@ -25,8 +27,11 @@ export interface Post {
   imageUrls?: string[];
   reactions?: Partial<Record<ReactionKey, number>>;
   myReaction?: ReactionKey | null;
+  myReactions?: ReactionKey[];
   replyCount: number;
   pinned?: boolean;
+  moderationStatus?: ModerationStatus;
+  moderationNote?: string;
 }
 
 export interface Channel {

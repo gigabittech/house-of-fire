@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { applyModerationAction } from '@/lib/moderatePost';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
@@ -55,7 +56,13 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (body.hidePost && report?.post_id) {
-    await supabase.from('posts').update({ moderation_status: 'hidden' }).eq('id', report.post_id);
+    await applyModerationAction({
+      supabase,
+      postId: report.post_id,
+      moderatorId: auth.userId,
+      action: 'hidden',
+      reason: 'Resolved from content report',
+    });
   }
 
   return NextResponse.json({ ok: true });
