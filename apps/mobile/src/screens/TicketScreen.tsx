@@ -420,7 +420,7 @@ export default function TicketScreen() {
               <div
                 className="hof-no-print"
                 style={{
-                  margin: '0 16px 16px',
+                  margin: '54px 16px 16px',
                   padding: '12px 14px',
                   background: 'rgba(232,101,26,0.1)',
                   border: `1px solid rgba(232,101,26,0.3)`,
