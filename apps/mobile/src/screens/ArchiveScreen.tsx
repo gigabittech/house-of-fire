@@ -14,6 +14,7 @@ interface ApiEvent {
   name: string;
   date: string;
   venue_name?: string;
+  attendee_count?: number;
 }
 
 // Heights alternate for visual rhythm (same as original static layout)
@@ -229,6 +230,22 @@ export default function ArchiveScreen() {
                         >
                           {e.name}
                         </div>
+                        {typeof e.attendee_count === 'number' ? (
+                          <div
+                            style={{
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              color: colors.textSec,
+                              marginTop: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Icon name="users" size={10} color={colors.textSec} />
+                            {e.attendee_count.toLocaleString('en-US')}
+                          </div>
+                        ) : null}
                       </div>
                       {/* Theme badge */}
                       <div

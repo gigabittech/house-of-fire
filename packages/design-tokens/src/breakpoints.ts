@@ -30,8 +30,8 @@ export const layoutChrome = {
   headerRowHeight: 34,
   /** Overlay header offset from the top of the viewport. */
   mobileHeaderTop: 'calc(8px + env(safe-area-inset-top, 0px))',
-  /** Total inset for content sitting below the mobile page header overlay. */
-  mobilePageHeaderInset: 'calc(48px + env(safe-area-inset-top, 0px))',
+  /** Total inset for content sitting below the mobile page header overlay (8 + 40 + 8). */
+  mobilePageHeaderInset: 'calc(56px + env(safe-area-inset-top, 0px))',
   /** Bottom tab bar inner safe-area padding. */
   mobileNavSafeBottom: 'max(10px, env(safe-area-inset-bottom, 0px))',
   /** Scroll content clearance above the floating capsule tab bar. */

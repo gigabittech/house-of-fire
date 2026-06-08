@@ -1,21 +1,11 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { Avatar, Icon } from '@hof/ui';
+import { Avatar, EmptyState, Icon } from '@hof/ui';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useSheet } from './useSheet';
 
-interface NotifItem {
-  kind: 'reply' | 'react' | 'crew' | 'mention' | 'photo';
-  read: boolean;
-  initials: string;
-  name: string;
-  action: string;
-  target: string;
-  time: string;
-  postId?: string;
-  highlight?: boolean;
-}
+import { apiNotifToItem, type ApiNotif, type NotifItem } from '../lib/notificationUi';
 
 const ICON_MAP: Record<NotifItem['kind'], Parameters<typeof Icon>[0]['name']> = {
   reply: 'chat',
@@ -23,6 +13,7 @@ const ICON_MAP: Record<NotifItem['kind'], Parameters<typeof Icon>[0]['name']> = 
   crew: 'bell',
   mention: 'user',
   photo: 'image',
+  moderation: 'check',
 };
 
 interface NotificationsSheetProps {
@@ -33,7 +24,7 @@ interface NotificationsSheetProps {
 
 function NotifRow({ n, onOpenPost }: { n: NotifItem; onOpenPost?: (id: string) => void }) {
   const iconName = ICON_MAP[n.kind];
-  const isCrew = n.kind === 'crew' || n.name === 'Jordan' || n.name === 'Crew';
+  const isCrew = n.kind === 'crew';
 
   return (
     <button
@@ -50,6 +41,7 @@ function NotifRow({ n, onOpenPost }: { n: NotifItem; onOpenPost?: (id: string) =
         background: n.read ? 'transparent' : 'rgba(232,101,26,0.04)',
         borderBottom: `1px solid ${colors.border}`,
         alignItems: 'center',
+        cursor: n.postId ? 'pointer' : 'default',
       }}
     >
       <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -77,20 +69,22 @@ function NotifRow({ n, onOpenPost }: { n: NotifItem; onOpenPost?: (id: string) =
           <span style={{ fontWeight: 500 }}>{n.name}</span>{' '}
           <span style={{ color: colors.textSec }}>{n.action}</span>
         </div>
-        <div
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 12,
-            color: colors.textSec,
-            marginTop: 2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontStyle: n.kind === 'reply' || n.kind === 'mention' ? 'italic' : 'normal',
-          }}
-        >
-          "{n.target}"
-        </div>
+        {n.target && (
+          <div
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: colors.textSec,
+              marginTop: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontStyle: n.kind === 'reply' || n.kind === 'mention' ? 'italic' : 'normal',
+            }}
+          >
+            "{n.target}"
+          </div>
+        )}
         <div
           style={{
             fontFamily: 'JetBrains Mono',
@@ -131,68 +125,25 @@ function NotifGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-type ApiNotif = {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  read: boolean;
-  created_at: string;
-  post_id?: string;
-};
-
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function apiNotifToItem(n: ApiNotif): NotifItem {
-  const validKinds: NotifItem['kind'][] = ['reply', 'react', 'crew', 'mention', 'photo'];
-  const kind: NotifItem['kind'] = validKinds.includes(n.kind as NotifItem['kind'])
-    ? (n.kind as NotifItem['kind'])
-    : 'react';
-  const initials =
-    n.title
-      .split(' ')
-      .map((w) => w[0] ?? '')
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?';
-  return {
-    kind,
-    read: n.read,
-    initials,
-    name: n.title,
-    action: '',
-    target: n.body,
-    time: timeAgo(n.created_at),
-    postId: n.post_id,
-    highlight: kind === 'crew',
-  };
-}
-
-const NOTIF_FILTERS = ['All', 'Replies', 'Reactions', 'Crew'] as const;
+const NOTIF_FILTERS = ['All', 'Replies', 'Reactions', 'Moderation', 'Crew'] as const;
 type NotifFilter = (typeof NOTIF_FILTERS)[number];
 
 export default function NotificationsSheet({ open, onClose, onOpenPost }: NotificationsSheetProps) {
   const { mounted, shown } = useSheet(open);
   const [notifs, setNotifs] = useState<NotifItem[]>([]);
   const [filter, setFilter] = useState<NotifFilter>('All');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setLoaded(false);
     fetch('/api/notifications')
       .then((r) => r.json())
       .then((d: { notifications?: ApiNotif[] }) => {
-        if (d.notifications && d.notifications.length > 0) {
-          setNotifs(d.notifications.map(apiNotifToItem));
-        }
+        setNotifs((d.notifications ?? []).map(apiNotifToItem));
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setLoaded(true));
   }, [open]);
 
   if (!mounted) return null;
@@ -201,6 +152,7 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
     if (filter === 'All') return true;
     if (filter === 'Replies') return n.kind === 'reply' || n.kind === 'mention';
     if (filter === 'Reactions') return n.kind === 'react';
+    if (filter === 'Moderation') return n.kind === 'moderation';
     if (filter === 'Crew') return n.kind === 'crew';
     return true;
   });
@@ -218,10 +170,8 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
 
   return (
     <div style={overlay}>
-      {/* Status-bar spacer */}
       <div style={{ height: 54 }} />
 
-      {/* Header */}
       <div
         style={{
           padding: '14px 16px',
@@ -275,8 +225,7 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
       </div>
 
       <div className="hof-scroll" style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Filter row */}
-        <div style={{ padding: '12px 16px 0', display: 'flex', gap: 6 }}>
+        <div style={{ padding: '12px 16px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {NOTIF_FILTERS.map((f) => (
             <button
               key={f}
@@ -315,16 +264,19 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
           </button>
         </div>
 
-        <NotifGroup label="Today">
-          {visible.slice(0, 3).map((n, i) => (
-            <NotifRow key={i} n={n} onOpenPost={onOpenPost} />
-          ))}
-        </NotifGroup>
-        <NotifGroup label="Earlier this week">
-          {visible.slice(3).map((n, i) => (
-            <NotifRow key={i} n={n} onOpenPost={onOpenPost} />
-          ))}
-        </NotifGroup>
+        {loaded && visible.length === 0 ? (
+          <div style={{ padding: '32px 16px' }}>
+            <EmptyState icon="bell" title="All caught up" body="No notifications in this filter." />
+          </div>
+        ) : (
+          <>
+            <NotifGroup label="Recent">
+              {visible.map((n, i) => (
+                <NotifRow key={`${n.name}-${n.time}-${i}`} n={n} onOpenPost={onOpenPost} />
+              ))}
+            </NotifGroup>
+          </>
+        )}
 
         <div style={{ height: 60 }} />
       </div>

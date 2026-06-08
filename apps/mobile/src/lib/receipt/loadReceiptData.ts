@@ -19,6 +19,7 @@ type TicketMeta = {
   holder_name?: string | null;
   holder_email?: string | null;
   holder_phone?: string | null;
+  holder_zip?: string | null;
 };
 
 function holderFromTicket(t: TicketRow, fallbackName: string): string {

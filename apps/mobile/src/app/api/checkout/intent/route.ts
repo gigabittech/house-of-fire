@@ -10,6 +10,7 @@ import {
 import { validateDiscountCodeForCheckout } from '../../../../lib/promoCodes';
 import { computeCheckoutAmounts } from '../../../../lib/ticketPricing';
 import { clampOrderQuantity } from '../../../../lib/ticketLimits';
+import { isValidZipCode, normalizeZipCode } from '../../../../lib/zipCode';
 
 type TicketTierRow = Database['public']['Tables']['ticket_tiers']['Row'];
 type EventRow = Database['public']['Tables']['events']['Row'];
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
     buyerFirstName?: string;
     buyerLastName?: string;
     buyerPhone?: string;
+    buyerZipCode?: string;
   };
   const {
     tierId,
@@ -51,6 +53,7 @@ export async function POST(request: NextRequest) {
     buyerFirstName,
     buyerLastName,
     buyerPhone,
+    buyerZipCode,
   } = body;
 
   if (!tierId) {
@@ -134,6 +137,23 @@ export async function POST(request: NextRequest) {
   const holderName = buyerFullName || profile?.display_name?.trim() || '';
   const holderEmail = trimmedBuyerEmail || user.email || '';
   const holderPhone = buyerPhone?.trim() ?? '';
+  const trimmedBuyerZip = buyerZipCode?.trim() ?? '';
+  const submittingBuyerDetails = Boolean(
+    buyerFirstName?.trim() || buyerLastName?.trim() || buyerPhone?.trim() || trimmedBuyerEmail,
+  );
+
+  if (submittingBuyerDetails) {
+    if (!trimmedBuyerZip) {
+      return NextResponse.json({ error: 'ZIP code required' }, { status: 400 });
+    }
+    if (!isValidZipCode(trimmedBuyerZip)) {
+      return NextResponse.json({ error: 'Invalid ZIP code' }, { status: 400 });
+    }
+  } else if (trimmedBuyerZip && !isValidZipCode(trimmedBuyerZip)) {
+    return NextResponse.json({ error: 'Invalid ZIP code' }, { status: 400 });
+  }
+
+  const holderZip = trimmedBuyerZip ? normalizeZipCode(trimmedBuyerZip) : '';
 
   const metadata = {
     userId: user.id,
@@ -147,6 +167,7 @@ export async function POST(request: NextRequest) {
     holderName,
     holderEmail,
     holderPhone,
+    holderZip,
   };
 
   const description = `House of Fire — Ed ${ev?.edition_number ?? '?'} ${tierRow.display_name} × ${quantity}`;

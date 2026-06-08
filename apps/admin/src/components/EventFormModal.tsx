@@ -11,6 +11,7 @@ interface EventFormModalProps {
   open: boolean;
   mode: 'create' | 'edit';
   eventId?: string;
+  liveEventId?: string | null;
   initial?: Partial<EventFormPayload>;
   initialTiers?: TierFormRow[];
   soldByTierId?: Record<string, number>;
@@ -44,6 +45,7 @@ export function EventFormModal({
   open,
   mode,
   eventId,
+  liveEventId = null,
   initial,
   initialTiers = [],
   soldByTierId = {},
@@ -85,6 +87,9 @@ export function EventFormModal({
   }, [heroFile]);
 
   if (!open) return null;
+
+  const liveBlocked =
+    liveEventId != null && (mode === 'create' || eventId !== liveEventId);
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -453,11 +458,28 @@ export function EventFormModal({
                 onChange={(e) => setField('status', e.target.value as EventStatus)}
               >
                 {STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
+                  <option
+                    key={s.value}
+                    value={s.value}
+                    disabled={s.value === 'live' && liveBlocked}
+                  >
                     {s.label}
                   </option>
                 ))}
               </select>
+              {liveBlocked && (
+                <p
+                  style={{
+                    margin: '6px 0 0',
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    color: 'var(--hof-text-sec)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Another theme is already live. Change its status first.
+                </p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Hero image</label>
