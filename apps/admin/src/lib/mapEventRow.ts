@@ -1,3 +1,4 @@
+import type { EventStatus } from '@/lib/eventPayload';
 import { formatEventListDate, formatGross } from '@/lib/formatters';
 
 export interface EventRow {
@@ -6,6 +7,7 @@ export interface EventRow {
   name: string;
   date: string;
   status: 'live' | 'draft' | 'past';
+  rawStatus: EventStatus;
   sold: number;
   cap: number;
   gross: string;
@@ -35,6 +37,7 @@ export function mapEventRow(ev: EventWithStats): EventRow {
     name: ev.name,
     date: formatEventListDate(ev.date),
     status: mapEventStatus(ev.status),
+    rawStatus: ev.status,
     sold: ev.sold,
     cap: ev.capacity,
     gross: formatGross(ev.gross_cents),

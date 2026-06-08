@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EventFormModal, parseFaqsFromJson } from '@/components/EventFormModal';
 import { PaneHeader } from '@/components/PaneHeader';
-import { Pill } from '@/components/Pill';
-import type { EventFormPayload } from '@/lib/eventPayload';
+import type { EventFormPayload, EventStatus } from '@/lib/eventPayload';
 import type { TierFormRow } from '@/lib/tierPayload';
-import { type EventRow, mapEventRow } from '@/lib/mapEventRow';
+import { type EventRow, mapEventRow, mapEventStatus } from '@/lib/mapEventRow';
 
 type EventStatus = 'live' | 'draft' | 'past';
 type FilterKey = 'all' | EventStatus;
@@ -16,6 +15,13 @@ const FILTERS: Array<[FilterKey, string]> = [
   ['live', 'Live'],
   ['draft', 'Drafts'],
   ['past', 'Past'],
+];
+
+const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
+  { value: 'upcoming', label: 'Draft' },
+  { value: 'live', label: 'Live' },
+  { value: 'past', label: 'Past' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 function eventToForm(ev: {
@@ -67,6 +73,8 @@ export default function EventsPage() {
   const [soldByTierId, setSoldByTierId] = useState<Record<string, number>>({});
   const [editSold, setEditSold] = useState(0);
   const [openingEdit, setOpeningEdit] = useState<string | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +100,7 @@ export default function EventsPage() {
 
   const filtered = filter === 'all' ? events : events.filter((e) => e.status === filter);
   const liveCount = events.filter((e) => e.status === 'live').length;
+  const liveEventId = events.find((e) => e.rawStatus === 'live')?.id ?? null;
   const draftCount = events.filter((e) => e.status === 'draft').length;
   const sub =
     events.length > 0
@@ -216,6 +225,48 @@ export default function EventsPage() {
     }
   }
 
+  async function updateEventStatus(eventId: string, nextStatus: EventStatus, previousStatus: EventStatus) {
+    if (nextStatus === previousStatus) return;
+
+    setStatusUpdating(eventId);
+    setStatusMessage(null);
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === eventId
+          ? { ...e, rawStatus: nextStatus, status: mapEventStatus(nextStatus) }
+          : e,
+      ),
+    );
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === eventId ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) } : e,
+          ),
+        );
+        setStatusMessage(data.error ?? 'Failed to update status');
+        return;
+      }
+      void load();
+    } catch {
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) } : e,
+        ),
+      );
+      setStatusMessage('Failed to update status');
+    } finally {
+      setStatusUpdating(null);
+    }
+  }
+
   return (
     <>
       <PaneHeader
@@ -285,6 +336,23 @@ export default function EventsPage() {
         ))}
       </div>
 
+      {statusMessage && (
+        <div
+          style={{
+            margin: '0 28px',
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            fontFamily: 'Inter, system-ui',
+            fontSize: 13,
+            color: 'var(--hof-text)',
+          }}
+        >
+          {statusMessage}
+        </div>
+      )}
+
       <div style={{ padding: '14px 28px 28px' }}>
         <div
           style={{
@@ -297,7 +365,7 @@ export default function EventsPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '60px 2fr 1fr 0.7fr 1.2fr 1fr 80px',
+              gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
               padding: '12px 18px',
               borderBottom: '1px solid var(--hof-border)',
               fontFamily: 'Inter, system-ui',
@@ -355,7 +423,7 @@ export default function EventsPage() {
                 }}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '60px 2fr 1fr 0.7fr 1.2fr 1fr 80px',
+                  gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
                   padding: '14px 18px',
                   alignItems: 'center',
                   borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
@@ -387,15 +455,46 @@ export default function EventsPage() {
                 >
                   {e.date}
                 </div>
-                <div>
-                  <Pill
-                    tone={
-                      e.status === 'live' ? 'amber' : e.status === 'draft' ? 'neutral' : 'success'
-                    }
-                    size="sm"
+                <div onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
+                  <select
+                    value={e.rawStatus}
+                    disabled={statusUpdating === e.id}
+                    onChange={(ev) => {
+                      void updateEventStatus(e.id, ev.target.value as EventStatus, e.rawStatus);
+                    }}
+                    style={{
+                      width: '100%',
+                      maxWidth: 132,
+                      height: 30,
+                      padding: '0 8px',
+                      borderRadius: 6,
+                      border: '1px solid var(--hof-border)',
+                      background: 'var(--hof-bg)',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        e.rawStatus === 'live'
+                          ? 'var(--hof-amber)'
+                          : e.rawStatus === 'upcoming'
+                            ? 'var(--hof-text-sec)'
+                            : 'var(--hof-text)',
+                      cursor: statusUpdating === e.id ? 'wait' : 'pointer',
+                      opacity: statusUpdating === e.id ? 0.6 : 1,
+                    }}
                   >
-                    {e.status}
-                  </Pill>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option
+                        key={opt.value}
+                        value={opt.value}
+                        disabled={
+                          opt.value === 'live' && liveEventId != null && liveEventId !== e.id
+                        }
+                      >
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div
@@ -457,6 +556,7 @@ export default function EventsPage() {
         open={modalOpen}
         mode={modalMode}
         eventId={editEventId}
+        liveEventId={liveEventId}
         initial={formInitial}
         initialTiers={initialTiers}
         soldByTierId={soldByTierId}
