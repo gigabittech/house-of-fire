@@ -1,6 +1,6 @@
 'use client';
 
-import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { ReactionKey } from '@hof/ui';
 import {
   EmptyState,
@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useAppPageColumn } from '@/hooks/useAppPageColumn';
 import { photoSrc } from '../data/photos';
 import { CHANNELS } from '../data/posts';
 import { apiPostToUi, type ApiPost } from '../lib/postUi';
@@ -35,7 +36,16 @@ export default function CommunityScreen() {
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [liveEventId, setLiveEventId] = useState<string | undefined>();
   const [pendingToast, setPendingToast] = useState(false);
-  const { isWide, isDesktop } = useResponsive();
+  const { isWide } = useResponsive();
+  const pageColumn = useAppPageColumn();
+
+  const scrollTopPad = isWide
+    ? layoutChrome.wideActionsInset +
+      36 +
+      (feedView === 'channel' ? layoutChrome.wideChannelBarHeight : 0)
+    : feedView === 'channel'
+      ? 148
+      : 108;
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -165,31 +175,25 @@ export default function CommunityScreen() {
       }}
     >
       <div
+        className="hof-app-page-sticky"
         style={{
           position: 'absolute',
-          top: isWide ? layoutChrome.wideActionsInset : 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide
-            ? isDesktop
-              ? `min(100%, ${layoutWidth.appDesktop}px)`
-              : `min(100%, ${layoutWidth.app}px)`
-            : 'auto',
-          boxSizing: 'border-box',
+          top: 0,
+          right: 0,
           zIndex: 20,
           background: 'rgba(10,10,8,0.85)',
           backdropFilter: 'blur(20px) saturate(150%)',
           WebkitBackdropFilter: 'blur(20px) saturate(150%)',
           borderBottom: `1px solid ${colors.border}`,
-          paddingTop: isWide ? 0 : layoutChrome.mobilePageHeaderInset,
+          paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
         }}
       >
+        <div style={pageColumn}>
         <div
           style={{
             display: 'flex',
             gap: 6,
-            padding: '0 16px 8px',
+            paddingBottom: 8,
           }}
         >
           {(['channel', 'mine'] as const).map((view) => (
@@ -221,8 +225,6 @@ export default function CommunityScreen() {
               display: 'flex',
               gap: 6,
               overflowX: 'auto',
-              paddingLeft: 16,
-              paddingRight: 16,
               paddingBottom: 12,
             }}
           >
@@ -256,33 +258,22 @@ export default function CommunityScreen() {
             })}
           </div>
         )}
+        </div>
       </div>
 
       <div
-        className="hof-scroll"
+        className="hof-scroll hof-app-page-scroll"
         style={{
           position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide
-            ? isDesktop
-              ? `min(100%, ${layoutWidth.appDesktop}px)`
-              : `min(100%, ${layoutWidth.app}px)`
-            : 'auto',
+          inset: 0,
           overflowY: 'auto',
           paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          paddingTop: isWide
-            ? layoutChrome.wideActionsInset + layoutChrome.wideChannelBarHeight + 36
-            : feedView === 'channel'
-              ? 148
-              : 108,
+          paddingTop: scrollTopPad,
         }}
       >
+        <div style={pageColumn}>
         {loadingPosts ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[0, 1, 2, 3].map((i) => (
               <FeedSkeletonCard key={i} />
             ))}
@@ -318,7 +309,7 @@ export default function CommunityScreen() {
             }
           />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {channelPosts.map((post) => (
               <FeedPost
                 key={post.id}
@@ -334,6 +325,7 @@ export default function CommunityScreen() {
         )}
 
         <div style={{ height: 40 }} />
+        </div>
       </div>
 
       <button

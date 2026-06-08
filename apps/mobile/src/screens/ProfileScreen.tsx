@@ -1,6 +1,6 @@
 'use client';
 
-import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import type { Post as UiPost } from '@hof/ui';
 import {
   EmptyState,
@@ -22,6 +22,7 @@ import {
 } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useAppPageColumn } from '@/hooks/useAppPageColumn';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { formatDoorsRange } from '@/lib/eventDisplay';
 import {
@@ -733,7 +734,8 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
-  const { isWide, isDesktop } = useResponsive();
+  const { isWide } = useResponsive();
+  const pageColumn = useAppPageColumn();
 
   const headerActions = useMemo(
     () => (
@@ -758,28 +760,17 @@ export default function ProfileScreen() {
           overflow: 'hidden',
         }}
       >
-        {/* Scrollable content — centered column on tablet/desktop */}
         <div
-          className="hof-scroll"
+          className="hof-scroll hof-app-page-scroll"
           style={{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
+            inset: 0,
             overflowY: 'auto',
             paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
             paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
-          {/* Identity card */}
-          <div style={{ padding: isWide ? '8px 16px 0' : '12px 16px 0' }}>
+          <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
             {profileError ? (
               <ErrorState />
             ) : profileLoading ? (
@@ -1095,7 +1086,6 @@ export default function ProfileScreen() {
                 </div>
               </div>
             )}
-          </div>
 
           {/* Tabs — COMMUNITY_FEATURE hides Posts tab */}
           {COMMUNITY_FEATURE_ENABLED ? (
@@ -1626,6 +1616,7 @@ export default function ProfileScreen() {
           )}
 
           <div style={{ height: 24 }} />
+          </div>
         </div>
       </div>
   );

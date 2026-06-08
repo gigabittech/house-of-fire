@@ -1,7 +1,7 @@
 'use client';
 
 import { colors, fontFamilies } from '@hof/design-tokens';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Avatar } from './feed/Avatar';
 import type { HofAppHeaderUser } from './HofAppHeader';
 import { HofBottomNav, type NavId } from './HofBottomNav';
@@ -12,28 +12,6 @@ import { Icon } from './Icon';
 import { filterMemberNavItems } from './memberNav';
 
 const SIDEBAR_INSET_X = 10;
-const SIDEBAR_PAD_TOP = 14;
-const SIDEBAR_ACCENT_W = 2;
-
-function sidebarNavItemStyle(isActive: boolean): CSSProperties {
-  return {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '9px 10px',
-    paddingLeft: SIDEBAR_INSET_X,
-    justifyContent: 'flex-start',
-    borderRadius: 6,
-    width: '100%',
-    background: isActive ? colors.elevated : 'transparent',
-    color: isActive ? colors.text : colors.textSec,
-    border: 'none',
-    borderLeft: `${SIDEBAR_ACCENT_W}px solid ${isActive ? colors.amber : 'transparent'}`,
-    transition: 'background 100ms',
-    position: 'relative',
-    boxSizing: 'border-box',
-  };
-}
 
 function initialsFromName(name: string): string {
   return (
@@ -60,7 +38,7 @@ function SidebarSignOutButton({ onClick }: { onClick?: () => void }) {
         borderRadius: 6,
         flexShrink: 0,
         background: 'transparent',
-        border: `1px solid ${colors.border}`,
+        border: 'none',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -90,13 +68,7 @@ function SidebarUserFooter({
   onProfileClick?: () => void;
 }) {
   return (
-    <div
-      style={{
-        marginTop: 'auto',
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 12,
-      }}
-    >
+    <div className="hof-sidebar-footer" style={{ paddingTop: 12 }}>
       <div
         className="hof-sidebar-user-compact"
         title={`${user.name} · ${user.email}`}
@@ -207,30 +179,15 @@ function HofSidebar({
       aria-label="Main navigation"
       className="hof-app-sidebar"
       style={{
-        background: colors.surface,
-        borderRight: `1px solid ${colors.border}`,
-        padding: `${SIDEBAR_PAD_TOP}px 12px 16px`,
         overflow: 'hidden',
       }}
     >
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <div className="hof-sidebar-logo-area">
         <button
           type="button"
-          className="hof-btn hof-press"
+          className="hof-btn hof-press hof-sidebar-logo-btn"
           aria-label="Home"
           onClick={() => onChange?.('home')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            width: '100%',
-            flexShrink: 0,
-            padding: `10px 0 0 ${SIDEBAR_INSET_X}px`,
-            lineHeight: 0,
-            boxSizing: 'border-box',
-            background: 'transparent',
-            border: 'none',
-          }}
         >
           <span className="hof-sidebar-logo-compact">
             <HofLogoMark size={24} alt="House of Fire" />
@@ -245,42 +202,48 @@ function HofSidebar({
             />
           </span>
         </button>
+      </div>
 
-        <div className="hof-sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 8 }}>
-          {navItems.map((it) => {
-            const isActive = active === it.id;
-            return (
-              <button
-                key={it.id}
-                type="button"
-                className="hof-btn hof-press hof-sidebar-nav-item-btn"
-                onClick={() => onChange?.(it.id)}
-                title={it.label}
-                aria-current={isActive ? 'page' : undefined}
-                style={sidebarNavItemStyle(isActive)}
-              >
-                <span className="hof-sidebar-nav-item-inner">
-                  <Icon
-                    name={it.icon}
-                    size={16}
-                    color={isActive ? colors.amber : colors.textSec}
-                  />
-                  <span
-                    className="hof-sidebar-nav-label"
-                    style={{
-                      fontFamily: fontFamilies.body,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      flex: 1,
-                      textAlign: 'left',
-                    }}
+      <div className="hof-sidebar-nav-center">
+        <div className="hof-sidebar-nav-group">
+          <div className="hof-sidebar-nav-capsule">
+            <div className="hof-sidebar-nav-list">
+              {navItems.map((it) => {
+                const isActive = active === it.id;
+                const iconColor = isActive ? colors.amber : colors.textSec;
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    className="hof-btn hof-press hof-sidebar-nav-item-btn"
+                    onClick={() => onChange?.(it.id)}
+                    aria-label={it.label}
+                    aria-current={isActive ? 'page' : undefined}
+                    data-active={isActive ? 'true' : 'false'}
                   >
-                    {it.label}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+                    <Icon name={it.icon} size={20} color={iconColor} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="hof-sidebar-nav-labels">
+            {navItems.map((it) => {
+              const isActive = active === it.id;
+              return (
+                <button
+                  key={it.id}
+                  type="button"
+                  className="hof-btn hof-press hof-sidebar-nav-label-btn"
+                  onClick={() => onChange?.(it.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  data-active={isActive ? 'true' : 'false'}
+                >
+                  {it.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

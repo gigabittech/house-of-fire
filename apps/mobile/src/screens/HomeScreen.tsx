@@ -264,7 +264,7 @@ export default function HomeScreen() {
       >
         {/* Scrollable content — hero full bleed; body in centered column */}
         <div
-          className="hof-scroll"
+          className="hof-scroll hof-app-page-scroll"
           style={{
             position: 'absolute',
             inset: 0,
@@ -274,11 +274,11 @@ export default function HomeScreen() {
         >
           {/* Hero — full-width cover image */}
           <div
+            className="hof-hero-full-bleed"
             style={{
               position: 'relative',
               height: isDesktop ? 'min(58vh, 580px)' : isWide ? 520 : 460,
               overflow: 'hidden',
-              width: '100%',
             }}
           >
             <img
@@ -317,6 +317,7 @@ export default function HomeScreen() {
 
             {/* Hero content overlay */}
             <div
+              className="hof-hero-content"
               style={{
                 position: 'absolute',
                 left: 0,
