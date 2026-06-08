@@ -1,3 +1,5 @@
+import { formatCents } from '@/lib/formatters';
+
 export type TicketMetadata = {
   holder_name?: string | null;
   holder_email?: string | null;
@@ -133,7 +135,44 @@ export function formatPurchasedAt(iso: string): string {
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
-import { formatCents } from '@/lib/formatters';
+export function guestTicketAmountCents(ticket: AdminGuestTicket): number {
+  return ticket.amount_cents + (ticket.fee_cents ?? 0);
+}
+
+export const GUEST_CSV_HEADERS = [
+  'SL',
+  'code',
+  'name',
+  'email',
+  'tier',
+  'status',
+  'event_edition',
+  'event_name',
+  'purchased_at',
+  'ticket_amount',
+] as const;
+
+export function guestExportRow(ticket: AdminGuestTicket, index: number): string[] {
+  return [
+    String(index + 1),
+    ticket.code,
+    guestDisplayName(ticket),
+    guestEmail(ticket),
+    guestTierLabel(ticket),
+    ticket.status,
+    String(ticket.events?.edition_number ?? ''),
+    ticket.events?.name ?? '',
+    formatPurchasedAt(ticket.purchased_at),
+    formatCents(guestTicketAmountCents(ticket)),
+  ];
+}
+
+export function buildGuestExportCsv(tickets: AdminGuestTicket[]): string {
+  const rows = tickets.map((t, i) => guestExportRow(t, i));
+  return [GUEST_CSV_HEADERS, ...rows]
+    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+}
 
 export { formatCents };
 

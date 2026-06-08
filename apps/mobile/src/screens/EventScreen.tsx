@@ -23,73 +23,8 @@ import {
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { parseMediaUrls } from '../lib/postMedia';
+import { apiPostToUi } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
-
-type ApiPost = {
-  id: string;
-  channel: string;
-  title: string;
-  body: string | null;
-  is_anonymous: boolean;
-  reply_count: number;
-  reaction_counts: Record<string, number>;
-  media_urls?: unknown;
-  created_at: string;
-  profiles: {
-    handle: string;
-    display_name: string;
-    role: string;
-    avatar_url: string | null;
-  } | null;
-};
-
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function apiPostToUi(p: ApiPost): UiPost {
-  const displayName = p.is_anonymous
-    ? 'Anonymous'
-    : (p.profiles?.display_name ?? p.profiles?.handle ?? 'Member');
-  const initials =
-    displayName
-      .split(' ')
-      .map((w) => w[0] ?? '')
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?';
-  const role = (p.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
-  const reactions: Partial<Record<'fire' | 'heart' | 'pray' | 'music' | 'eyes', number>> = {};
-  for (const [k, v] of Object.entries(p.reaction_counts)) {
-    if (['fire', 'heart', 'pray', 'music', 'eyes'].includes(k)) {
-      (reactions as Record<string, number>)[k] = v;
-    }
-  }
-  return {
-    id: p.id,
-    channel: p.channel,
-    kind: 'quick',
-    author: {
-      name: displayName,
-      initials,
-      role,
-      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
-    },
-    time: timeAgo(p.created_at),
-    title: p.title || undefined,
-    body: p.body ?? undefined,
-    imageUrls: parseMediaUrls(p.media_urls),
-    reactions,
-    replyCount: p.reply_count,
-  };
-}
-
 import { MapSheet } from '../sheets/MapSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
 

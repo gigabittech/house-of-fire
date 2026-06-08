@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EventGuestSection } from '@/components/EventGuestSection';
 import {
   GuestFilters,
@@ -13,12 +13,11 @@ import {
 } from '@/components/GuestTierStatus';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
 import {
+  buildGuestExportCsv,
   groupTicketsByEvent,
   guestDisplayName,
   guestEmail,
-  guestTierLabel,
   normalizeGuestTicket,
-  receiptForTicket,
   tierOptionsFromEventTiers,
   tierOptionsFromTickets,
   ticketMatchesTierFilter,
@@ -57,7 +56,7 @@ export default function GuestsPage() {
 
   const debouncedEmail = useDebouncedValue(filters.email, 400);
   const debouncedCode = useDebouncedValue(filters.code, 400);
-  const defaultEventApplied = useRef(false);
+  const [eventsReady, setEventsReady] = useState(false);
 
   useEffect(() => {
     async function loadEvents() {
@@ -73,22 +72,24 @@ export default function GuestsPage() {
           }));
           setEvents(mapped);
 
-          if (!defaultEventApplied.current) {
-            const live = mapped.find((e) => e.status === 'live');
-            if (live) {
-              setFilters((prev) => ({ ...prev, eventId: live.id }));
-            }
-            defaultEventApplied.current = true;
+          const live = mapped.find((e) => e.status === 'live');
+          if (live) {
+            setFilters((prev) => ({ ...prev, eventId: live.id }));
           }
         }
       } catch {
         /* keep empty */
+      } finally {
+        setEventsReady(true);
       }
     }
     void loadEvents();
   }, []);
 
   useEffect(() => {
+    if (!eventsReady) return;
+
+    let cancelled = false;
     async function loadTiers() {
       if (filters.eventId) {
         try {
@@ -96,54 +97,69 @@ export default function GuestsPage() {
           const data = (await res.json()) as {
             tiers?: Array<{ id: string; display_name: string; name: string }>;
           };
+          if (cancelled) return;
           setTierOptions(tierOptionsFromEventTiers(data.tiers ?? []));
         } catch {
-          setTierOptions([]);
+          if (!cancelled) setTierOptions([]);
         }
         return;
       }
-      setTierOptions(tierOptionsFromTickets(tickets));
+      if (!cancelled) setTierOptions(tierOptionsFromTickets(tickets));
     }
     void loadTiers();
-  }, [filters.eventId, tickets]);
-
-  const loadGuests = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (filters.eventId) params.set('eventId', filters.eventId);
-      if (filters.tierId && filters.eventId && !filters.tierId.startsWith('group:')) {
-        params.set('tierId', filters.tierId);
-      }
-      if (debouncedEmail) params.set('email', debouncedEmail);
-      if (debouncedCode) params.set('code', debouncedCode);
-      const qs = params.toString();
-      const res = await fetch(`/api/admin/guests${qs ? `?${qs}` : ''}`);
-      const data = (await res.json()) as { guests?: unknown[]; error?: string };
-      if (data.error) {
-        setError(data.error);
-        setTickets([]);
-      } else {
-        setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load guests');
-      setTickets([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode]);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId, tickets]);
 
   useEffect(() => {
-    void loadGuests();
-  }, [loadGuests]);
+    if (!eventsReady) return;
+
+    let cancelled = false;
+    async function fetchGuests() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (filters.eventId) params.set('eventId', filters.eventId);
+        if (filters.tierId && filters.eventId && !filters.tierId.startsWith('group:')) {
+          params.set('tierId', filters.tierId);
+        }
+        if (debouncedEmail) params.set('email', debouncedEmail);
+        if (debouncedCode) params.set('code', debouncedCode);
+        const qs = params.toString();
+        const res = await fetch(`/api/admin/guests${qs ? `?${qs}` : ''}`);
+        const data = (await res.json()) as { guests?: unknown[]; error?: string };
+        if (cancelled) return;
+        if (data.error) {
+          setError(data.error);
+          setTickets([]);
+        } else {
+          setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to load guests');
+        setTickets([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void fetchGuests();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId, filters.tierId, debouncedEmail, debouncedCode]);
 
   useEffect(() => {
     setPagesByEvent({});
   }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode, filters.nameSearch]);
 
   useEffect(() => {
+    if (!eventsReady) return;
+
+    let cancelled = false;
     async function loadTierStatus() {
       setTierStatusLoading(true);
       try {
@@ -153,19 +169,23 @@ export default function GuestsPage() {
           events?: EventTierStatusGroup[];
           error?: string;
         };
+        if (cancelled) return;
         if (!data.error && data.events) {
           setTierStatus(data.events);
         } else {
           setTierStatus([]);
         }
       } catch {
-        setTierStatus([]);
+        if (!cancelled) setTierStatus([]);
       } finally {
-        setTierStatusLoading(false);
+        if (!cancelled) setTierStatusLoading(false);
       }
     }
     void loadTierStatus();
-  }, [filters.eventId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId]);
 
   const tierStatusScopeLabel = useMemo(() => {
     if (filters.eventId) {
@@ -211,34 +231,7 @@ export default function GuestsPage() {
   }, [filters.eventId, events, filteredTickets.length, groups.length]);
 
   function exportCsv() {
-    const header = [
-      'code',
-      'name',
-      'email',
-      'tier',
-      'status',
-      'event_edition',
-      'purchased_at',
-      'amount_cents',
-      'receipt_total_cents',
-    ];
-    const rows = filteredTickets.map((t) => {
-      const receipt = receiptForTicket(t, filteredTickets);
-      return [
-        t.code,
-        guestDisplayName(t),
-        guestEmail(t),
-        guestTierLabel(t),
-        t.status,
-        String(t.events?.edition_number ?? ''),
-        t.purchased_at,
-        String(t.amount_cents),
-        String(receipt.total),
-      ];
-    });
-    const csv = [header, ...rows]
-      .map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+    const csv = buildGuestExportCsv(filteredTickets);
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -16,14 +16,19 @@ export type { AvatarProps } from './feed/Avatar';
 export { Avatar } from './feed/Avatar';
 export type { ChannelTagProps } from './feed/ChannelTag';
 export { ChannelTag } from './feed/ChannelTag';
+export type { ImageLightboxProps } from './ImageLightbox';
+export { ImageLightbox } from './ImageLightbox';
 export type { FeedPostProps } from './feed/FeedPost';
 // Feed / community atoms
 export { FeedPost } from './feed/FeedPost';
+export type { ReactionPickerProps } from './feed/ReactionPicker';
+export { ReactionPicker } from './feed/ReactionPicker';
 export type { ReactionStripProps } from './feed/ReactionStrip';
 export { ReactionStrip } from './feed/ReactionStrip';
 export { REACTION_EMOJI, totalReactions } from './feed/reactions';
 export type {
   Channel,
+  ModerationStatus,
   Post,
   PostAuthor,
   PostKind,
