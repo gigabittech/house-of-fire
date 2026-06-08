@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
@@ -272,59 +273,7 @@ export default function HomeScreen() {
             paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
-          {/* Hero — full-width cover image */}
-          <div
-            className="hof-hero-full-bleed"
-            style={{
-              position: 'relative',
-              height: isDesktop ? 'min(58vh, 580px)' : isWide ? 520 : 460,
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src={heroSrc}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 30%',
-              }}
-            />
-            {/* warm vignette */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'radial-gradient(ellipse at 50% 40%, rgba(232,101,26,0.0) 0%, rgba(10,10,8,0.5) 75%, #0A0A08 100%)',
-              }}
-            />
-            {/* bottom gradient */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 360,
-                background:
-                  'linear-gradient(180deg, transparent 0%, rgba(10,10,8,0.85) 50%, #0A0A08 100%)',
-              }}
-            />
-
-            {/* Hero content overlay */}
-            <div
-              className="hof-hero-content"
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-            >
+          <EventHeroBackground src={heroSrc}>
               <div style={{ ...pageColumn, paddingBottom: spacing[3] }}>
               <div
                 style={{
@@ -396,8 +345,7 @@ export default function HomeScreen() {
                     : 'Loading next theme…'}
               </div>
               </div>
-            </div>
-          </div>
+          </EventHeroBackground>
 
           <div style={pageColumn}>
           {/* Countdown */}

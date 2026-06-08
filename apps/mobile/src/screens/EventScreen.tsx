@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
@@ -547,46 +548,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
-          {/* Hero */}
-          <div
-            className="hof-hero-full-bleed"
-            style={{
-              position: 'relative',
-              height: isDesktop ? 'min(52vh, 480px)' : isWide ? 420 : 360,
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src={heroSrc}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 40%',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 240,
-                background: 'linear-gradient(180deg, transparent, rgba(10,10,8,0.85) 60%, #0A0A08)',
-              }}
-            />
-            <div
-              className="hof-hero-content"
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 18,
-              }}
-            >
+          <EventHeroBackground src={heroSrc}>
               <div style={pageColumn}>
               <span
                 style={{
@@ -628,8 +590,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 ) : null}
               </div>
               </div>
-            </div>
-          </div>
+          </EventHeroBackground>
 
           <div style={pageColumn}>
           {/* Meta */}
