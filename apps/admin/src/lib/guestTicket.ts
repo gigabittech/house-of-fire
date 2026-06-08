@@ -248,3 +248,58 @@ export function ticketMatchesEmail(ticket: AdminGuestTicket, emailQuery: string)
   const email = guestEmail(ticket).toLowerCase();
   return email.includes(q);
 }
+
+export type GuestTierOption = {
+  id: string;
+  label: string;
+  tierIds: string[];
+};
+
+/** Collapse duplicate tier labels across events (All editions view). */
+export function tierOptionsFromTickets(tickets: AdminGuestTicket[]): GuestTierOption[] {
+  const byLabel = new Map<string, { label: string; tierIds: string[] }>();
+
+  for (const ticket of tickets) {
+    const tier = ticket.ticket_tiers;
+    if (!tier?.id) continue;
+    const label = (tier.display_name || tier.name).trim();
+    if (!label) continue;
+
+    const key = label.toLowerCase();
+    const existing = byLabel.get(key);
+    if (existing) {
+      if (!existing.tierIds.includes(tier.id)) existing.tierIds.push(tier.id);
+      continue;
+    }
+    byLabel.set(key, { label, tierIds: [tier.id] });
+  }
+
+  return [...byLabel.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map(({ label, tierIds }) => ({
+      id: tierIds.length === 1 ? tierIds[0]! : `group:${label.toLowerCase()}`,
+      label,
+      tierIds,
+    }));
+}
+
+export function tierOptionsFromEventTiers(
+  tiers: Array<{ id: string; display_name: string; name: string }>,
+): GuestTierOption[] {
+  return tiers.map((t) => ({
+    id: t.id,
+    label: t.display_name || t.name,
+    tierIds: [t.id],
+  }));
+}
+
+export function ticketMatchesTierFilter(
+  ticket: AdminGuestTicket,
+  tierId: string,
+  options: GuestTierOption[],
+): boolean {
+  if (!tierId) return true;
+  const option = options.find((o) => o.id === tierId);
+  const tierIds = option?.tierIds ?? [tierId];
+  return tierIds.includes(ticket.tier_id);
+}

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
           .from('tickets')
           .select('event_id')
           .in('event_id', eventIds)
-          .eq('status', 'valid')
+          .in('status', ['valid', 'used'])
       : { data: [] };
 
   const countMap = (ticketCounts ?? []).reduce(

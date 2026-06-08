@@ -6,7 +6,6 @@ import {
   GuestFilters,
   type EventOption,
   type GuestFilterState,
-  type TierOption,
 } from '@/components/GuestFilters';
 import {
   GuestTierStatus,
@@ -20,7 +19,11 @@ import {
   guestTierLabel,
   normalizeGuestTicket,
   receiptForTicket,
+  tierOptionsFromEventTiers,
+  tierOptionsFromTickets,
+  ticketMatchesTierFilter,
   type AdminGuestTicket,
+  type GuestTierOption,
 } from '@/lib/guestTicket';
 
 const defaultFilters: GuestFilterState = {
@@ -43,7 +46,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export default function GuestsPage() {
   const [filters, setFilters] = useState<GuestFilterState>(defaultFilters);
   const [events, setEvents] = useState<EventOption[]>([]);
-  const [tierOptions, setTierOptions] = useState<TierOption[]>([]);
+  const [tierOptions, setTierOptions] = useState<GuestTierOption[]>([]);
   const [tickets, setTickets] = useState<AdminGuestTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,24 +96,13 @@ export default function GuestsPage() {
           const data = (await res.json()) as {
             tiers?: Array<{ id: string; display_name: string; name: string }>;
           };
-          setTierOptions(
-            (data.tiers ?? []).map((t) => ({
-              id: t.id,
-              label: t.display_name || t.name,
-            })),
-          );
+          setTierOptions(tierOptionsFromEventTiers(data.tiers ?? []));
         } catch {
           setTierOptions([]);
         }
         return;
       }
-      const seen = new Map<string, string>();
-      for (const t of tickets) {
-        if (t.ticket_tiers?.id) {
-          seen.set(t.ticket_tiers.id, t.ticket_tiers.display_name || t.ticket_tiers.name);
-        }
-      }
-      setTierOptions([...seen.entries()].map(([id, label]) => ({ id, label })));
+      setTierOptions(tierOptionsFromTickets(tickets));
     }
     void loadTiers();
   }, [filters.eventId, tickets]);
@@ -121,7 +113,9 @@ export default function GuestsPage() {
     try {
       const params = new URLSearchParams();
       if (filters.eventId) params.set('eventId', filters.eventId);
-      if (filters.tierId) params.set('tierId', filters.tierId);
+      if (filters.tierId && filters.eventId && !filters.tierId.startsWith('group:')) {
+        params.set('tierId', filters.tierId);
+      }
       if (debouncedEmail) params.set('email', debouncedEmail);
       if (debouncedCode) params.set('code', debouncedCode);
       const qs = params.toString();
@@ -183,13 +177,17 @@ export default function GuestsPage() {
 
   const nameQuery = filters.nameSearch.trim().toLowerCase();
   const filteredTickets = useMemo(() => {
-    if (!nameQuery) return tickets;
-    return tickets.filter((t) => {
+    let result = tickets;
+    if (filters.tierId) {
+      result = result.filter((t) => ticketMatchesTierFilter(t, filters.tierId, tierOptions));
+    }
+    if (!nameQuery) return result;
+    return result.filter((t) => {
       const name = guestDisplayName(t).toLowerCase();
       const email = guestEmail(t).toLowerCase();
       return name.includes(nameQuery) || email.includes(nameQuery);
     });
-  }, [tickets, nameQuery]);
+  }, [tickets, filters.tierId, tierOptions, nameQuery]);
 
   const groups = useMemo(() => groupTicketsByEvent(filteredTickets), [filteredTickets]);
 

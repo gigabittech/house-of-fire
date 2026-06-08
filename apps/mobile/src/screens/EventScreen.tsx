@@ -12,6 +12,10 @@ import {
   formatCapacityMeta,
   formatDoorsRange,
   formatEventDateLong,
+  eventHeroBadgeColors,
+  eventHeroBadgeLabel,
+  eventHeroBadgeTone,
+  isEventSoldOut,
   NO_EVENTS_MESSAGE,
   parseEventFaqs,
   resolveEventHeroImage,
@@ -412,13 +416,9 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   const rawTiers = eventData?.ticket_tiers ?? [];
 
-  const soldOut =
-    rawTiers.length > 0 &&
-    rawTiers.every((t) => {
-      if (t.status === 'sold_out') return true;
-      const rem = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
-      return rem <= 0;
-    });
+  const soldOut = isEventSoldOut(rawTiers);
+  const heroBadgeTone = eventHeroBadgeTone(eventData ?? { status: 'upcoming' }, rawTiers);
+  const heroBadgeColors = eventHeroBadgeColors(heroBadgeTone);
 
   const tiers: Tier[] = rawTiers
     .filter((t) => t.status !== 'hidden')
@@ -656,17 +656,20 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 style={{
                   padding: '4px 10px',
                   borderRadius: 20,
-                  background: 'rgba(232,101,26,0.15)',
-                  border: `1px solid ${colors.amber}30`,
+                  background: heroBadgeColors.background,
+                  border: `1px solid ${heroBadgeColors.border}`,
                   fontFamily: 'Inter',
                   fontSize: 11,
                   fontWeight: 600,
-                  color: colors.amber,
+                  color: heroBadgeColors.color,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                 }}
               >
-                Upcoming · Theme № {eventData?.edition_number ?? '—'}
+                {eventHeroBadgeLabel(
+                  eventData ?? { edition_number: 0, status: 'upcoming' },
+                  rawTiers,
+                )}
               </span>
               <div
                 style={{

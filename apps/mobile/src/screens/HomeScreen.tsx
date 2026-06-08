@@ -12,10 +12,11 @@ import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   countdownParts,
   eventDoorsTimestamp,
+  eventInventoryBadgeLabel,
+  eventInventoryBadgeTone,
   formatEventDate,
   formatVenueLine,
   NO_EVENTS_MESSAGE,
-  remainingTickets,
   resolveEventHeroImage,
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
@@ -94,15 +95,24 @@ function Pill({
   tone = 'neutral',
 }: {
   children: React.ReactNode;
-  tone?: 'neutral' | 'warning' | 'gold' | 'amber';
+  tone?: 'neutral' | 'warning' | 'gold' | 'amber' | 'success';
 }) {
   const bg =
     tone === 'warning'
       ? 'rgba(232,162,26,0.15)'
       : tone === 'gold'
         ? 'rgba(201,148,42,0.15)'
-        : 'rgba(42,40,38,0.8)';
-  const col = tone === 'warning' ? colors.warning : tone === 'gold' ? colors.gold : colors.textSec;
+        : tone === 'success'
+          ? 'rgba(76,175,110,0.15)'
+          : 'rgba(42,40,38,0.8)';
+  const col =
+    tone === 'warning'
+      ? colors.warning
+      : tone === 'gold'
+        ? colors.gold
+        : tone === 'success'
+          ? colors.success
+          : colors.textSec;
   return (
     <span
       style={{
@@ -212,7 +222,14 @@ export default function HomeScreen() {
       .finally(() => setTopPostsLoading(false));
   }, []);
 
-  const left = remainingTickets(upcomingEvent?.ticket_tiers);
+  const inventoryBadgeLabel = eventInventoryBadgeLabel(
+    upcomingEvent ?? { status: 'upcoming' },
+    upcomingEvent?.ticket_tiers,
+  );
+  const inventoryBadgeTone = eventInventoryBadgeTone(
+    upcomingEvent ?? { status: 'upcoming' },
+    upcomingEvent?.ticket_tiers,
+  );
   const eventTs = upcomingEvent?.date
     ? eventDoorsTimestamp(upcomingEvent.date, upcomingEvent.doors_open)
     : Number.NaN;
@@ -381,20 +398,23 @@ export default function HomeScreen() {
                   marginBottom: spacing[3],
                 }}
               >
-                <Pill tone="warning">
+                <Pill tone={inventoryBadgeTone}>
                   <span
                     style={{
                       display: 'inline-block',
                       width: 5,
                       height: 5,
                       borderRadius: 5,
-                      background: colors.bg,
+                      background: inventoryBadgeTone === 'success' ? colors.success : colors.bg,
                       marginRight: 4,
                       verticalAlign: 'middle',
-                      animation: 'hof-pulse 1.4s ease-in-out infinite',
+                      animation:
+                        inventoryBadgeTone === 'neutral'
+                          ? undefined
+                          : 'hof-pulse 1.4s ease-in-out infinite',
                     }}
                   />
-                  Selling Fast · {left > 0 ? `${left} left` : 'Sold out'}
+                  {inventoryBadgeLabel}
                 </Pill>
                 <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>

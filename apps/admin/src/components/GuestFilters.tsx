@@ -10,7 +10,7 @@ export type GuestFilterState = {
   nameSearch: string;
 };
 
-export type TierOption = { id: string; label: string };
+export type TierOption = { id: string; label: string; tierIds?: string[] };
 
 export type EventOption = {
   id: string;
