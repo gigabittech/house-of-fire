@@ -543,10 +543,22 @@ button.hof-btn {
 }
 
 /* Content starts after sidebar; hero photo stays full-bleed underneath */
+.hof-app-shell-main .hof-app-page-sticky {
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+}
+
 @media (min-width: 768px) {
   .hof-app-shell-main .hof-app-page-scroll {
     padding-left: var(--hof-sidebar-w);
     box-sizing: border-box;
+  }
+
+  /* Sticky bars sit beside the sidebar so the logo stays visible */
+  .hof-app-shell-main .hof-app-page-sticky {
+    left: var(--hof-sidebar-w);
+    padding-left: 0;
   }
 
   .hof-app-shell-main .hof-hero-full-bleed {
@@ -611,7 +623,7 @@ button.hof-btn {
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 10;
+    z-index: 30;
     width: var(--hof-sidebar-w);
     pointer-events: auto;
   }
