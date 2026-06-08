@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { requireAdminRole } from '@/lib/requireAdminRole';
+import { validateImageFile } from '@/lib/storageUpload';
 
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
@@ -20,8 +21,9 @@ export async function POST(
     return NextResponse.json({ error: 'file required' }, { status: 400 });
   }
 
-  if (file.size > 8 * 1024 * 1024) {
-    return NextResponse.json({ error: 'Image must be 8 MB or smaller' }, { status: 400 });
+  const sizeError = validateImageFile(file);
+  if (sizeError) {
+    return NextResponse.json({ error: sizeError }, { status: 400 });
   }
 
   const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase();

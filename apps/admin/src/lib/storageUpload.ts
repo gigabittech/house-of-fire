@@ -1,4 +1,4 @@
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
 export function validateImageFile(file: File): string | null {
@@ -6,7 +6,7 @@ export function validateImageFile(file: File): string | null {
     return 'Only image files are allowed';
   }
   if (file.size > MAX_BYTES) {
-    return 'Image must be 8 MB or smaller';
+    return 'Image must be 50 MB or smaller';
   }
   return null;
 }
