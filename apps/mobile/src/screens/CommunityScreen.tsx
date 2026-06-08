@@ -44,8 +44,8 @@ export default function CommunityScreen() {
       36 +
       (feedView === 'channel' ? layoutChrome.wideChannelBarHeight : 0)
     : feedView === 'channel'
-      ? 148
-      : 108;
+      ? 156
+      : 116;
 
   useEffect(() => {
     fetch('/api/events/upcoming')
@@ -193,6 +193,7 @@ export default function CommunityScreen() {
           style={{
             display: 'flex',
             gap: 6,
+            marginTop: isWide ? 0 : 4,
             paddingBottom: 8,
           }}
         >
@@ -319,6 +320,7 @@ export default function CommunityScreen() {
                 interactiveReactions={feedView === 'channel' && post.moderationStatus === 'approved'}
                 onReact={(emoji) => void handleReact(post.id, emoji)}
                 onOpen={() => router.push(`/community/${post.id}`)}
+                pressFeedback={false}
               />
             ))}
           </div>

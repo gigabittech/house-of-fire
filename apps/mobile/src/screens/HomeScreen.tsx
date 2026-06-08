@@ -599,6 +599,7 @@ export default function HomeScreen() {
                     post={p}
                     onOpen={() => router.push('/community/' + p.id)}
                     resolvePhoto={photoSrc}
+                    pressFeedback={false}
                   />
                 ))
               )}
