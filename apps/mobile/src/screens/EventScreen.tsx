@@ -604,7 +604,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       >
         {/* Scrollable content — hero full bleed; body in centered column */}
         <div
-          className="hof-scroll"
+          className="hof-scroll hof-app-page-scroll"
           style={{
             position: 'absolute',
             inset: 0,
@@ -614,11 +614,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
         >
           {/* Hero */}
           <div
+            className="hof-hero-full-bleed"
             style={{
               position: 'relative',
               height: isDesktop ? 'min(52vh, 480px)' : isWide ? 420 : 360,
               overflow: 'hidden',
-              width: '100%',
             }}
           >
             <img
@@ -644,6 +644,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               }}
             />
             <div
+              className="hof-hero-content"
               style={{
                 position: 'absolute',
                 left: 0,
