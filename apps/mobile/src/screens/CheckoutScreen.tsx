@@ -5,7 +5,7 @@ import { EmptyState, HofMobilePageHeader, Icon, useResponsive } from '@hof/ui';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import {
   formatDoorsRange,
@@ -15,12 +15,118 @@ import {
 } from '@/lib/eventDisplay';
 import { computeCheckoutAmounts } from '@/lib/ticketPricing';
 import { MAX_TICKETS_PER_ORDER } from '@/lib/ticketLimits';
+import { formatZipCodeInput, isValidZipCode } from '@/lib/zipCode';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
 );
 
 const CHECKOUT_STORAGE_KEY = 'hof_checkout_v1';
+/** Below this width the step labels stack under the circles instead of sitting inline. */
+const CHECKOUT_STEP_NARROW_MAX = 394;
+
+function subscribeCheckoutWidth(onStoreChange: () => void) {
+  window.addEventListener('resize', onStoreChange);
+  return () => window.removeEventListener('resize', onStoreChange);
+}
+
+function getCheckoutNarrowSnapshot(): boolean {
+  return window.innerWidth < CHECKOUT_STEP_NARROW_MAX;
+}
+
+function useNarrowCheckoutSteps(): boolean {
+  return useSyncExternalStore(
+    subscribeCheckoutWidth,
+    getCheckoutNarrowSnapshot,
+    () => true,
+  );
+}
+
+function CheckoutStepIndicator({
+  step,
+  stepNames,
+  stackedLabels,
+}: {
+  step: 1 | 2 | 3;
+  stepNames: string[];
+  /** Below 394px — labels sit under the step numbers; everything else unchanged. */
+  stackedLabels: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+      }}
+    >
+      {stepNames.flatMap((name, i) => {
+        const stepNode = (
+          <div
+            key={name}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: stackedLabels ? 6 : 8,
+              flexShrink: 0,
+              flexDirection: stackedLabels ? 'column' : 'row',
+            }}
+          >
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                background: i < step ? colors.amber : colors.elevated,
+                border: `1px solid ${i + 1 === step ? colors.amber : colors.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: 600,
+                color: i < step ? colors.bg : colors.textSec,
+                flexShrink: 0,
+              }}
+            >
+              {i + 1 < step ? <Icon name="check" size={12} color={colors.bg} /> : i + 1}
+            </div>
+            <span
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: 500,
+                color: i + 1 === step ? colors.text : colors.textSec,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                textAlign: stackedLabels ? 'center' : undefined,
+                whiteSpace: stackedLabels ? 'normal' : 'nowrap',
+              }}
+            >
+              {name}
+            </span>
+          </div>
+        );
+
+        if (i >= 2) return [stepNode];
+        return [
+          stepNode,
+          <div
+            key={`${name}-connector`}
+            aria-hidden
+            style={{
+              flex: 1,
+              height: 1,
+              minWidth: 12,
+              margin: '0 10px',
+              background: i < step - 1 ? colors.amber : colors.border,
+            }}
+          />,
+        ];
+      })}
+    </div>
+  );
+}
 
 type CheckoutDraft = { tier: string; qty: number };
 
@@ -164,6 +270,8 @@ function PhoneInput({
       style={{
         display: 'flex',
         alignItems: 'stretch',
+        width: '100%',
+        boxSizing: 'border-box',
         background: colors.surface,
         borderRadius: 8,
         border: `1px solid ${error ? colors.error : colors.border}`,
@@ -579,6 +687,7 @@ interface Details {
   lastName: string;
   email: string;
   phone: string;
+  zipCode: string;
   password: string;
 }
 
@@ -635,7 +744,7 @@ function StepAccount({
   setMode: (m: 'guest' | 'signup' | 'signin') => void;
   details: Details;
   setField: (k: keyof Details, v: string) => void;
-  errors: { email?: boolean; phone?: boolean };
+  errors: { email?: boolean; phone?: boolean; zipCode?: boolean };
   isLoggedIn?: boolean;
 }) {
   const isSignIn = mode === 'signin';
@@ -755,12 +864,28 @@ function StepAccount({
           {errors.email && <FieldError>Use a valid email — your ticket goes here.</FieldError>}
 
           <div style={{ height: 12 }} />
-          <FieldLabel>Phone number</FieldLabel>
-          <PhoneInput
-            value={details.phone}
-            onChange={(v) => setField('phone', v)}
-            error={errors.phone}
-          />
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+              <FieldLabel>Phone number</FieldLabel>
+              <PhoneInput
+                value={details.phone}
+                onChange={(v) => setField('phone', v)}
+                error={errors.phone}
+              />
+            </div>
+            <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+              <FieldLabel>Zip code</FieldLabel>
+              <TextInput
+                value={details.zipCode}
+                onChange={(e) => setField('zipCode', formatZipCodeInput(e.target.value))}
+                placeholder="80302"
+                autoComplete="postal-code"
+                inputMode="numeric"
+                error={errors.zipCode}
+              />
+              {errors.zipCode && <FieldError>Enter a valid 5-digit ZIP code.</FieldError>}
+            </div>
+          </div>
           <HelperText>For ticket SMS and door lookup. We won&apos;t text you otherwise.</HelperText>
 
           {!isLoggedIn && (
@@ -1279,6 +1404,7 @@ function StepPayment({
 export default function CheckoutScreen() {
   const router = useRouter();
   const { isWide } = useResponsive();
+  const stackedStepLabels = useNarrowCheckoutSteps();
   const searchParams = useSearchParams();
   const tierParam = searchParams.get('tierId') ?? '';
   const qtyParam = parseInt(searchParams.get('qty') ?? '1', 10);
@@ -1297,6 +1423,7 @@ export default function CheckoutScreen() {
     lastName: '',
     email: '',
     phone: '',
+    zipCode: '',
     password: '',
   });
   const [clientSecret, setClientSecret] = useState('');
@@ -1457,12 +1584,13 @@ export default function CheckoutScreen() {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim());
   const phoneDigits = details.phone.replace(/\D/g, '');
   const phoneOk = phoneDigits.length >= 10;
+  const zipOk = isValidZipCode(details.zipCode);
   const nameOk = details.firstName.trim().length >= 1 && details.lastName.trim().length >= 1;
   const passwordOk = accountMode !== 'signup' || details.password.length >= 6;
   const step2Valid =
     accountMode === 'signin'
       ? emailOk && details.password.length >= 1
-      : nameOk && emailOk && phoneOk && (isLoggedIn || passwordOk);
+      : nameOk && emailOk && phoneOk && zipOk && (isLoggedIn || passwordOk);
 
   async function syncPaymentIntent(opts?: { codeId?: string; promoCode?: string }) {
     setPayLoading(true);
@@ -1570,6 +1698,7 @@ export default function CheckoutScreen() {
               buyerFirstName: details.firstName.trim(),
               buyerLastName: details.lastName.trim(),
               buyerPhone: details.phone.trim(),
+              buyerZipCode: details.zipCode.trim(),
             }),
           });
           const d = (await r.json()) as {
@@ -1701,75 +1830,11 @@ export default function CheckoutScreen() {
             boxSizing: 'border-box',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-            }}
-          >
-            {stepNames.flatMap((n, i) => {
-              const stepNode = (
-                <div
-                  key={n}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    flexShrink: 0,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 11,
-                      background: i < step ? colors.amber : colors.elevated,
-                      border: `1px solid ${i + 1 === step ? colors.amber : colors.border}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: i < step ? colors.bg : colors.textSec,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1 < step ? <Icon name="check" size={12} color={colors.bg} /> : i + 1}
-                  </div>
-                  <span
-                    style={{
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: i + 1 === step ? colors.text : colors.textSec,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {n}
-                  </span>
-                </div>
-              );
-              if (i >= 2) return [stepNode];
-              return [
-                stepNode,
-                <div
-                  key={`${n}-connector`}
-                  aria-hidden
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    minWidth: 12,
-                    margin: '0 10px',
-                    background: i < step - 1 ? colors.amber : colors.border,
-                  }}
-                />,
-              ];
-            })}
-          </div>
+          <CheckoutStepIndicator
+            step={step}
+            stepNames={stepNames}
+            stackedLabels={stackedStepLabels}
+          />
         </div>
 
         {/* Summary chip */}
@@ -1857,6 +1922,7 @@ export default function CheckoutScreen() {
             errors={{
               email: details.email.length > 0 ? !emailOk : undefined,
               phone: details.phone.length > 0 ? !phoneOk : undefined,
+              zipCode: details.zipCode.length > 0 ? !zipOk : undefined,
             }}
             isLoggedIn={isLoggedIn}
           />

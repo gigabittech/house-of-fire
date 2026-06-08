@@ -1,10 +1,11 @@
 'use client';
 
-import { colors, layoutChrome } from '@hof/design-tokens';
+import { colors } from '@hof/design-tokens';
 import type { ToastKind } from '@hof/ui';
-import { EmptyState, FakeQR, HofSkeleton, HofToast, Icon, useResponsive } from '@hof/ui';
+import { EmptyState, FakeQR, HofToast, Icon } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -120,6 +121,73 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+const ticketFieldLabelStyle = {
+  fontFamily: 'Inter',
+  fontSize: 9,
+  color: colors.bg,
+  opacity: 0.5,
+  letterSpacing: '0.16em',
+  textTransform: 'uppercase' as const,
+};
+
+const ticketFieldValueStyle = {
+  fontFamily: 'Inter',
+  fontWeight: 500,
+  fontSize: 13,
+  color: colors.bg,
+  marginTop: 2,
+};
+
+/** Shimmer bar tuned for the light ticket card (not dark-page HofSkeleton). */
+function TicketSkeletonBar({
+  width,
+  height = 13,
+  radius = 4,
+  style,
+}: {
+  width: number | string;
+  height?: number;
+  radius?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        background:
+          'linear-gradient(90deg, rgba(10,10,8,0.06) 0%, rgba(10,10,8,0.14) 50%, rgba(10,10,8,0.06) 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'hof-shimmer 1.4s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  );
+}
+
+function TicketDetailField({
+  label,
+  loading,
+  value,
+}: {
+  label: string;
+  loading: boolean;
+  value: string;
+}) {
+  return (
+    <div>
+      <div style={ticketFieldLabelStyle}>{label}</div>
+      {loading ? (
+        <TicketSkeletonBar width="100%" height={13} style={{ marginTop: 2, maxWidth: 140 }} />
+      ) : (
+        <div style={ticketFieldValueStyle}>{value}</div>
+      )}
+    </div>
+  );
+}
+
 export default function TicketScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,7 +211,6 @@ export default function TicketScreen() {
   const [ticketError, setTicketError] = useState(false);
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
-  const { isWide } = useResponsive();
 
   const headerActions = useMemo(
     () => (
@@ -290,6 +357,11 @@ export default function TicketScreen() {
     window.print();
   }
 
+  const hasTickets = !loading && !ticketError && tickets.length > 0;
+  const showTicketExperience = loading || hasTickets;
+  const showEmptyOrError = !loading && (ticketError || tickets.length === 0);
+  const ticketFieldsLoading = loading || ticket === null;
+
   return (
     <div
       className="hof-ticket-page"
@@ -305,58 +377,44 @@ export default function TicketScreen() {
       <div
         className="hof-scroll hof-ticket-scroll"
         style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 620px)' : 'auto',
           overflowY: 'auto',
           paddingBottom: 40,
         }}
       >
-        <div
-          className="hof-no-print"
-          style={{ height: isWide ? 8 : layoutChrome.mobilePageHeaderInset }}
-        />
+        <div className="hof-no-print hof-ticket-scroll-top" aria-hidden />
 
-        {loading ? (
+        {showEmptyOrError ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
-            <HofSkeleton width="100%" height={300} radius={16} />
-          </div>
-        ) : ticketError ? (
-          <div className="hof-no-print" style={{ padding: '0 16px' }}>
-            <EmptyState title="Could not load ticket" body="Check your connection and try again." />
-          </div>
-        ) : tickets.length === 0 ? (
-          <div className="hof-no-print" style={{ padding: '0 16px' }}>
-            <EmptyState
-              title="No ticket"
-              body="Get your ticket to Theme X."
-              action={
-                <button
-                  className="hof-btn hof-press"
-                  onClick={() => router.push('/checkout')}
-                  style={{
-                    padding: '10px 24px',
-                    background: colors.amber,
-                    border: `1px solid ${colors.amber}`,
-                    borderRadius: 8,
-                    fontFamily: 'Inter',
-                    fontWeight: 600,
-                    fontSize: 14,
-                    color: colors.bg,
-                  }}
-                >
-                  Get tickets
-                </button>
-              }
-            />
+            {ticketError ? (
+              <EmptyState title="Could not load ticket" body="Check your connection and try again." />
+            ) : (
+              <EmptyState
+                title="No ticket"
+                body="Get your ticket to Theme X."
+                action={
+                  <button
+                    className="hof-btn hof-press"
+                    onClick={() => router.push('/checkout')}
+                    style={{
+                      padding: '10px 24px',
+                      background: colors.amber,
+                      border: `1px solid ${colors.amber}`,
+                      borderRadius: 8,
+                      fontFamily: 'Inter',
+                      fontWeight: 600,
+                      fontSize: 14,
+                      color: colors.bg,
+                    }}
+                  >
+                    Get tickets
+                  </button>
+                }
+              />
+            )}
           </div>
         ) : null}
 
-        {!loading && !ticketError && ticket !== null && tickets.length > 0 && (
+        {showTicketExperience ? (
           <>
             {!justPurchased ? (
               <div
@@ -404,15 +462,16 @@ export default function TicketScreen() {
                       marginTop: 1,
                     }}
                   >
-                    {ticket?.events?.doors_open
-                      ? `Doors ${formatDoorsRange(ticket.events.doors_open, ticket.events.doors_close)}. Side entrance on 23rd.`
-                      : 'Doors open soon. Side entrance on 23rd.'}
+                    {ticketFieldsLoading
+                      ? 'Doors open soon. Side entrance on 23rd.'
+                      : ev?.doors_open
+                        ? `Doors ${formatDoorsRange(ev.doors_open, ev.doors_close)}. Side entrance on 23rd.`
+                        : 'Doors open soon. Side entrance on 23rd.'}
                   </div>
                 </div>
               </div>
             ) : null}
 
-            {/* Success copy */}
             <div className="hof-no-print" style={{ padding: '12px 16px 18px' }}>
               <div
                 style={{
@@ -501,7 +560,7 @@ export default function TicketScreen() {
               ) : null}
             </div>
 
-            {/* Ticket card — swipe between tickets when qty > 1 */}
+            {/* Ticket card */}
             <div id="hof-ticket-print" style={{ padding: '0 16px' }}>
               <div
                 onTouchStart={(e) => handleTouchStart(e.changedTouches[0]?.clientX ?? 0)}
@@ -531,19 +590,23 @@ export default function TicketScreen() {
                     }}
                   >
                     <div>
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: colors.bg,
-                          letterSpacing: '0.22em',
-                          textTransform: 'uppercase',
-                          opacity: 0.5,
-                        }}
-                      >
-                        Theme {ticket?.events?.edition_number ?? '—'} · Admit one
-                        {tickets.length > 1 ? ` · ${activeIndex + 1} of ${tickets.length}` : ''}
-                      </div>
+                      {ticketFieldsLoading ? (
+                        <TicketSkeletonBar width={168} height={10} />
+                      ) : (
+                        <div
+                          style={{
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            color: colors.bg,
+                            letterSpacing: '0.22em',
+                            textTransform: 'uppercase',
+                            opacity: 0.5,
+                          }}
+                        >
+                          Theme {ticket?.events?.edition_number ?? '—'} · Admit one
+                          {tickets.length > 1 ? ` · ${activeIndex + 1} of ${tickets.length}` : ''}
+                        </div>
+                      )}
                       <img
                         src="/assets/hof-logo-black.png"
                         alt="House of Fire"
@@ -555,20 +618,24 @@ export default function TicketScreen() {
                           marginLeft: -3,
                         }}
                       />
-                      <div
-                        style={{
-                          fontFamily: 'Clash Display',
-                          fontWeight: 600,
-                          fontSize: 16,
-                          color: colors.bg,
-                          marginTop: 6,
-                          lineHeight: 1,
-                          letterSpacing: '0',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {ticket?.events?.name ?? 'Theme 24 — Fireversary'}
-                      </div>
+                      {ticketFieldsLoading ? (
+                        <TicketSkeletonBar width="100%" height={16} style={{ marginTop: 6, maxWidth: 200 }} />
+                      ) : (
+                        <div
+                          style={{
+                            fontFamily: 'Clash Display',
+                            fontWeight: 600,
+                            fontSize: 16,
+                            color: colors.bg,
+                            marginTop: 6,
+                            lineHeight: 1,
+                            letterSpacing: '0',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {ticket?.events?.name ?? 'Theme 24 — Fireversary'}
+                        </div>
+                      )}
                     </div>
                     <div
                       style={{
@@ -578,21 +645,25 @@ export default function TicketScreen() {
                         gap: 6,
                       }}
                     >
-                      <div
-                        style={{
-                          padding: '4px 8px',
-                          background: colors.amber,
-                          color: colors.bg,
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: 600,
-                          letterSpacing: '0.12em',
-                          textTransform: 'uppercase',
-                          borderRadius: 4,
-                        }}
-                      >
-                        {ticket?.ticket_tiers?.display_name ?? 'GA'}
-                      </div>
+                      {ticketFieldsLoading ? (
+                        <TicketSkeletonBar width={52} height={22} radius={4} />
+                      ) : (
+                        <div
+                          style={{
+                            padding: '4px 8px',
+                            background: colors.amber,
+                            color: colors.bg,
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            borderRadius: 4,
+                          }}
+                        >
+                          {ticket?.ticket_tiers?.display_name ?? 'GA'}
+                        </div>
+                      )}
                       <button
                         type="button"
                         className="hof-btn hof-press hof-no-print"
@@ -622,50 +693,35 @@ export default function TicketScreen() {
                       marginTop: 18,
                     }}
                   >
-                    {(
-                      [
-                        [
-                          'Date',
-                          ev?.date
-                            ? new Date(ev.date).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })
-                            : '—',
-                        ],
-                        ['Doors', doorsLabel],
-                        ['Venue', ev?.venue_name ?? '—'],
-                        ['Holder', holderLabel],
-                      ] as [string, string][]
-                    ).map(([k, v]) => (
-                      <div key={k}>
-                        <div
-                          style={{
-                            fontFamily: 'Inter',
-                            fontSize: 9,
-                            color: colors.bg,
-                            opacity: 0.5,
-                            letterSpacing: '0.16em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {k}
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: 'Inter',
-                            fontWeight: 500,
-                            fontSize: 13,
-                            color: colors.bg,
-                            marginTop: 2,
-                          }}
-                        >
-                          {v}
-                        </div>
-                      </div>
-                    ))}
+                    <TicketDetailField
+                      label="Date"
+                      loading={ticketFieldsLoading}
+                      value={
+                        ev?.date
+                          ? new Date(ev.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
+                          : '—'
+                      }
+                    />
+                    <TicketDetailField
+                      label="Doors"
+                      loading={ticketFieldsLoading}
+                      value={doorsLabel}
+                    />
+                    <TicketDetailField
+                      label="Venue"
+                      loading={ticketFieldsLoading}
+                      value={ev?.venue_name ?? '—'}
+                    />
+                    <TicketDetailField
+                      label="Holder"
+                      loading={ticketFieldsLoading}
+                      value={holderLabel}
+                    />
                   </div>
                 </div>
 
@@ -715,27 +771,31 @@ export default function TicketScreen() {
                     alignItems: 'center',
                   }}
                 >
-                  {qrDataUrl ? (
+                  {ticketFieldsLoading || !qrDataUrl ? (
+                    <FakeQR size={230} fg={colors.bg} bg={colors.text} />
+                  ) : (
                     <img
                       src={qrDataUrl}
                       alt="Ticket QR"
                       style={{ width: 230, height: 230, objectFit: 'contain' }}
                     />
-                  ) : (
-                    <FakeQR size={230} fg={colors.bg} bg={colors.text} />
                   )}
-                  <div
-                    style={{
-                      marginTop: 14,
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 13,
-                      color: colors.bg,
-                      letterSpacing: '0.16em',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {ticket?.code ?? 'HOF-24-????'}
-                  </div>
+                  {ticketFieldsLoading ? (
+                    <TicketSkeletonBar width={128} height={13} style={{ marginTop: 14 }} />
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 13,
+                        color: colors.bg,
+                        letterSpacing: '0.16em',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {ticket?.code ?? 'HOF-24-????'}
+                    </div>
+                  )}
                   <div
                     style={{
                       marginTop: 4,
@@ -750,7 +810,7 @@ export default function TicketScreen() {
                 </div>
               </div>
 
-              {tickets.length > 1 && (
+              {!ticketFieldsLoading && tickets.length > 1 && (
                 <div
                   className="hof-no-print"
                   style={{
@@ -825,7 +885,6 @@ export default function TicketScreen() {
               )}
             </div>
 
-            {/* Actions */}
             <div
               className="hof-no-print"
               style={{
@@ -880,7 +939,6 @@ export default function TicketScreen() {
               ))}
             </div>
 
-            {/* Tell a friend */}
             <div className="hof-no-print" style={{ padding: '24px 16px 0' }}>
               <button
                 className="hof-btn hof-press"
@@ -960,23 +1018,12 @@ export default function TicketScreen() {
 
             <div className="hof-no-print" style={{ height: 40 }} />
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Toast */}
       {toast.shown && (
-        <div
-          className="hof-no-print"
-          style={{
-            position: 'absolute',
-            top: 100,
-            left: isWide ? '50%' : 16,
-            right: isWide ? 'auto' : 16,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide ? 'min(100% - 32px, 588px)' : 'auto',
-            zIndex: 50,
-          }}
-        >
+        <div className="hof-no-print hof-ticket-toast">
           <HofToast kind={toast.kind} onDismiss={() => setToast((t) => ({ ...t, shown: false }))}>
             {toast.message}
           </HofToast>
