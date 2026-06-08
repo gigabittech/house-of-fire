@@ -16,11 +16,13 @@ import {
   eventInventoryBadgeLabel,
   eventInventoryBadgeTone,
   formatEventDate,
+  formatEventDateShort,
   formatVenueLine,
   NO_EVENTS_MESSAGE,
   resolveEventHeroImage,
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
+import { archiveThemePath } from '@/lib/resolveEventSlug';
 import { photoSrc } from '../data/photos';
 import { apiPostToUi } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
@@ -131,6 +133,11 @@ export default function HomeScreen() {
   const [newsSent, setNewsSent] = useState(false);
   const [topPosts, setTopPosts] = useState<UiPost[]>([]);
   const [topPostsLoading, setTopPostsLoading] = useState(true);
+  const [lastNight, setLastNight] = useState<{
+    event: { edition_number: number; name: string; date: string };
+    photos: Array<{ id: string; public_url: string | null }>;
+  } | null>(null);
+  const [lastNightLoading, setLastNightLoading] = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -145,6 +152,24 @@ export default function HomeScreen() {
       })
       .catch(console.error)
       .finally(() => setEventLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    setLastNightLoading(true);
+    fetch('/api/events/last-night')
+      .then((r) => r.json())
+      .then((d: {
+        event?: { edition_number: number; name: string; date: string } | null;
+        photos?: Array<{ id: string; public_url: string | null }>;
+      }) => {
+        if (d.event) {
+          setLastNight({ event: d.event, photos: d.photos ?? [] });
+        } else {
+          setLastNight(null);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLastNightLoading(false));
   }, []);
 
   useEffect(() => {
@@ -608,6 +633,7 @@ export default function HomeScreen() {
           ) : null}
 
           {/* Photo strip — from the last night */}
+          {!lastNightLoading && lastNight ? (
           <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
             <div
               style={{
@@ -639,12 +665,12 @@ export default function HomeScreen() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Theme 23 · May 30
+                  Theme {lastNight.event.edition_number} ·{' '}
+                  {formatEventDateShort(lastNight.event.date)}
                 </div>
               </div>
-              {COMMUNITY_FEATURE_ENABLED ? (
               <span
-                onClick={() => router.push('/community')}
+                onClick={() => router.push('/archive')}
                 style={{
                   fontFamily: 'Inter',
                   fontSize: 13,
@@ -655,7 +681,6 @@ export default function HomeScreen() {
               >
                 See all →
               </span>
-              ) : null}
             </div>
             <div
               className="hof-scroll"
@@ -665,9 +690,23 @@ export default function HomeScreen() {
                 overflowX: 'auto',
               }}
             >
-              {[0, 1, 2, 3, 0].map((seed, idx) => (
-                <div
-                  key={idx}
+              {(lastNight.photos.length > 0
+                ? lastNight.photos.map((photo, idx) => ({
+                    key: photo.id,
+                    src: photo.public_url ?? photoSrc(idx),
+                    idx,
+                  }))
+                : [0, 1, 2, 3].map((seed, idx) => ({
+                    key: `placeholder-${seed}-${idx}`,
+                    src: photoSrc(seed),
+                    idx,
+                  }))
+              ).map(({ key, src, idx }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="hof-btn hof-press"
+                  onClick={() => router.push(archiveThemePath(lastNight.event.edition_number))}
                   style={{
                     flex: '0 0 auto',
                     width: 150,
@@ -677,12 +716,14 @@ export default function HomeScreen() {
                     background: colors.elevated,
                     border: `1px solid ${colors.border}`,
                     position: 'relative',
+                    padding: 0,
                   }}
                 >
                   <Image
-                    src={photoSrc(seed)}
+                    src={src}
                     alt=""
                     fill
+                    unoptimized={src.startsWith('http')}
                     style={{
                       objectFit: 'cover',
                     }}
@@ -700,12 +741,13 @@ export default function HomeScreen() {
                       borderRadius: 4,
                     }}
                   >
-                    23 · {String(idx + 1).padStart(3, '0')}
+                    {lastNight.event.edition_number} · {String(idx + 1).padStart(3, '0')}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
+          ) : null}
 
           {/* Newsletter */}
           <div

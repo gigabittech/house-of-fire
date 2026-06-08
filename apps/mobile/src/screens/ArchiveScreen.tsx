@@ -1,10 +1,12 @@
 'use client';
 
-import { colors, layoutWidth } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import { EmptyState, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { archiveThemePath } from '@/lib/resolveEventSlug';
+import { useAppPageColumn } from '@/hooks/useAppPageColumn';
 import { photoSrc } from '../data/photos';
 import PhotoSubmitSheet from '../sheets/PhotoSubmitSheet';
 
@@ -15,15 +17,16 @@ interface ApiEvent {
   date: string;
   venue_name?: string;
   attendee_count?: number;
+  photo_count?: number;
 }
 
-// Heights alternate for visual rhythm (same as original static layout)
-const CARD_HEIGHTS = [240, 200, 240, 200, 240, 200] as const;
+const ALL_YEARS = 'all';
+const ARCHIVE_CARD_ASPECT = '3 / 4';
 
 export default function ArchiveScreen() {
   const router = useRouter();
   const [years, setYears] = useState<string[]>([String(new Date().getFullYear())]);
-  const [year, setYear] = useState<string>(String(new Date().getFullYear()));
+  const [year, setYear] = useState<string>(ALL_YEARS);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadEventId, setUploadEventId] = useState<string | undefined>();
   const [uploadEdition, setUploadEdition] = useState<number | undefined>();
@@ -49,7 +52,7 @@ export default function ArchiveScreen() {
       .then((d: { years?: string[] }) => {
         if (d.years?.length) {
           setYears(d.years);
-          setYear((y) => (d.years?.includes(y) ? y : d.years![0]!));
+          setYear((y) => (y === ALL_YEARS || d.years?.includes(y) ? y : ALL_YEARS));
         }
       })
       .catch(console.error);
@@ -70,7 +73,8 @@ export default function ArchiveScreen() {
 
   const entries = archives;
 
-  const { isWide, isDesktop } = useResponsive();
+  const { isWide } = useResponsive();
+  const pageColumn = useAppPageColumn();
 
   useAppHeader({ title: 'Archive' });
 
@@ -78,38 +82,34 @@ export default function ArchiveScreen() {
       <div
         style={{
           position: 'relative',
+          width: '100%',
           height: '100%',
           overflow: 'hidden',
           background: colors.bg,
         }}
       >
         <div
-          className="hof-scroll"
+          className="hof-scroll hof-app-page-scroll"
           style={{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
+            inset: 0,
             overflowY: 'auto',
+            paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
+            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
+          <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
           {/* Year filter */}
           <div
+            className="hof-scroll"
             style={{
-              padding: isWide ? '12px 16px 16px' : '12px 16px 16px',
+              padding: '0 0 16px',
               display: 'flex',
               gap: 6,
               overflowX: 'auto',
             }}
           >
-            {years.map((y) => (
+            {[ALL_YEARS, ...years].map((y) => (
               <button
                 key={y}
                 className="hof-btn hof-press"
@@ -124,9 +124,10 @@ export default function ArchiveScreen() {
                   fontWeight: 500,
                   fontSize: 13,
                   flexShrink: 0,
+                  textTransform: y === ALL_YEARS ? 'uppercase' : undefined,
                 }}
               >
-                {y}
+                {y === ALL_YEARS ? 'All' : y}
               </button>
             ))}
           </div>
@@ -134,14 +135,14 @@ export default function ArchiveScreen() {
           {/* Grid */}
           {loadingArchive ? (
             <div
-              style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}
+              style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 8 }}
             >
               {[0, 1, 2].map((i) => (
                 <FeedSkeletonCard key={i} />
               ))}
             </div>
           ) : archiveError ? (
-            <div style={{ padding: '0 16px' }}>
+            <div>
               <EmptyState
                 title="Could not load events"
                 body="Check your connection and try again."
@@ -150,14 +151,15 @@ export default function ArchiveScreen() {
           ) : (
             <div
               style={{
-                padding: '0 12px 24px',
+                padding: '0 0 24px',
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: isWide ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
                 gap: 8,
+                alignItems: 'stretch',
               }}
             >
               {entries.map((e, i) => {
-                const cardH = CARD_HEIGHTS[i % CARD_HEIGHTS.length] ?? 220;
+                const eventYear = e.date.slice(0, 4);
                 const formattedDate = new Date(e.date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -165,13 +167,16 @@ export default function ArchiveScreen() {
                 return (
                   <button
                     key={e.id}
+                    type="button"
                     className="hof-btn hof-press"
+                    onClick={() => router.push(archiveThemePath(e.edition_number))}
                     style={{
                       textAlign: 'left',
                       padding: 0,
                       background: 'transparent',
                       borderRadius: 10,
                       overflow: 'hidden',
+                      width: '100%',
                     }}
                   >
                     {/* Photo card */}
@@ -179,7 +184,7 @@ export default function ArchiveScreen() {
                       style={{
                         position: 'relative',
                         width: '100%',
-                        height: cardH,
+                        aspectRatio: ARCHIVE_CARD_ASPECT,
                         borderRadius: 10,
                         overflow: 'hidden',
                       }}
@@ -216,7 +221,7 @@ export default function ArchiveScreen() {
                             marginBottom: 2,
                           }}
                         >
-                          {formattedDate} · {year}
+                          {formattedDate} · {eventYear}
                         </div>
                         <div
                           style={{
@@ -230,7 +235,7 @@ export default function ArchiveScreen() {
                         >
                           {e.name}
                         </div>
-                        {typeof e.attendee_count === 'number' ? (
+                        {typeof e.attendee_count === 'number' || typeof e.photo_count === 'number' ? (
                           <div
                             style={{
                               fontFamily: 'Inter',
@@ -239,11 +244,21 @@ export default function ArchiveScreen() {
                               marginTop: 6,
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 4,
+                              gap: 10,
                             }}
                           >
-                            <Icon name="users" size={10} color={colors.textSec} />
-                            {e.attendee_count.toLocaleString('en-US')}
+                            {typeof e.attendee_count === 'number' ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Icon name="users" size={10} color={colors.textSec} />
+                                {e.attendee_count.toLocaleString('en-US')}
+                              </span>
+                            ) : null}
+                            {typeof e.photo_count === 'number' ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Icon name="image" size={10} color={colors.textSec} />
+                                {e.photo_count.toLocaleString('en-US')}
+                              </span>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
@@ -276,9 +291,7 @@ export default function ArchiveScreen() {
               )}
             </div>
           )}
-
-          {/* Bottom spacer for nav + FAB */}
-          <div style={{ height: 140 }} />
+          </div>
         </div>
 
         {/* Photo submission FAB */}
@@ -288,7 +301,7 @@ export default function ArchiveScreen() {
           aria-label="Submit your photos"
           style={{
             position: 'absolute',
-            right: isWide ? 'calc(50% - 456px + 18px)' : 18,
+            right: 18,
             bottom: isWide ? 24 : 110,
             zIndex: 25,
             height: 48,
