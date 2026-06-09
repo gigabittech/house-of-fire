@@ -23,6 +23,74 @@ interface ComposerSheetProps {
 }
 
 const CHAR_LIMIT = 500;
+const PREVIEW_MAX_HEIGHT = 220;
+
+function previewLayout(count: number): CSSProperties {
+  if (count <= 1) {
+    return { display: 'block' };
+  }
+  if (count === 2) {
+    return { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 };
+  }
+  return { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 };
+}
+
+function ComposerImagePreview({ src, single }: { src: string; single: boolean }) {
+  if (single) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <img
+          src={src}
+          alt=""
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: PREVIEW_MAX_HEIGHT,
+            objectFit: 'contain',
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        aspectRatio: '1',
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+        }}
+      />
+    </div>
+  );
+}
 
 export default function ComposerSheet({
   open,
@@ -303,23 +371,9 @@ export default function ComposerSheet({
               </button>
             ) : (
               <div style={{ position: 'relative' }}>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 4,
-                    height: 120,
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                  }}
-                >
+                <div style={previewLayout(previewUrls.length)}>
                   {previewUrls.map((src) => (
-                    <img
-                      key={src}
-                      src={src}
-                      alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    <ComposerImagePreview key={src} src={src} single={previewUrls.length === 1} />
                   ))}
                 </div>
                 <button

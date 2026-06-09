@@ -1,6 +1,6 @@
 'use client';
 
-import { HofAppShell, type NavId } from '@hof/ui';
+import { HofAppShell, type NavId, ToastProvider } from '@hof/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import { AppHeaderProvider, useAppHeaderContext } from '@/context/AppHeaderContext';
@@ -61,7 +61,7 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <>
+    <ToastProvider>
       <HofAppShell
         active={activeFromPath(pathname)}
         onNav={(id: NavId) => router.push(navHref[id])}
@@ -78,7 +78,7 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </HofAppShell>
-    </>
+    </ToastProvider>
   );
 }
 

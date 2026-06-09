@@ -7,9 +7,9 @@ import {
   ErrorState,
   FeedPost,
   FeedSkeletonCard,
-  HofToast,
   Icon,
   useResponsive,
+  useToast,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,7 +35,7 @@ export default function CommunityScreen() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [liveEventId, setLiveEventId] = useState<string | undefined>();
-  const [pendingToast, setPendingToast] = useState(false);
+  const { showToast } = useToast();
   const { isWide } = useResponsive();
   const pageColumn = useAppPageColumn();
 
@@ -374,7 +374,7 @@ export default function CommunityScreen() {
             const err = (await r.json()) as { error?: string };
             throw new Error(err.error ?? 'Failed to post');
           }
-          setPendingToast(true);
+          showToast('Submitted — pending review');
           if (feedView === 'mine') loadPosts();
         }}
       />
@@ -386,21 +386,6 @@ export default function CommunityScreen() {
           router.push(`/community/${id}`);
         }}
       />
-      {pendingToast && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: isWide ? 28 : 110,
-            zIndex: 30,
-          }}
-        >
-          <HofToast kind="success" onDismiss={() => setPendingToast(false)}>
-            Submitted — pending review
-          </HofToast>
-        </div>
-      )}
     </div>
   );
 }
