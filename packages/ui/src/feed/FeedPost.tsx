@@ -23,6 +23,8 @@ export interface FeedPostProps {
   onReact?: (emoji: ReactionKey) => void;
   /** Scale-down tap feedback on the card shell (default on). */
   pressFeedback?: boolean;
+  /** Drop the top border — for detail views that already pad above the card. */
+  borderlessTop?: boolean;
 }
 
 const MODERATION_LABEL: Record<string, { label: string; tone: 'amber' | 'danger' | 'neutral' }> = {
@@ -40,6 +42,7 @@ export function FeedPost({
   interactiveReactions = false,
   onReact,
   pressFeedback = true,
+  borderlessTop = false,
 }: FeedPostProps) {
   const isRecap = post.kind === 'recap';
   const isQuick = post.kind === 'quick';
@@ -72,6 +75,7 @@ export function FeedPost({
           padding: 0,
           background: colors.surface,
           border: `1px solid ${colors.border}`,
+          borderTop: borderlessTop ? 'none' : undefined,
           borderRadius: 12,
           overflow: 'hidden',
           display: 'block',

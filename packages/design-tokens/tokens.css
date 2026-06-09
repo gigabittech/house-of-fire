@@ -677,6 +677,12 @@ button.hof-btn {
   margin-top: auto;
 }
 
+@media (min-width: 768px) {
+  .hof-sidebar-footer {
+    padding-top: 14px;
+  }
+}
+
 .hof-sidebar-logo-compact {
   display: none;
   align-items: center;
