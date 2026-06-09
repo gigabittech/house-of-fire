@@ -66,7 +66,7 @@ function statusTone(status: ModerationStatus): Parameters<typeof Pill>[0]['tone'
   return 'neutral';
 }
 
-const GRID = '150px 120px 90px 1fr 100px 72px';
+const GRID = '150px 120px 90px 1fr 100px 48px';
 
 interface AllPostsTableProps {
   onRefreshQueue?: () => void;
@@ -93,6 +93,7 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
   const [channel, setChannel] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
@@ -129,6 +130,13 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [openMenuId]);
+
   async function patchPost(id: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/admin/posts/${id}`, {
       method: 'PATCH',
@@ -138,6 +146,14 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
     if (!res.ok) {
       const d = (await res.json()) as { error?: string };
       throw new Error(d.error ?? 'Action failed');
+    }
+  }
+
+  async function deletePost(id: string) {
+    const res = await fetch(`/api/admin/mod?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const d = (await res.json()) as { error?: string };
+      throw new Error(d.error ?? 'Delete failed');
     }
   }
 
@@ -439,36 +455,40 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
                 <div>
                   <Pill tone={statusTone(row.moderation_status)}>{row.moderation_status}</Pill>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
-                  {row.moderation_status === 'pending' ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={busyId === row.id}
-                        onClick={() => void runAction(row.id, () => patchPost(row.id, { action: 'approved' }))}
-                        style={actionBtnStyle('approve')}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === row.id}
-                        onClick={() => {
-                          const reason = window.prompt('Optional reason for rejection:') ?? '';
-                          void runAction(row.id, () =>
-                            patchPost(row.id, { action: 'rejected', reason: reason || undefined }),
-                          );
-                        }}
-                        style={actionBtnStyle('ghost')}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-dis)' }}>
-                      —
-                    </span>
-                  )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <PostActionsMenu
+                    postId={row.id}
+                    status={row.moderation_status}
+                    busy={busyId === row.id}
+                    open={openMenuId === row.id}
+                    onToggle={() => setOpenMenuId((cur) => (cur === row.id ? null : row.id))}
+                    onApprove={() => {
+                      setOpenMenuId(null);
+                      void runAction(row.id, () => patchPost(row.id, { action: 'approved' }));
+                    }}
+                    onReject={() => {
+                      setOpenMenuId(null);
+                      const reason = window.prompt('Optional reason for rejection:') ?? '';
+                      void runAction(row.id, () =>
+                        patchPost(row.id, { action: 'rejected', reason: reason || undefined }),
+                      );
+                    }}
+                    onHide={() => {
+                      setOpenMenuId(null);
+                      if (!window.confirm('Hide this post from the board?')) return;
+                      void runAction(row.id, () => patchPost(row.id, { action: 'hidden' }));
+                    }}
+                    onActivate={() => {
+                      setOpenMenuId(null);
+                      if (!window.confirm('Activate this post and show it on the board again?')) return;
+                      void runAction(row.id, () => patchPost(row.id, { action: 'approved' }));
+                    }}
+                    onDelete={() => {
+                      setOpenMenuId(null);
+                      if (!window.confirm('Permanently delete this post? The author will be notified.')) return;
+                      void runAction(row.id, () => deletePost(row.id));
+                    }}
+                  />
                 </div>
               </div>
             );
@@ -486,30 +506,145 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
   );
 }
 
-function actionBtnStyle(variant: 'approve' | 'ghost'): React.CSSProperties {
-  if (variant === 'approve') {
-    return {
-      height: 28,
-      padding: '0 10px',
-      borderRadius: 8,
-      border: 'none',
-      background: 'var(--hof-amber)',
-      color: 'var(--hof-bg)',
-      cursor: 'pointer',
-      fontFamily: 'Inter, system-ui',
-      fontSize: 11,
-      fontWeight: 600,
-    };
-  }
+function PostActionsMenu({
+  postId,
+  status,
+  busy,
+  open,
+  onToggle,
+  onApprove,
+  onReject,
+  onHide,
+  onActivate,
+  onDelete,
+}: {
+  postId: string;
+  status: ModerationStatus;
+  busy: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onHide: () => void;
+  onActivate: () => void;
+  onDelete: () => void;
+}) {
+  const canApprove = status === 'pending';
+  const canReject = status === 'pending';
+  const canHide = status !== 'hidden';
+  const canActivate = status === 'hidden';
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        aria-label={`Actions for post ${postId}`}
+        aria-expanded={open}
+        disabled={busy}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          border: '1px solid var(--hof-border)',
+          background: open ? 'var(--hof-elevated)' : 'transparent',
+          color: 'var(--hof-text-sec)',
+          cursor: busy ? 'not-allowed' : 'pointer',
+          fontFamily: 'Inter, system-ui',
+          fontSize: 16,
+          lineHeight: 1,
+          letterSpacing: 1,
+          opacity: busy ? 0.6 : 1,
+        }}
+      >
+        ⋯
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 20,
+            minWidth: 148,
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            overflow: 'hidden',
+          }}
+        >
+          {canApprove ? (
+            <button type="button" role="menuitem" onClick={onApprove} style={menuItemStyle('success')}>
+              Approve
+            </button>
+          ) : null}
+          {canReject ? (
+            <button type="button" role="menuitem" onClick={onReject} style={menuItemStyle()}>
+              Reject
+            </button>
+          ) : null}
+          {(canApprove || canReject) && (canActivate || canHide) ? <MenuDivider /> : null}
+          {canActivate ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onActivate}
+              style={menuItemStyle('success')}
+            >
+              Activate post
+            </button>
+          ) : null}
+          {canHide ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onHide}
+              style={menuItemStyle()}
+            >
+              Hide post
+            </button>
+          ) : null}
+          {canApprove || canReject || canActivate || canHide ? <MenuDivider /> : null}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onDelete}
+            style={menuItemStyle('danger')}
+          >
+            Delete post
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuDivider() {
+  return <div style={{ height: 1, background: 'var(--hof-border)', margin: '4px 0' }} />;
+}
+
+function menuItemStyle(variant: 'default' | 'danger' | 'success' = 'default'): React.CSSProperties {
   return {
-    height: 28,
-    padding: '0 10px',
-    borderRadius: 8,
-    border: '1px solid var(--hof-border)',
+    display: 'block',
+    width: '100%',
+    padding: '10px 14px',
+    border: 'none',
     background: 'transparent',
-    color: 'var(--hof-text-sec)',
-    cursor: 'pointer',
+    textAlign: 'left',
     fontFamily: 'Inter, system-ui',
-    fontSize: 11,
+    fontSize: 13,
+    color:
+      variant === 'danger'
+        ? 'var(--hof-error)'
+        : variant === 'success'
+          ? 'var(--hof-success)'
+          : 'var(--hof-text)',
+    cursor: 'pointer',
   };
 }
