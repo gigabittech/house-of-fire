@@ -33,6 +33,18 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Short theme URLs (/archive/25) — edition in the path, resolved server-side by event id.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/archive/:edition(\\d+)',
+          destination: '/archive/view?edition=:edition',
+        },
+      ],
+    };
+  },
+
   // next/image: Supabase storage.
   images: {
     remotePatterns: [

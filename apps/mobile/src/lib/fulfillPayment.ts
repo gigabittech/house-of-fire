@@ -44,6 +44,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
     holderName,
     holderEmail,
     holderPhone,
+    holderZip,
   } = pi.metadata;
 
   if (!userId || !tierId || !eventId) {
@@ -213,6 +214,7 @@ export async function fulfillPaymentIntent(pi: Stripe.PaymentIntent): Promise<Fu
         holder_name: holderName?.trim() || null,
         holder_email: holderEmail?.trim() || null,
         holder_phone: holderPhone?.trim() || null,
+        holder_zip: holderZip?.trim() || null,
       },
     });
   }

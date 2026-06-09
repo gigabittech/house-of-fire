@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EventGuestSection } from '@/components/EventGuestSection';
 import {
   GuestFilters,
   type EventOption,
   type GuestFilterState,
-  type TierOption,
 } from '@/components/GuestFilters';
 import {
   GuestTierStatus,
@@ -14,13 +13,16 @@ import {
 } from '@/components/GuestTierStatus';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
 import {
+  buildGuestExportCsv,
   groupTicketsByEvent,
   guestDisplayName,
   guestEmail,
-  guestTierLabel,
   normalizeGuestTicket,
-  receiptForTicket,
+  tierOptionsFromEventTiers,
+  tierOptionsFromTickets,
+  ticketMatchesTierFilter,
   type AdminGuestTicket,
+  type GuestTierOption,
 } from '@/lib/guestTicket';
 
 const defaultFilters: GuestFilterState = {
@@ -43,7 +45,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export default function GuestsPage() {
   const [filters, setFilters] = useState<GuestFilterState>(defaultFilters);
   const [events, setEvents] = useState<EventOption[]>([]);
-  const [tierOptions, setTierOptions] = useState<TierOption[]>([]);
+  const [tierOptions, setTierOptions] = useState<GuestTierOption[]>([]);
   const [tickets, setTickets] = useState<AdminGuestTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export default function GuestsPage() {
 
   const debouncedEmail = useDebouncedValue(filters.email, 400);
   const debouncedCode = useDebouncedValue(filters.code, 400);
-  const defaultEventApplied = useRef(false);
+  const [eventsReady, setEventsReady] = useState(false);
 
   useEffect(() => {
     async function loadEvents() {
@@ -70,22 +72,24 @@ export default function GuestsPage() {
           }));
           setEvents(mapped);
 
-          if (!defaultEventApplied.current) {
-            const live = mapped.find((e) => e.status === 'live');
-            if (live) {
-              setFilters((prev) => ({ ...prev, eventId: live.id }));
-            }
-            defaultEventApplied.current = true;
+          const live = mapped.find((e) => e.status === 'live');
+          if (live) {
+            setFilters((prev) => ({ ...prev, eventId: live.id }));
           }
         }
       } catch {
         /* keep empty */
+      } finally {
+        setEventsReady(true);
       }
     }
     void loadEvents();
   }, []);
 
   useEffect(() => {
+    if (!eventsReady) return;
+
+    let cancelled = false;
     async function loadTiers() {
       if (filters.eventId) {
         try {
@@ -93,63 +97,69 @@ export default function GuestsPage() {
           const data = (await res.json()) as {
             tiers?: Array<{ id: string; display_name: string; name: string }>;
           };
-          setTierOptions(
-            (data.tiers ?? []).map((t) => ({
-              id: t.id,
-              label: t.display_name || t.name,
-            })),
-          );
+          if (cancelled) return;
+          setTierOptions(tierOptionsFromEventTiers(data.tiers ?? []));
         } catch {
-          setTierOptions([]);
+          if (!cancelled) setTierOptions([]);
         }
         return;
       }
-      const seen = new Map<string, string>();
-      for (const t of tickets) {
-        if (t.ticket_tiers?.id) {
-          seen.set(t.ticket_tiers.id, t.ticket_tiers.display_name || t.ticket_tiers.name);
-        }
-      }
-      setTierOptions([...seen.entries()].map(([id, label]) => ({ id, label })));
+      if (!cancelled) setTierOptions(tierOptionsFromTickets(tickets));
     }
     void loadTiers();
-  }, [filters.eventId, tickets]);
-
-  const loadGuests = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (filters.eventId) params.set('eventId', filters.eventId);
-      if (filters.tierId) params.set('tierId', filters.tierId);
-      if (debouncedEmail) params.set('email', debouncedEmail);
-      if (debouncedCode) params.set('code', debouncedCode);
-      const qs = params.toString();
-      const res = await fetch(`/api/admin/guests${qs ? `?${qs}` : ''}`);
-      const data = (await res.json()) as { guests?: unknown[]; error?: string };
-      if (data.error) {
-        setError(data.error);
-        setTickets([]);
-      } else {
-        setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load guests');
-      setTickets([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode]);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId, tickets]);
 
   useEffect(() => {
-    void loadGuests();
-  }, [loadGuests]);
+    if (!eventsReady) return;
+
+    let cancelled = false;
+    async function fetchGuests() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (filters.eventId) params.set('eventId', filters.eventId);
+        if (filters.tierId && filters.eventId && !filters.tierId.startsWith('group:')) {
+          params.set('tierId', filters.tierId);
+        }
+        if (debouncedEmail) params.set('email', debouncedEmail);
+        if (debouncedCode) params.set('code', debouncedCode);
+        const qs = params.toString();
+        const res = await fetch(`/api/admin/guests${qs ? `?${qs}` : ''}`);
+        const data = (await res.json()) as { guests?: unknown[]; error?: string };
+        if (cancelled) return;
+        if (data.error) {
+          setError(data.error);
+          setTickets([]);
+        } else {
+          setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to load guests');
+        setTickets([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void fetchGuests();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId, filters.tierId, debouncedEmail, debouncedCode]);
 
   useEffect(() => {
     setPagesByEvent({});
   }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode, filters.nameSearch]);
 
   useEffect(() => {
+    if (!eventsReady) return;
+
+    let cancelled = false;
     async function loadTierStatus() {
       setTierStatusLoading(true);
       try {
@@ -159,19 +169,23 @@ export default function GuestsPage() {
           events?: EventTierStatusGroup[];
           error?: string;
         };
+        if (cancelled) return;
         if (!data.error && data.events) {
           setTierStatus(data.events);
         } else {
           setTierStatus([]);
         }
       } catch {
-        setTierStatus([]);
+        if (!cancelled) setTierStatus([]);
       } finally {
-        setTierStatusLoading(false);
+        if (!cancelled) setTierStatusLoading(false);
       }
     }
     void loadTierStatus();
-  }, [filters.eventId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventsReady, filters.eventId]);
 
   const tierStatusScopeLabel = useMemo(() => {
     if (filters.eventId) {
@@ -183,13 +197,17 @@ export default function GuestsPage() {
 
   const nameQuery = filters.nameSearch.trim().toLowerCase();
   const filteredTickets = useMemo(() => {
-    if (!nameQuery) return tickets;
-    return tickets.filter((t) => {
+    let result = tickets;
+    if (filters.tierId) {
+      result = result.filter((t) => ticketMatchesTierFilter(t, filters.tierId, tierOptions));
+    }
+    if (!nameQuery) return result;
+    return result.filter((t) => {
       const name = guestDisplayName(t).toLowerCase();
       const email = guestEmail(t).toLowerCase();
       return name.includes(nameQuery) || email.includes(nameQuery);
     });
-  }, [tickets, nameQuery]);
+  }, [tickets, filters.tierId, tierOptions, nameQuery]);
 
   const groups = useMemo(() => groupTicketsByEvent(filteredTickets), [filteredTickets]);
 
@@ -213,34 +231,7 @@ export default function GuestsPage() {
   }, [filters.eventId, events, filteredTickets.length, groups.length]);
 
   function exportCsv() {
-    const header = [
-      'code',
-      'name',
-      'email',
-      'tier',
-      'status',
-      'event_edition',
-      'purchased_at',
-      'amount_cents',
-      'receipt_total_cents',
-    ];
-    const rows = filteredTickets.map((t) => {
-      const receipt = receiptForTicket(t, filteredTickets);
-      return [
-        t.code,
-        guestDisplayName(t),
-        guestEmail(t),
-        guestTierLabel(t),
-        t.status,
-        String(t.events?.edition_number ?? ''),
-        t.purchased_at,
-        String(t.amount_cents),
-        String(receipt.total),
-      ];
-    });
-    const csv = [header, ...rows]
-      .map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+    const csv = buildGuestExportCsv(filteredTickets);
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

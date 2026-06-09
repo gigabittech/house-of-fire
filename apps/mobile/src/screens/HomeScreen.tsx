@@ -7,85 +7,24 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
+import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   countdownParts,
   eventDoorsTimestamp,
+  eventInventoryBadgeLabel,
+  eventInventoryBadgeTone,
   formatEventDate,
+  formatEventDateShort,
   formatVenueLine,
   NO_EVENTS_MESSAGE,
-  remainingTickets,
   resolveEventHeroImage,
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
+import { archiveThemePath } from '@/lib/resolveEventSlug';
 import { photoSrc } from '../data/photos';
-import { parseMediaUrls } from '../lib/postMedia';
-
-type ApiPost = {
-  id: string;
-  channel: string;
-  title: string;
-  body: string | null;
-  is_anonymous: boolean;
-  reply_count: number;
-  reaction_counts: Record<string, number>;
-  media_urls?: unknown;
-  created_at: string;
-  profiles: {
-    handle: string;
-    display_name: string;
-    role: string;
-    avatar_url: string | null;
-  } | null;
-};
-
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function apiPostToUi(p: ApiPost): UiPost {
-  const displayName = p.is_anonymous
-    ? 'Anonymous'
-    : (p.profiles?.display_name ?? p.profiles?.handle ?? 'Member');
-  const initials =
-    displayName
-      .split(' ')
-      .map((w) => w[0] ?? '')
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?';
-  const role = (p.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
-  const reactions: Partial<Record<'fire' | 'heart' | 'pray' | 'music' | 'eyes', number>> = {};
-  for (const [k, v] of Object.entries(p.reaction_counts)) {
-    if (['fire', 'heart', 'pray', 'music', 'eyes'].includes(k)) {
-      (reactions as Record<string, number>)[k] = v;
-    }
-  }
-  return {
-    id: p.id,
-    channel: p.channel,
-    kind: 'quick',
-    author: {
-      name: displayName,
-      initials,
-      role,
-      avatarUrl: p.is_anonymous ? undefined : (p.profiles?.avatar_url ?? undefined),
-    },
-    time: timeAgo(p.created_at),
-    title: p.title || undefined,
-    body: p.body ?? undefined,
-    imageUrls: parseMediaUrls(p.media_urls),
-    reactions,
-    replyCount: p.reply_count,
-  };
-}
-
+import { apiPostToUi } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
 import NotificationsSheet from '../sheets/NotificationsSheet';
 
@@ -94,15 +33,24 @@ function Pill({
   tone = 'neutral',
 }: {
   children: React.ReactNode;
-  tone?: 'neutral' | 'warning' | 'gold' | 'amber';
+  tone?: 'neutral' | 'warning' | 'gold' | 'amber' | 'success';
 }) {
   const bg =
     tone === 'warning'
       ? 'rgba(232,162,26,0.15)'
       : tone === 'gold'
         ? 'rgba(201,148,42,0.15)'
-        : 'rgba(42,40,38,0.8)';
-  const col = tone === 'warning' ? colors.warning : tone === 'gold' ? colors.gold : colors.textSec;
+        : tone === 'success'
+          ? 'rgba(76,175,110,0.15)'
+          : 'rgba(42,40,38,0.8)';
+  const col =
+    tone === 'warning'
+      ? colors.warning
+      : tone === 'gold'
+        ? colors.gold
+        : tone === 'success'
+          ? colors.success
+          : colors.textSec;
   return (
     <span
       style={{
@@ -185,6 +133,11 @@ export default function HomeScreen() {
   const [newsSent, setNewsSent] = useState(false);
   const [topPosts, setTopPosts] = useState<UiPost[]>([]);
   const [topPostsLoading, setTopPostsLoading] = useState(true);
+  const [lastNight, setLastNight] = useState<{
+    event: { edition_number: number; name: string; date: string };
+    photos: Array<{ id: string; public_url: string | null }>;
+  } | null>(null);
+  const [lastNightLoading, setLastNightLoading] = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -202,6 +155,24 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    setLastNightLoading(true);
+    fetch('/api/events/last-night')
+      .then((r) => r.json())
+      .then((d: {
+        event?: { edition_number: number; name: string; date: string } | null;
+        photos?: Array<{ id: string; public_url: string | null }>;
+      }) => {
+        if (d.event) {
+          setLastNight({ event: d.event, photos: d.photos ?? [] });
+        } else {
+          setLastNight(null);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLastNightLoading(false));
+  }, []);
+
+  useEffect(() => {
     setTopPostsLoading(true);
     fetch('/api/posts?channel=general&limit=3')
       .then((r) => r.json())
@@ -212,7 +183,14 @@ export default function HomeScreen() {
       .finally(() => setTopPostsLoading(false));
   }, []);
 
-  const left = remainingTickets(upcomingEvent?.ticket_tiers);
+  const inventoryBadgeLabel = eventInventoryBadgeLabel(
+    upcomingEvent ?? { status: 'upcoming' },
+    upcomingEvent?.ticket_tiers,
+  );
+  const inventoryBadgeTone = eventInventoryBadgeTone(
+    upcomingEvent ?? { status: 'upcoming' },
+    upcomingEvent?.ticket_tiers,
+  );
   const eventTs = upcomingEvent?.date
     ? eventDoorsTimestamp(upcomingEvent.date, upcomingEvent.doors_open)
     : Number.NaN;
@@ -312,7 +290,7 @@ export default function HomeScreen() {
       >
         {/* Scrollable content — hero full bleed; body in centered column */}
         <div
-          className="hof-scroll"
+          className="hof-scroll hof-app-page-scroll"
           style={{
             position: 'absolute',
             inset: 0,
@@ -320,58 +298,7 @@ export default function HomeScreen() {
             paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
           }}
         >
-          {/* Hero — full-width cover image */}
-          <div
-            style={{
-              position: 'relative',
-              height: isDesktop ? 'min(58vh, 580px)' : isWide ? 520 : 460,
-              overflow: 'hidden',
-              width: '100%',
-            }}
-          >
-            <img
-              src={heroSrc}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 30%',
-              }}
-            />
-            {/* warm vignette */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'radial-gradient(ellipse at 50% 40%, rgba(232,101,26,0.0) 0%, rgba(10,10,8,0.5) 75%, #0A0A08 100%)',
-              }}
-            />
-            {/* bottom gradient */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 360,
-                background:
-                  'linear-gradient(180deg, transparent 0%, rgba(10,10,8,0.85) 50%, #0A0A08 100%)',
-              }}
-            />
-
-            {/* Hero content overlay */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-            >
+          <EventHeroBackground src={heroSrc}>
               <div style={{ ...pageColumn, paddingBottom: spacing[3] }}>
               <div
                 style={{
@@ -381,20 +308,23 @@ export default function HomeScreen() {
                   marginBottom: spacing[3],
                 }}
               >
-                <Pill tone="warning">
+                <Pill tone={inventoryBadgeTone}>
                   <span
                     style={{
                       display: 'inline-block',
                       width: 5,
                       height: 5,
                       borderRadius: 5,
-                      background: colors.bg,
+                      background: inventoryBadgeTone === 'success' ? colors.success : colors.bg,
                       marginRight: 4,
                       verticalAlign: 'middle',
-                      animation: 'hof-pulse 1.4s ease-in-out infinite',
+                      animation:
+                        inventoryBadgeTone === 'neutral'
+                          ? undefined
+                          : 'hof-pulse 1.4s ease-in-out infinite',
                     }}
                   />
-                  Selling Fast · {left > 0 ? `${left} left` : 'Sold out'}
+                  {inventoryBadgeLabel}
                 </Pill>
                 <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
               </div>
@@ -440,8 +370,7 @@ export default function HomeScreen() {
                     : 'Loading next theme…'}
               </div>
               </div>
-            </div>
-          </div>
+          </EventHeroBackground>
 
           <div style={pageColumn}>
           {/* Countdown */}
@@ -695,6 +624,7 @@ export default function HomeScreen() {
                     post={p}
                     onOpen={() => router.push('/community/' + p.id)}
                     resolvePhoto={photoSrc}
+                    pressFeedback={false}
                   />
                 ))
               )}
@@ -703,6 +633,7 @@ export default function HomeScreen() {
           ) : null}
 
           {/* Photo strip — from the last night */}
+          {!lastNightLoading && lastNight ? (
           <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
             <div
               style={{
@@ -734,12 +665,12 @@ export default function HomeScreen() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Theme 23 · May 30
+                  Theme {lastNight.event.edition_number} ·{' '}
+                  {formatEventDateShort(lastNight.event.date)}
                 </div>
               </div>
-              {COMMUNITY_FEATURE_ENABLED ? (
               <span
-                onClick={() => router.push('/community')}
+                onClick={() => router.push('/archive')}
                 style={{
                   fontFamily: 'Inter',
                   fontSize: 13,
@@ -750,7 +681,6 @@ export default function HomeScreen() {
               >
                 See all →
               </span>
-              ) : null}
             </div>
             <div
               className="hof-scroll"
@@ -760,9 +690,23 @@ export default function HomeScreen() {
                 overflowX: 'auto',
               }}
             >
-              {[0, 1, 2, 3, 0].map((seed, idx) => (
-                <div
-                  key={idx}
+              {(lastNight.photos.length > 0
+                ? lastNight.photos.map((photo, idx) => ({
+                    key: photo.id,
+                    src: photo.public_url ?? photoSrc(idx),
+                    idx,
+                  }))
+                : [0, 1, 2, 3].map((seed, idx) => ({
+                    key: `placeholder-${seed}-${idx}`,
+                    src: photoSrc(seed),
+                    idx,
+                  }))
+              ).map(({ key, src, idx }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="hof-btn hof-press"
+                  onClick={() => router.push(archiveThemePath(lastNight.event.edition_number))}
                   style={{
                     flex: '0 0 auto',
                     width: 150,
@@ -772,12 +716,14 @@ export default function HomeScreen() {
                     background: colors.elevated,
                     border: `1px solid ${colors.border}`,
                     position: 'relative',
+                    padding: 0,
                   }}
                 >
                   <Image
-                    src={photoSrc(seed)}
+                    src={src}
                     alt=""
                     fill
+                    unoptimized={src.startsWith('http')}
                     style={{
                       objectFit: 'cover',
                     }}
@@ -795,12 +741,13 @@ export default function HomeScreen() {
                       borderRadius: 4,
                     }}
                   >
-                    23 · {String(idx + 1).padStart(3, '0')}
+                    {lastNight.event.edition_number} · {String(idx + 1).padStart(3, '0')}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
+          ) : null}
 
           {/* Newsletter */}
           <div

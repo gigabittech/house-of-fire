@@ -5,6 +5,8 @@ import { HofButton, HofLogoMark, HofPill, Icon } from '@hof/ui';
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import {
   formatEventDate,
+  eventHeroBadgeLabel,
+  isEventSoldOut,
   NO_EVENTS_MESSAGE,
   remainingTickets,
   type UpcomingEvent,
@@ -330,8 +332,22 @@ export function LandingExperienceView() {
               background: `linear-gradient(135deg, rgba(232,101,26,0.15) 0%, ${colors.surface} 60%)`,
             }}
           >
-            <div style={{ ...sectionLabel, marginBottom: 6 }}>
-              {upcoming ? 'Next theme' : 'House of Fire'}
+            <div style={{ ...sectionLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{upcoming ? 'Next theme' : 'House of Fire'}</span>
+              {upcoming ? (
+                <HofPill
+                  tone={
+                    isEventSoldOut(upcoming.ticket_tiers)
+                      ? 'danger'
+                      : upcoming.status === 'live'
+                        ? 'success'
+                        : 'amber'
+                  }
+                  size="sm"
+                >
+                  {eventHeroBadgeLabel(upcoming, upcoming.ticket_tiers).split(' · ')[0]}
+                </HofPill>
+              ) : null}
             </div>
             <div
               style={{

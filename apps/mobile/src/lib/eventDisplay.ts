@@ -1,4 +1,10 @@
+import { colors } from '@hof/design-tokens';
+
 export const NO_EVENTS_MESSAGE = 'There are currently no events available.';
+
+export type EventStatus = 'upcoming' | 'live' | 'past' | 'cancelled';
+
+export type EventBadgeTone = 'amber' | 'success' | 'danger' | 'neutral';
 
 export interface UpcomingTier {
   id: string;
@@ -18,6 +24,7 @@ export interface UpcomingEvent {
   id: string;
   edition_number: number;
   name: string;
+  status?: EventStatus;
   date: string;
   doors_open?: string;
   doors_close?: string;
@@ -128,9 +135,111 @@ export function formatVenueLine(
 export function remainingTickets(tiers: UpcomingTier[] | undefined): number {
   if (!tiers?.length) return 0;
   return tiers.reduce((sum, t) => {
+    if (t.status === 'hidden') return sum;
     const rem = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
     return sum + rem;
   }, 0);
+}
+
+export function isEventSoldOut(tiers: UpcomingTier[] | undefined): boolean {
+  if (!tiers?.length) return false;
+  const purchasable = tiers.filter((t) => t.status !== 'hidden');
+  if (!purchasable.length) return false;
+  return purchasable.every((t) => {
+    const effective = t.effective_status ?? t.status;
+    if (effective === 'sold_out') return true;
+    const rem = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
+    return rem <= 0;
+  });
+}
+
+export function eventHeroBadgeLabel(
+  event: Pick<UpcomingEvent, 'status' | 'edition_number'>,
+  tiers?: UpcomingTier[],
+): string {
+  const edition = event.edition_number ?? '—';
+  if (isEventSoldOut(tiers)) return `Sold out · Theme № ${edition}`;
+  switch (event.status) {
+    case 'live':
+      return `Live · Theme № ${edition}`;
+    case 'past':
+      return `Past · Theme № ${edition}`;
+    case 'cancelled':
+      return `Cancelled · Theme № ${edition}`;
+    default:
+      return `Upcoming · Theme № ${edition}`;
+  }
+}
+
+export function eventHeroBadgeTone(
+  event: Pick<UpcomingEvent, 'status'>,
+  tiers?: UpcomingTier[],
+): EventBadgeTone {
+  if (isEventSoldOut(tiers)) return 'danger';
+  switch (event.status) {
+    case 'live':
+      return 'success';
+    case 'cancelled':
+      return 'danger';
+    case 'past':
+      return 'neutral';
+    default:
+      return 'amber';
+  }
+}
+
+export function eventHeroBadgeColors(tone: EventBadgeTone): {
+  background: string;
+  border: string;
+  color: string;
+} {
+  switch (tone) {
+    case 'success':
+      return {
+        background: 'rgba(76,175,110,0.15)',
+        border: `${colors.success}30`,
+        color: colors.success,
+      };
+    case 'danger':
+      return {
+        background: colors.ember,
+        border: 'transparent',
+        color: colors.text,
+      };
+    case 'neutral':
+      return {
+        background: colors.elevated,
+        border: colors.border,
+        color: colors.textSec,
+      };
+    default:
+      return {
+        background: 'rgba(232,101,26,0.15)',
+        border: `${colors.amber}30`,
+        color: colors.amber,
+      };
+  }
+}
+
+export function eventInventoryBadgeLabel(
+  event: Pick<UpcomingEvent, 'status'>,
+  tiers?: UpcomingTier[],
+): string {
+  const left = remainingTickets(tiers);
+  if (isEventSoldOut(tiers)) return 'Sold out';
+  if (event.status === 'live') {
+    return left > 0 ? `Live · ${left} left` : 'Live · Doors open';
+  }
+  return left > 0 ? `Selling Fast · ${left} left` : 'Sold out';
+}
+
+export function eventInventoryBadgeTone(
+  event: Pick<UpcomingEvent, 'status'>,
+  tiers?: UpcomingTier[],
+): 'warning' | 'success' | 'neutral' {
+  if (isEventSoldOut(tiers)) return 'neutral';
+  if (event.status === 'live') return 'success';
+  return 'warning';
 }
 
 export function totalTicketsSold(tiers: UpcomingTier[] | undefined): number {

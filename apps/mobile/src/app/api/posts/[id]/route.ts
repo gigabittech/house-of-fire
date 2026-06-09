@@ -5,6 +5,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const [postRes, repliesRes] = await Promise.all([
     supabase
       .from('posts')
@@ -22,8 +26,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Post not found' }, { status: 404 });
   }
 
+  const post = postRes.data;
+  const isAuthor = user?.id === post.author_id;
+  const isApproved = post.moderation_status === 'approved';
+
+  if (!isApproved && !isAuthor) {
+    return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+  }
+
+  let myReactions: string[] = [];
+  if (user) {
+    const { data: reactions } = await supabase
+      .from('post_reactions')
+      .select('emoji')
+      .eq('post_id', id)
+      .eq('user_id', user.id);
+    myReactions = (reactions ?? []).map((r) => r.emoji);
+  }
+
   return NextResponse.json({
-    post: postRes.data,
+    post,
     replies: repliesRes.data ?? [],
+    myReactions,
   });
 }

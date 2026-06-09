@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { Database } from '@/lib/database.types';
 import { parseEventPayload } from '@/lib/eventPayload';
 import { requireAdminRole } from '@/lib/requireAdminRole';
+import { assertSingleLiveEvent } from '@/lib/singleLiveEvent';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 type EventUpdate = Database['public']['Tables']['events']['Update'];
@@ -74,6 +75,11 @@ export async function PATCH(
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
+  }
+
+  const liveCheck = await assertSingleLiveEvent(supabase, updates.status, id);
+  if (!liveCheck.ok) {
+    return NextResponse.json({ error: liveCheck.error }, { status: liveCheck.status });
   }
 
   const { data, error } = await supabase

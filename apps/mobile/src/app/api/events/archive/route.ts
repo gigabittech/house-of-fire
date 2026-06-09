@@ -21,18 +21,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ years });
   }
 
-  const year = searchParams.get('year') ?? String(new Date().getFullYear());
+  const year = searchParams.get('year') ?? 'all';
 
-  const startOfYear = `${year}-01-01T00:00:00Z`;
-  const endOfYear = `${year}-12-31T23:59:59Z`;
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
-    .select('*, event_photos(count)')
+    .select('*, event_photos(count).filter(status.eq.approved)')
     .eq('status', 'past')
-    .gte('date', startOfYear)
-    .lte('date', endOfYear)
     .order('date', { ascending: false });
+
+  if (year !== 'all') {
+    const startOfYear = `${year}-01-01T00:00:00Z`;
+    const endOfYear = `${year}-12-31T23:59:59Z`;
+    query = query.gte('date', startOfYear).lte('date', endOfYear);
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
           .from('tickets')
           .select('event_id')
           .in('event_id', eventIds)
-          .eq('status', 'valid')
+          .in('status', ['valid', 'used'])
       : { data: [] };
 
   const countMap = (ticketCounts ?? []).reduce(
@@ -55,10 +58,13 @@ export async function GET(request: NextRequest) {
     {},
   );
 
-  const events = (data ?? []).map((e: { id: string }) => ({
-    ...e,
-    attendee_count: countMap[e.id] ?? 0,
-  }));
+  const events = (data ?? []).map(
+    (e: { id: string; event_photos?: Array<{ count: number }> }) => ({
+      ...e,
+      attendee_count: countMap[e.id] ?? 0,
+      photo_count: e.event_photos?.[0]?.count ?? 0,
+    }),
+  );
 
   return NextResponse.json({ events });
 }

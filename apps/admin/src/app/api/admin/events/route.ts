@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { eventFormPayloadToInsert, parseEventPayload, type EventFormPayload } from '@/lib/eventPayload';
 import { requireAdminRole } from '@/lib/requireAdminRole';
+import { assertSingleLiveEvent } from '@/lib/singleLiveEvent';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
@@ -146,6 +147,11 @@ export async function POST(request: NextRequest) {
   }
 
   const full = parsed.data as EventFormPayload;
+
+  const liveCheck = await assertSingleLiveEvent(supabase, full.status);
+  if (!liveCheck.ok) {
+    return NextResponse.json({ error: liveCheck.error }, { status: liveCheck.status });
+  }
 
   const { data: created, error: createErr } = await supabase
     .from('events')

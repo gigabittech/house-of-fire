@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { applyModerationAction } from '@/lib/moderatePost';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 const postSelect = `
@@ -8,7 +10,11 @@ const postSelect = `
   title,
   body,
   is_pinned,
+  is_anonymous,
+  author_id,
+  media_urls,
   moderation_status,
+  moderation_note,
   created_at,
   profiles!posts_author_id_fkey (
     id,
@@ -19,6 +25,9 @@ const postSelect = `
 `;
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
 
   const { data: queue, error: queueError } = await supabase
@@ -37,7 +46,7 @@ export async function GET() {
     .select(postSelect)
     .eq('is_pinned', true)
     .order('created_at', { ascending: false })
-    .limit(3);
+    .limit(10);
 
   const { data: reports, error: reportsError } = await supabase
     .from('content_reports')
@@ -70,6 +79,9 @@ export async function GET() {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
@@ -78,11 +90,15 @@ export async function DELETE(request: NextRequest) {
   }
 
   const supabase = createAdminSupabaseClient();
+  const result = await applyModerationAction({
+    supabase,
+    postId: id,
+    moderatorId: auth.userId,
+    action: 'deleted',
+  });
 
-  const { error } = await supabase.from('posts').delete().eq('id', id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

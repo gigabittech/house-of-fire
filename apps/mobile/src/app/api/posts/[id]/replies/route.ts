@@ -39,5 +39,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select('author_id, title, body')
+    .eq('id', id)
+    .single();
+
+  if (post && post.author_id !== user.id) {
+    const { data: replier } = await supabase
+      .from('profiles')
+      .select('display_name, handle')
+      .eq('id', user.id)
+      .single();
+
+    const replierName = replier?.display_name ?? replier?.handle ?? 'Someone';
+    const preview = (post.body ?? post.title ?? 'your post').slice(0, 80);
+
+    await supabase.from('notifications').insert({
+      user_id: post.author_id,
+      type: 'reply',
+      title: replierName,
+      body: preview,
+      link: `/community/${id}`,
+    });
+  }
+
   return NextResponse.json({ reply }, { status: 201 });
 }

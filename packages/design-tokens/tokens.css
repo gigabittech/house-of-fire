@@ -93,19 +93,53 @@ button.hof-btn {
 }
 
 /* ── App shell sidebar nav ──────────────────────────────────────────────── */
-.hof-sidebar-nav-item {
-  position: relative;
-  border: 1px solid transparent;
-  transition:
-    background var(--hof-duration-fade) ease,
-    border-color var(--hof-duration-fade) ease;
+.hof-sidebar-nav-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 9px 10px;
+  padding-left: 10px;
+  border-radius: 6;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+  transition: background var(--hof-duration-fade) ease;
 }
-.hof-sidebar-nav-item:hover {
-  background: var(--hof-elevated);
+
+.hof-sidebar-nav-item-btn[data-active="true"] {
+  background: transparent;
 }
-.hof-sidebar-nav-item[data-active="true"] {
-  background: rgba(232, 101, 26, 0.14);
-  border-color: rgba(232, 101, 26, 0.38);
+
+.hof-sidebar-nav-label-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+  font-family: var(--hof-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hof-text-sec);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hof-sidebar-nav-label-btn[data-active="true"] {
+  color: var(--hof-amber);
+  font-weight: 600;
+}
+
+.hof-sidebar-nav-labels {
+  display: none;
+}
+
+.hof-sidebar-nav-group {
+  width: 100%;
 }
 
 /* ── Auth shell (sign-in, onboarding) — CSS breakpoints avoid hydration flash */
@@ -499,11 +533,44 @@ button.hof-btn {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  --hof-sidebar-w: 68px;
+}
+
+@media (min-width: 1280px) {
+  .hof-app-shell {
+    --hof-sidebar-w: 200px;
+  }
+}
+
+/* Content starts after sidebar; hero photo stays full-bleed underneath */
+.hof-app-shell-main .hof-app-page-sticky {
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
-  .hof-app-shell {
-    flex-direction: row;
+  .hof-app-shell-main .hof-app-page-scroll {
+    padding-left: var(--hof-sidebar-w);
+    box-sizing: border-box;
+  }
+
+  /* Sticky bars sit beside the sidebar so the logo stays visible */
+  .hof-app-shell-main .hof-app-page-sticky {
+    left: var(--hof-sidebar-w);
+    padding-left: 0;
+  }
+
+  .hof-app-shell-main .hof-hero-full-bleed {
+    margin-left: calc(-1 * var(--hof-sidebar-w));
+    width: calc(100% + var(--hof-sidebar-w));
+    max-width: none;
+    box-sizing: border-box;
+  }
+
+  .hof-app-shell-main .hof-hero-full-bleed .hof-hero-content {
+    padding-left: var(--hof-sidebar-w);
+    box-sizing: border-box;
   }
 }
 
@@ -524,6 +591,59 @@ button.hof-btn {
   display: none;
 }
 
+/* ── Toast viewport — fixed position, compact bottom-right by default ─────── */
+.hof-toast-viewport {
+  --hof-toast-bottom: calc(72px + max(10px, env(safe-area-inset-bottom, 0px)) + 16px);
+  position: fixed;
+  right: 16px;
+  bottom: var(--hof-toast-bottom);
+  z-index: 200;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.hof-toast-viewport > * {
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport {
+    --hof-toast-bottom: 28px;
+  }
+}
+
+.hof-toast-viewport--above-composer {
+  --hof-toast-bottom: 100px;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--above-composer {
+    --hof-toast-bottom: 88px;
+  }
+}
+
+.hof-toast-viewport--top {
+  --hof-toast-bottom: auto;
+  top: 100px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: none;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--top {
+    top: 100px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(calc(100% - 32px), 588px);
+  }
+}
+
 @media (min-width: 768px) {
   .hof-show-mobile-only {
     display: none !important;
@@ -539,19 +659,80 @@ button.hof-btn {
   flex-shrink: 0;
   height: 100%;
   box-sizing: border-box;
+  flex-direction: column;
+  padding: 14px 8px 16px;
+  background: transparent;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 @media (min-width: 768px) {
   .hof-app-sidebar {
     display: flex;
-    flex-direction: column;
-    width: 68px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 30;
+    width: var(--hof-sidebar-w);
+    pointer-events: auto;
+  }
+
+  .hof-app-shell-main {
+    width: 100%;
   }
 }
 
 @media (min-width: 1280px) {
   .hof-app-sidebar {
-    width: 200px;
+    padding: 14px 12px 16px;
+  }
+}
+
+.hof-sidebar-logo-area {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hof-sidebar-logo-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  line-height: 0;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+}
+
+.hof-sidebar-nav-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+}
+
+.hof-sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.hof-sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+@media (min-width: 768px) {
+  .hof-sidebar-footer {
+    padding-top: 14px;
   }
 }
 
@@ -562,7 +743,6 @@ button.hof-btn {
 }
 
 .hof-sidebar-logo-full,
-.hof-sidebar-nav-label,
 .hof-sidebar-user-full,
 .hof-sidebar-sign-out {
   display: none;
@@ -574,43 +754,89 @@ button.hof-btn {
   justify-content: center;
 }
 
-@media (min-width: 768px) and (max-width: 1279px) {
-  .hof-app-sidebar {
-    padding: 2px 0 16px;
-  }
-
-  .hof-sidebar-logo-compact {
-    display: flex;
-  }
-
-  .hof-sidebar-user-compact {
-    display: flex;
-  }
-
-  .hof-sidebar-nav-list {
-    padding-top: 0 !important;
-  }
-
-  .hof-app-sidebar > div > button:first-of-type {
-    justify-content: center !important;
-    padding: 0 0 8px !important;
+/* Sidebar nav capsule — border only, no fill */
+@media (min-width: 768px) {
+  .hof-sidebar-nav-capsule {
+    background: transparent;
+    border: 1px solid var(--hof-border);
+    border-radius: var(--hof-radius-full);
+    padding: 4px 4px;
+    box-sizing: border-box;
+    width: 100%;
   }
 
   .hof-sidebar-nav-item-btn {
-    gap: 0 !important;
-    padding: 10px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     justify-content: center !important;
-    border-left: none !important;
+    gap: 2px !important;
+    padding: 6px 4px !important;
+    border-radius: var(--hof-radius-full) !important;
+    border: none !important;
+    background: transparent !important;
+    min-height: 44px !important;
+    width: 100% !important;
+  }
+
+  .hof-sidebar-nav-item-btn[data-active="true"] {
+    padding: 6px 10px !important;
+    background: transparent !important;
   }
 }
 
-@media (min-width: 1280px) {
-  .hof-sidebar-logo-full {
+/* Tablet — compact home icon (matches mobile header), top-right of sidebar */
+@media (min-width: 768px) and (max-width: 1286px) {
+  .hof-sidebar-logo-compact {
     display: flex;
+    justify-content: flex-end;
+    width: 100%;
   }
 
-  .hof-sidebar-nav-label {
-    display: block;
+  .hof-sidebar-logo-area {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 2px;
+    padding-right: 2px;
+  }
+
+  .hof-sidebar-logo-btn {
+    justify-content: flex-end;
+    width: auto;
+    padding-bottom: 8px;
+  }
+
+  .hof-sidebar-logo-compact-icon {
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .hof-sidebar-user-compact {
+    display: flex;
+  }
+}
+
+/* Desktop — labels outside the rounded capsule */
+@media (min-width: 1280px) {
+  .hof-sidebar-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .hof-sidebar-nav-capsule {
+    width: auto;
+    flex-shrink: 0;
+    padding: 4px 4px;
+  }
+
+  .hof-sidebar-nav-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
   }
 
   .hof-sidebar-user-full {
@@ -622,18 +848,16 @@ button.hof-btn {
   }
 }
 
-.hof-sidebar-nav-item-inner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-start;
-  width: 100%;
-}
+/* Desktop — wordmark logo (text) replaces compact icon */
+@media (min-width: 1287px) {
+  .hof-sidebar-logo-full {
+    display: flex;
+  }
 
-@media (min-width: 768px) and (max-width: 1279px) {
-  .hof-sidebar-nav-item-inner {
-    gap: 0;
-    justify-content: center;
+  .hof-sidebar-logo-btn {
+    justify-content: flex-start;
+    padding: 10px 0 0 10px;
+    width: 100%;
   }
 }
 
