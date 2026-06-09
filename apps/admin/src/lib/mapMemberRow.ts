@@ -2,6 +2,7 @@ import { daysSince, formatJoined } from '@/lib/formatters';
 
 export interface MemberRow {
   id: string;
+  handle: string;
   name: string;
   email: string;
   avatarUrl: string | null;
@@ -43,6 +44,7 @@ export function mapMemberRow(m: MemberApiPayload): MemberRow {
 
   return {
     id: m.id,
+    handle: m.handle,
     name: m.display_name,
     email: `${m.handle}@…`,
     avatarUrl: m.avatar_url,

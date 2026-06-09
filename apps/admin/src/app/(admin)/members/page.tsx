@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { HofToast, type ToastKind } from '@hof/ui';
+import { useCallback, useEffect, useState } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
+import { MemberEditModal } from '@/components/MemberEditModal';
 import { Pill } from '@/components/Pill';
 import { type MemberApiPayload, type MemberRow, mapMemberRow } from '@/lib/mapMemberRow';
 
@@ -15,42 +17,54 @@ interface MembersStats {
   active90: number;
 }
 
+interface ToastState {
+  kind: ToastKind;
+  message: string;
+}
+
 export default function MembersPage() {
   const [search, setSearch] = useState('');
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [stats, setStats] = useState<MembersStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/admin/members');
-        const data = (await res.json()) as {
-          members?: MemberApiPayload[];
-          stats?: MembersStats;
-          error?: string;
-        };
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setMembers((data.members ?? []).map(mapMemberRow));
-          setStats(data.stats ?? null);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load members');
-      } finally {
-        setLoading(false);
+  const loadMembers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/members');
+      const data = (await res.json()) as {
+        members?: MemberApiPayload[];
+        stats?: MembersStats;
+        error?: string;
+      };
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setMembers((data.members ?? []).map(mapMemberRow));
+        setStats(data.stats ?? null);
+        setError(null);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load members');
+    } finally {
+      setLoading(false);
     }
-    void load();
   }, []);
 
-  const filtered = members.filter(
-    (m) =>
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase()),
-  );
+  useEffect(() => {
+    void loadMembers();
+  }, [loadMembers]);
+
+  const filtered = members.filter((m) => {
+    const q = search.toLowerCase();
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.handle.toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <>
@@ -122,7 +136,7 @@ export default function MembersPage() {
             />
           </svg>
           <input
-            placeholder="Search name, email, phone…"
+            placeholder="Search name or handle…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -226,6 +240,15 @@ export default function MembersPage() {
               return (
                 <div
                   key={m.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEditingMemberId(m.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setEditingMemberId(m.id);
+                    }
+                  }}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.8fr 1fr 80px',
@@ -235,6 +258,13 @@ export default function MembersPage() {
                     fontFamily: 'Inter, system-ui',
                     fontSize: 13,
                     color: 'var(--hof-text)',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hof-elevated)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -322,22 +352,43 @@ export default function MembersPage() {
                   >
                     {m.posts}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path
-                        stroke="var(--hof-text-sec)"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 6 L15 12 L9 18"
-                      />
-                    </svg>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: 'var(--hof-text-sec)',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Edit
                   </div>
                 </div>
               );
             })}
         </div>
       </div>
+
+      <MemberEditModal
+        open={editingMemberId !== null}
+        memberId={editingMemberId}
+        onClose={() => setEditingMemberId(null)}
+        onSaved={() => {
+          void loadMembers();
+          setToast({ kind: 'success', message: 'Member updated' });
+        }}
+      />
+
+      {toast ? (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 300 }}>
+          <HofToast kind={toast.kind} onDismiss={() => setToast(null)}>
+            {toast.message}
+          </HofToast>
+        </div>
+      ) : null}
     </>
   );
 }
