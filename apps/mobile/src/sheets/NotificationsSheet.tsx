@@ -1,7 +1,7 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import { Avatar, EmptyState, Icon } from '@hof/ui';
+import { Avatar, EmptyState, HofConfirm, Icon, useToast } from '@hof/ui';
 import { type CSSProperties, useCallback, useEffect, useState } from 'react';
 import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
 import { useSupabaseUserId } from '@/hooks/useSupabaseUserId';
@@ -132,10 +132,13 @@ type NotifFilter = (typeof NOTIF_FILTERS)[number];
 
 export default function NotificationsSheet({ open, onClose, onOpenPost }: NotificationsSheetProps) {
   const { mounted, shown } = useSheet(open);
+  const { showToast } = useToast();
   const userId = useSupabaseUserId();
   const [notifs, setNotifs] = useState<NotifItem[]>([]);
   const [filter, setFilter] = useState<NotifFilter>('All');
   const [loaded, setLoaded] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const loadNotifs = useCallback(() => {
     setLoaded(false);
@@ -158,6 +161,26 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
     enabled: open && Boolean(userId),
     onNotification: () => loadNotifs(),
   });
+
+  const handleClearAll = useCallback(async () => {
+    setClearing(true);
+    try {
+      const res = await fetch('/api/notifications/clear-all', { method: 'DELETE' });
+      if (!res.ok) {
+        const d = (await res.json()) as { error?: string };
+        throw new Error(d.error ?? 'Failed to clear notifications');
+      }
+      setNotifs([]);
+      setClearConfirmOpen(false);
+      showToast('All notifications cleared', { kind: 'success' });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to clear notifications', {
+        kind: 'error',
+      });
+    } finally {
+      setClearing(false);
+    }
+  }, [showToast]);
 
   if (!mounted) return null;
 
@@ -191,10 +214,11 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
           borderBottom: `1px solid ${colors.border}`,
         }}
       >
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
               fontFamily: 'Inter',
@@ -219,22 +243,47 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
             Notifications
           </div>
         </div>
-        <button
-          className="hof-btn hof-press"
-          onClick={onClose}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="close" size={16} color={colors.text} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {notifs.length > 0 ? (
+            <button
+              type="button"
+              className="hof-btn hof-press"
+              onClick={() => setClearConfirmOpen(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: colors.elevated,
+                border: `1px solid ${colors.border}`,
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: 500,
+                color: colors.textSec,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Clear all
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="hof-btn hof-press"
+            onClick={onClose}
+            aria-label="Close notifications"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="close" size={16} color={colors.text} />
+          </button>
+        </div>
       </div>
 
       <div className="hof-scroll" style={{ flex: 1, overflowY: 'auto' }}>
@@ -293,6 +342,20 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
 
         <div style={{ height: 60 }} />
       </div>
+
+      <HofConfirm
+        open={clearConfirmOpen}
+        title="Clear all notifications?"
+        body="This permanently removes every notification in your inbox. You can't undo this."
+        confirmLabel={clearing ? 'Clearing…' : 'Clear all'}
+        destructive
+        onConfirm={() => {
+          if (!clearing) void handleClearAll();
+        }}
+        onCancel={() => {
+          if (!clearing) setClearConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }
