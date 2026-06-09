@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS post_reactions (
   post_id  uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id  uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   emoji    text NOT NULL CHECK (emoji IN ('fire','eyes','heart','music','pray')),
-  UNIQUE (post_id, user_id, emoji)
+  UNIQUE (post_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS reply_reactions (
@@ -868,7 +868,7 @@ $$;
 
 DROP TRIGGER IF EXISTS on_post_reaction_change ON public.post_reactions;
 CREATE TRIGGER on_post_reaction_change
-  AFTER INSERT OR DELETE ON public.post_reactions
+  AFTER INSERT OR UPDATE OR DELETE ON public.post_reactions
   FOR EACH ROW
   EXECUTE PROCEDURE public.sync_post_reaction_counts();
 

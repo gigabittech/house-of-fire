@@ -358,6 +358,7 @@ export function FeedPost({
           {pickerOpen && interactiveReactions && onReact && (
             <ReactionPicker
               myReactions={myReactions}
+              counts={post.reactions}
               compact={compact}
               onToggle={(key) => {
                 onReact(key);

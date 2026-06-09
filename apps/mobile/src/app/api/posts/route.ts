@@ -59,9 +59,7 @@ export async function GET(request: NextRequest) {
       .in('post_id', postIds);
 
     myReactionsByPost = (reactions ?? []).reduce<Record<string, string[]>>((acc, r) => {
-      const list = acc[r.post_id] ?? [];
-      list.push(r.emoji);
-      acc[r.post_id] = list;
+      acc[r.post_id] = [r.emoji];
       return acc;
     }, {});
   }

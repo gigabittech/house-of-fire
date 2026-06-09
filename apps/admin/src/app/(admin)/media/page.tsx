@@ -67,8 +67,8 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'pending', label: 'Pending' },
 ];
 
-const TABLE_COLUMNS = '56px 1.5fr 1fr 1fr 120px 88px minmax(220px, 1.5fr)';
-const TABLE_MIN_WIDTH = 1020;
+const TABLE_COLUMNS = '56px 1.5fr 1fr 1fr 120px 88px 56px';
+const TABLE_MIN_WIDTH = 860;
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -82,62 +82,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   color: 'var(--hof-text)',
   outline: 'none',
-};
-
-const approveBtn: React.CSSProperties = {
-  height: 30,
-  padding: '0 12px',
-  background: 'var(--hof-success)',
-  border: 'none',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontFamily: 'Inter, system-ui',
-  fontSize: 12,
-  fontWeight: 600,
-  color: 'var(--hof-bg)',
-  whiteSpace: 'nowrap',
-};
-
-const ghostBtn: React.CSSProperties = {
-  height: 30,
-  padding: '0 12px',
-  background: 'var(--hof-elevated)',
-  border: '1px solid var(--hof-border)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontFamily: 'Inter, system-ui',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--hof-text-sec)',
-  whiteSpace: 'nowrap',
-};
-
-const dangerBtn: React.CSSProperties = {
-  height: 30,
-  padding: '0 12px',
-  background: 'rgba(232,74,26,0.12)',
-  border: '1px solid rgba(232,74,26,0.35)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontFamily: 'Inter, system-ui',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--hof-error)',
-  whiteSpace: 'nowrap',
-};
-
-const warnBtn: React.CSSProperties = {
-  height: 30,
-  padding: '0 12px',
-  background: 'rgba(232,162,26,0.12)',
-  border: '1px solid rgba(232,162,26,0.35)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontFamily: 'Inter, system-ui',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--hof-warning)',
-  whiteSpace: 'nowrap',
 };
 
 const ellipsis: React.CSSProperties = {
@@ -168,12 +112,13 @@ function statusTone(status: PhotoStatus): Parameters<typeof Pill>[0]['tone'] {
   return 'warning';
 }
 
-function actionBtnStyle(base: React.CSSProperties, busy: boolean): React.CSSProperties {
-  return {
-    ...base,
-    opacity: busy ? 0.6 : 1,
-    cursor: busy ? 'wait' : 'pointer',
-  };
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
 }
 
 function fileNameFromPath(storagePath: string): string {
@@ -295,6 +240,12 @@ export default function MediaPage() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [eventId, setEventId] = useState('');
+  const [search, setSearch] = useState('');
+  const [email, setEmail] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const debouncedEmail = useDebouncedValue(email, 400);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -302,6 +253,7 @@ export default function MediaPage() {
   const [pendingTotal, setPendingTotal] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: DEFAULT_PAGE_SIZE,
@@ -317,8 +269,39 @@ export default function MediaPage() {
     sp.set('page', String(pagination.page));
     sp.set('limit', String(pagination.limit));
     if (eventId) sp.set('eventId', eventId);
+    if (debouncedSearch) sp.set('search', debouncedSearch);
+    if (debouncedEmail) sp.set('email', debouncedEmail);
+    if (dateFrom) sp.set('dateFrom', dateFrom);
+    if (dateTo) sp.set('dateTo', dateTo);
     return sp.toString();
-  }, [statusFilter, eventId, pagination.page, pagination.limit]);
+  }, [
+    statusFilter,
+    eventId,
+    debouncedSearch,
+    debouncedEmail,
+    dateFrom,
+    dateTo,
+    pagination.page,
+    pagination.limit,
+  ]);
+
+  const hasActiveFilters =
+    Boolean(eventId) ||
+    Boolean(debouncedSearch) ||
+    Boolean(debouncedEmail) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo) ||
+    statusFilter !== 'pending';
+
+  function clearFilters() {
+    setEventId('');
+    setSearch('');
+    setEmail('');
+    setDateFrom('');
+    setDateTo('');
+    setStatusFilter('pending');
+    setPagination((p) => ({ ...p, page: 1 }));
+  }
 
   const showToast = useCallback((kind: ToastKind, message: string) => {
     setToast({ kind, message });
@@ -399,6 +382,13 @@ export default function MediaPage() {
   useEffect(() => {
     void loadPhotos();
   }, [loadPhotos]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [openMenuId]);
 
   async function updatePhotoStatus(id: string, status: PhotoStatus) {
     setBusyId(id);
@@ -534,86 +524,224 @@ export default function MediaPage() {
             marginBottom: 16,
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 12,
-              alignItems: 'flex-end',
-            }}
-          >
-            <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Event
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: 10,
+                alignItems: 'end',
+              }}
+            >
+              <div style={{ gridColumn: 'span 2', minWidth: 0, position: 'relative' }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Search
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <Icon name="search" size={14} color="var(--hof-text-sec)" />
+                  </div>
+                  <input
+                    value={search}
+                    onChange={(e) => {
+                      setPagination((p) => ({ ...p, page: 1 }));
+                      setSearch(e.target.value);
+                    }}
+                    placeholder="Name, handle, file, caption…"
+                    style={{ ...inputStyle, paddingLeft: 36 }}
+                  />
+                </div>
               </div>
-              <select
-                value={eventId}
-                onChange={(e) => {
-                  setPagination((p) => ({ ...p, page: 1 }));
-                  setEventId(e.target.value);
-                }}
-                style={inputStyle}
-              >
-                <option value="">All events</option>
-                {events.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    Th {ev.edition_number} · {ev.name}
-                  </option>
-                ))}
-              </select>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Customer email
+                </div>
+                <input
+                  value={email}
+                  onChange={(e) => {
+                    setPagination((p) => ({ ...p, page: 1 }));
+                    setEmail(e.target.value);
+                  }}
+                  placeholder="uploader@email.com"
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Uploaded from
+                </div>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setPagination((p) => ({ ...p, page: 1 }));
+                    setDateFrom(e.target.value);
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Uploaded to
+                </div>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => {
+                    setPagination((p) => ({ ...p, page: 1 }));
+                    setDateTo(e.target.value);
+                  }}
+                  style={inputStyle}
+                />
+              </div>
             </div>
-            <div style={{ flex: '2 1 280px', minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 10,
-                  color: 'var(--hof-text-sec)',
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Status
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 12,
+                alignItems: 'flex-end',
+              }}
+            >
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Event
+                </div>
+                <select
+                  value={eventId}
+                  onChange={(e) => {
+                    setPagination((p) => ({ ...p, page: 1 }));
+                    setEventId(e.target.value);
+                  }}
+                  style={inputStyle}
+                >
+                  <option value="">All events</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      Th {ev.edition_number} · {ev.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {STATUS_FILTERS.map((f) => {
-                  const active = statusFilter === f.value;
-                  return (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => {
-                        setPagination((p) => ({ ...p, page: 1 }));
-                        setStatusFilter(f.value);
-                      }}
-                      style={{
-                        height: 40,
-                        padding: '0 14px',
-                        borderRadius: 8,
-                        border: `1px solid ${active ? 'var(--hof-amber)' : 'var(--hof-border)'}`,
-                        background: active ? 'rgba(232,101,26,0.15)' : 'var(--hof-elevated)',
-                        color: active ? 'var(--hof-amber)' : 'var(--hof-text-sec)',
-                        fontFamily: 'Inter, system-ui',
-                        fontSize: 13,
-                        fontWeight: active ? 600 : 500,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {f.label}
-                    </button>
-                  );
-                })}
+              <div style={{ flex: '2 1 280px', minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 10,
+                    color: 'var(--hof-text-sec)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Status
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {STATUS_FILTERS.map((f) => {
+                    const active = statusFilter === f.value;
+                    return (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => {
+                          setPagination((p) => ({ ...p, page: 1 }));
+                          setStatusFilter(f.value);
+                        }}
+                        style={{
+                          height: 40,
+                          padding: '0 14px',
+                          borderRadius: 8,
+                          border: `1px solid ${active ? 'var(--hof-amber)' : 'var(--hof-border)'}`,
+                          background: active ? 'rgba(232,101,26,0.15)' : 'var(--hof-elevated)',
+                          color: active ? 'var(--hof-amber)' : 'var(--hof-text-sec)',
+                          fontFamily: 'Inter, system-ui',
+                          fontSize: 13,
+                          fontWeight: active ? 600 : 500,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  style={{
+                    height: 40,
+                    padding: '0 14px',
+                    borderRadius: 8,
+                    border: '1px solid var(--hof-border)',
+                    background: 'transparent',
+                    color: 'var(--hof-text-sec)',
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Clear filters
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -762,100 +890,39 @@ export default function MediaPage() {
                       <Pill tone={statusTone(photo.status)}>{photo.status}</Pill>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        alignItems: 'center',
-                        gap: 6,
-                        minWidth: 0,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      {photo.publicUrl ? (
-                        <button
-                          type="button"
-                          disabled={busyId === photo.id}
-                          onClick={() => setPreviewUrl(photo.publicUrl)}
-                          style={actionBtnStyle(ghostBtn, busyId === photo.id)}
-                        >
-                          Preview
-                        </button>
-                      ) : null}
-
-                      {photo.status === 'pending' ? (
-                        <>
-                          <button
-                            type="button"
-                            disabled={busyId === photo.id}
-                            onClick={() => void updatePhotoStatus(photo.id, 'approved')}
-                            style={actionBtnStyle(approveBtn, busyId === photo.id)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busyId === photo.id}
-                            onClick={() => void updatePhotoStatus(photo.id, 'rejected')}
-                            style={actionBtnStyle(ghostBtn, busyId === photo.id)}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      ) : null}
-
-                      {photo.status === 'approved' ? (
-                        <button
-                          type="button"
-                          disabled={busyId === photo.id}
-                          onClick={() => void updatePhotoStatus(photo.id, 'inactive')}
-                          style={actionBtnStyle(warnBtn, busyId === photo.id)}
-                        >
-                          Deactivate
-                        </button>
-                      ) : null}
-
-                      {photo.status === 'inactive' ? (
-                        <button
-                          type="button"
-                          disabled={busyId === photo.id}
-                          onClick={() => void updatePhotoStatus(photo.id, 'approved')}
-                          style={actionBtnStyle(approveBtn, busyId === photo.id)}
-                        >
-                          Reactivate
-                        </button>
-                      ) : null}
-
-                      {photo.status === 'rejected' ? (
-                        <button
-                          type="button"
-                          disabled={busyId === photo.id}
-                          onClick={() => void updatePhotoStatus(photo.id, 'approved')}
-                          style={actionBtnStyle(approveBtn, busyId === photo.id)}
-                        >
-                          Approve
-                        </button>
-                      ) : null}
-
-                      {photo.status !== 'inactive' && photo.status !== 'approved' ? (
-                        <button
-                          type="button"
-                          disabled={busyId === photo.id}
-                          onClick={() => void updatePhotoStatus(photo.id, 'inactive')}
-                          style={actionBtnStyle(warnBtn, busyId === photo.id)}
-                        >
-                          Deactivate
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        disabled={busyId === photo.id}
-                        onClick={() => void deletePhoto(photo.id, photo.fileName)}
-                        style={actionBtnStyle(dangerBtn, busyId === photo.id)}
-                      >
-                        Delete
-                      </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <PhotoActionsMenu
+                        photo={photo}
+                        busy={busyId === photo.id}
+                        open={openMenuId === photo.id}
+                        onToggle={() =>
+                          setOpenMenuId((cur) => (cur === photo.id ? null : photo.id))
+                        }
+                        onPreview={() => {
+                          setOpenMenuId(null);
+                          if (photo.publicUrl) setPreviewUrl(photo.publicUrl);
+                        }}
+                        onApprove={() => {
+                          setOpenMenuId(null);
+                          void updatePhotoStatus(photo.id, 'approved');
+                        }}
+                        onReject={() => {
+                          setOpenMenuId(null);
+                          void updatePhotoStatus(photo.id, 'rejected');
+                        }}
+                        onDeactivate={() => {
+                          setOpenMenuId(null);
+                          void updatePhotoStatus(photo.id, 'inactive');
+                        }}
+                        onReactivate={() => {
+                          setOpenMenuId(null);
+                          void updatePhotoStatus(photo.id, 'approved');
+                        }}
+                        onDelete={() => {
+                          setOpenMenuId(null);
+                          void deletePhoto(photo.id, photo.fileName);
+                        }}
+                      />
                     </div>
                   </div>
                 );
@@ -901,4 +968,148 @@ export default function MediaPage() {
       ) : null}
     </>
   );
+}
+
+function PhotoActionsMenu({
+  photo,
+  busy,
+  open,
+  onToggle,
+  onPreview,
+  onApprove,
+  onReject,
+  onDeactivate,
+  onReactivate,
+  onDelete,
+}: {
+  photo: PhotoItem;
+  busy: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onPreview: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onDeactivate: () => void;
+  onReactivate: () => void;
+  onDelete: () => void;
+}) {
+  const showApprove =
+    photo.status === 'pending' || photo.status === 'rejected';
+  const showReject = photo.status === 'pending';
+  const showDeactivate =
+    photo.status === 'approved' ||
+    (photo.status !== 'inactive' && photo.status !== 'approved');
+  const showReactivate = photo.status === 'inactive';
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        aria-label={`Actions for ${photo.fileName}`}
+        aria-expanded={open}
+        disabled={busy}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          border: '1px solid var(--hof-border)',
+          background: open ? 'var(--hof-elevated)' : 'transparent',
+          color: 'var(--hof-text-sec)',
+          cursor: busy ? 'not-allowed' : 'pointer',
+          fontFamily: 'Inter, system-ui',
+          fontSize: 16,
+          lineHeight: 1,
+          letterSpacing: 1,
+          opacity: busy ? 0.6 : 1,
+        }}
+      >
+        ⋯
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 20,
+            minWidth: 148,
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            overflow: 'hidden',
+          }}
+        >
+          {photo.publicUrl ? (
+            <button type="button" role="menuitem" onClick={onPreview} style={menuItemStyle()}>
+              Preview
+            </button>
+          ) : null}
+          {showApprove ? (
+            <button type="button" role="menuitem" onClick={onApprove} style={menuItemStyle('success')}>
+              Approve
+            </button>
+          ) : null}
+          {showReject ? (
+            <button type="button" role="menuitem" onClick={onReject} style={menuItemStyle()}>
+              Reject
+            </button>
+          ) : null}
+          {showReactivate ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onReactivate}
+              style={menuItemStyle('success')}
+            >
+              Reactivate
+            </button>
+          ) : null}
+          {showDeactivate ? (
+            <button type="button" role="menuitem" onClick={onDeactivate} style={menuItemStyle('warn')}>
+              Deactivate
+            </button>
+          ) : null}
+          <PhotoMenuDivider />
+          <button type="button" role="menuitem" onClick={onDelete} style={menuItemStyle('danger')}>
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PhotoMenuDivider() {
+  return <div style={{ height: 1, background: 'var(--hof-border)', margin: '4px 0' }} />;
+}
+
+function menuItemStyle(
+  variant: 'default' | 'danger' | 'success' | 'warn' = 'default',
+): React.CSSProperties {
+  return {
+    display: 'block',
+    width: '100%',
+    padding: '10px 14px',
+    border: 'none',
+    background: 'transparent',
+    textAlign: 'left',
+    fontFamily: 'Inter, system-ui',
+    fontSize: 13,
+    color:
+      variant === 'danger'
+        ? 'var(--hof-error)'
+        : variant === 'success'
+          ? 'var(--hof-success)'
+          : variant === 'warn'
+            ? 'var(--hof-warning)'
+            : 'var(--hof-text)',
+    cursor: 'pointer',
+  };
 }

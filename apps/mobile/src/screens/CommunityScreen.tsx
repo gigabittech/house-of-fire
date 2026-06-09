@@ -57,8 +57,10 @@ export default function CommunityScreen() {
       .catch(console.error);
   }, []);
 
-  const loadPosts = useCallback(() => {
-    setLoadingPosts(true);
+  const loadPosts = useCallback((options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoadingPosts(true);
+    }
     setPostsError(false);
 
     if (feedView === 'mine') {
@@ -89,11 +91,34 @@ export default function CommunityScreen() {
     loadPosts();
   }, [loadPosts]);
 
+  const patchPostFromRealtime = useCallback(
+    (row: {
+      id: string;
+      reaction_counts?: Record<string, number>;
+      reply_count?: number;
+      moderation_status?: ApiPost['moderation_status'];
+    }) => {
+      setApiPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reaction_counts: row.reaction_counts ?? p.reaction_counts,
+                reply_count: row.reply_count ?? p.reply_count,
+                moderation_status: row.moderation_status ?? p.moderation_status,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
   useCommunityRealtime({
     channel: feedView === 'channel' ? activeChannel : undefined,
     eventId: liveEventId,
-    onPostInsert: () => loadPosts(),
-    onPostUpdate: () => loadPosts(),
+    onPostInsert: () => loadPosts({ silent: true }),
+    onPostUpdate: patchPostFromRealtime,
     enabled: feedView === 'channel',
   });
 
@@ -103,20 +128,27 @@ export default function CommunityScreen() {
 
   const handleReact = useCallback(
     async (postId: string, emoji: ReactionKey) => {
-      const prevReactions = myReactionsByPost[postId] ?? [];
-      const had = prevReactions.includes(emoji);
-      const nextReactions = had
-        ? prevReactions.filter((k) => k !== emoji)
-        : [...prevReactions, emoji];
+      const prevReaction = myReactionsByPost[postId]?.[0] ?? null;
+      const removing = prevReaction === emoji;
+      const nextReaction = removing ? null : emoji;
 
-      setMyReactionsByPost((prev) => ({ ...prev, [postId]: nextReactions }));
+      setMyReactionsByPost((prev) => ({
+        ...prev,
+        [postId]: nextReaction ? [nextReaction] : [],
+      }));
       setApiPosts((prev) =>
         prev.map((p) => {
           if (p.id !== postId) return p;
           const counts = { ...p.reaction_counts };
-          const current = counts[emoji] ?? 0;
-          counts[emoji] = Math.max(0, current + (had ? -1 : 1));
-          if (counts[emoji] === 0) delete counts[emoji];
+          if (prevReaction) {
+            const prevCount = counts[prevReaction] ?? 0;
+            const nextCount = Math.max(0, prevCount - 1);
+            if (nextCount === 0) delete counts[prevReaction];
+            else counts[prevReaction] = nextCount;
+          }
+          if (nextReaction) {
+            counts[nextReaction] = (counts[nextReaction] ?? 0) + 1;
+          }
           return { ...p, reaction_counts: counts };
         }),
       );
@@ -128,7 +160,7 @@ export default function CommunityScreen() {
           body: JSON.stringify({ emoji }),
         });
         const d = (await r.json()) as {
-          toggled?: boolean;
+          myReaction?: ReactionKey | null;
           reactionCounts?: Record<string, number>;
         };
         if (d.reactionCounts) {
@@ -138,12 +170,37 @@ export default function CommunityScreen() {
             ),
           );
         }
+        if (d.myReaction !== undefined) {
+          setMyReactionsByPost((prev) => ({
+            ...prev,
+            [postId]: d.myReaction ? [d.myReaction] : [],
+          }));
+        }
       } catch {
-        setMyReactionsByPost((prev) => ({ ...prev, [postId]: prevReactions }));
-        loadPosts();
+        setMyReactionsByPost((prev) => ({
+          ...prev,
+          [postId]: prevReaction ? [prevReaction] : [],
+        }));
+        setApiPosts((prev) =>
+          prev.map((p) => {
+            if (p.id !== postId) return p;
+            const counts = { ...p.reaction_counts };
+            if (nextReaction) {
+              const nextCount = counts[nextReaction] ?? 0;
+              const reverted = Math.max(0, nextCount - 1);
+              if (reverted === 0) delete counts[nextReaction];
+              else counts[nextReaction] = reverted;
+            }
+            if (prevReaction) {
+              counts[prevReaction] = (counts[prevReaction] ?? 0) + 1;
+            }
+            return { ...p, reaction_counts: counts };
+          }),
+        );
+        showToast('Could not save reaction');
       }
     },
-    [myReactionsByPost, loadPosts],
+    [myReactionsByPost, showToast],
   );
 
   const headerActions = useMemo(

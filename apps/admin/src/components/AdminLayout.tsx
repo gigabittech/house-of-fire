@@ -160,7 +160,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             justifyContent: compact ? 'center' : 'flex-start',
             width: '100%',
             padding: 0,
-            marginBottom: 4,
+            marginTop: 16,
+            marginBottom: 20,
             lineHeight: 0,
             boxSizing: 'border-box',
           }}
