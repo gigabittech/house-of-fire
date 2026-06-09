@@ -77,6 +77,72 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
+/** minmax(0, …) lets long strings shrink inside the grid without blowing out the layout */
+const TABLE_GRID = '150px minmax(0, 140px) 88px 110px minmax(0, 1fr) minmax(0, 1.4fr) 88px';
+const TABLE_MIN_WIDTH = 920;
+
+function cellShrink(): React.CSSProperties {
+  return { minWidth: 0 };
+}
+
+function EmailErrorCell({ message }: { message: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!message) {
+    return (
+      <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-dis)' }}>—</span>
+    );
+  }
+
+  const isLong = message.length > 100 || message.includes('\n');
+
+  return (
+    <div style={cellShrink()}>
+      <div
+        title={expanded ? undefined : message}
+        style={{
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 10,
+          color: 'var(--hof-error)',
+          lineHeight: 1.45,
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          ...(expanded
+            ? { whiteSpace: 'pre-wrap' }
+            : {
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }),
+        }}
+      >
+        {message}
+      </div>
+      {isLong ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            marginTop: 4,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            fontFamily: 'Inter, system-ui',
+            fontSize: 10,
+            fontWeight: 500,
+            color: 'var(--hof-text-sec)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+        >
+          {expanded ? 'Show less' : 'Show full error'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function EmailLogPage() {
   const [rows, setRows] = useState<EmailLogRow[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -385,10 +451,12 @@ export default function EmailLogPage() {
             background: 'var(--hof-surface)',
           }}
         >
+          <div style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: TABLE_MIN_WIDTH }}>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '160px 140px 90px 120px 1fr 100px',
+              gridTemplateColumns: TABLE_GRID,
               gap: 12,
               padding: '10px 16px',
               borderBottom: '1px solid var(--hof-border)',
@@ -405,6 +473,7 @@ export default function EmailLogPage() {
             <div>Status</div>
             <div>Source</div>
             <div>Subject</div>
+            <div>Error</div>
             <div style={{ textAlign: 'right' }}>Actions</div>
           </div>
 
@@ -426,14 +495,16 @@ export default function EmailLogPage() {
                 key={r.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '160px 140px 90px 120px 1fr 100px',
+                  gridTemplateColumns: TABLE_GRID,
                   gap: 12,
                   padding: '12px 16px',
                   borderBottom: '1px solid var(--hof-border)',
+                  alignItems: 'start',
                 }}
               >
                 <div
                   style={{
+                    ...cellShrink(),
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: 11,
                     color: 'var(--hof-text-sec)',
@@ -443,6 +514,7 @@ export default function EmailLogPage() {
                 </div>
                 <div
                   style={{
+                    ...cellShrink(),
                     fontFamily: 'Inter, system-ui',
                     fontSize: 12,
                     color: 'var(--hof-text)',
@@ -456,30 +528,34 @@ export default function EmailLogPage() {
                 <div>
                   <Pill tone={statusTone(r.status)}>{r.status}</Pill>
                 </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)' }}>
+                <div
+                  style={{
+                    ...cellShrink(),
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-text-sec)',
+                  }}
+                >
                   {r.app}
                   {r.kind ? (
                     <div style={{ fontSize: 10, color: 'var(--hof-text-dis)', marginTop: 2 }}>{r.kind}</div>
                   ) : null}
                 </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text)' }}>
+                <div
+                  style={{
+                    ...cellShrink(),
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {r.subject}
-                  {r.status === 'failed' && r.error_message ? (
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: 11,
-                        color: 'var(--hof-error)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {r.error_message}
-                    </div>
-                  ) : null}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <EmailErrorCell message={r.status === 'failed' ? r.error_message : null} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
                   {canResend(r) ? (
                     <button
                       type="button"
@@ -517,6 +593,8 @@ export default function EmailLogPage() {
             total={pagination.total}
             onPageChange={(p) => setPagination((cur) => ({ ...cur, page: p }))}
           />
+          </div>
+          </div>
         </div>
       </div>
     </>
