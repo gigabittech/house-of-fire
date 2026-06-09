@@ -8,6 +8,8 @@ import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'r
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
+import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   formatCapacityMeta,
@@ -24,7 +26,7 @@ import {
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { apiPostToUi } from '../lib/postUi';
+import { apiPostToUi, type ApiPost } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
 import { MapSheet } from '../sheets/MapSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
@@ -326,7 +328,13 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .finally(() => setEventLoading(false));
   }, []);
 
-  useEffect(() => {
+  useEventInventoryRealtime({
+    event: eventData,
+    onEventChange: setEventData,
+    enabled: !eventLoading,
+  });
+
+  const loadEventPosts = useCallback(() => {
     if (!eventData?.id) return;
     setPostsLoading(true);
     setPostsError(false);
@@ -339,6 +347,16 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .catch(() => setPostsError(true))
       .finally(() => setPostsLoading(false));
   }, [eventData?.id]);
+
+  useCommunityRealtime({
+    eventId: eventData?.id,
+    onPostInsert: () => loadEventPosts(),
+    onPostUpdate: () => loadEventPosts(),
+  });
+
+  useEffect(() => {
+    loadEventPosts();
+  }, [loadEventPosts]);
 
   useEffect(() => {
     if (!eventData?.id) return;

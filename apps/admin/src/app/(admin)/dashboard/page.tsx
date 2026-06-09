@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
 import { Pill } from '@/components/Pill';
@@ -555,29 +556,61 @@ export default function DashboardPage() {
     void load();
   }, []);
 
-  useEffect(() => {
+  const loadMetrics = useCallback(async () => {
     const eventId = event?.id;
     if (!eventId) return;
-    async function loadMetrics() {
-      try {
-        const res = await fetch(`/api/admin/dashboard/metrics?eventId=${eventId}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          salesData: number[];
-          tierBars: Array<{ label: string; sold: number; cap: number }>;
-          openRequests?: number;
-          salesByChannel?: { online: number; door: number };
-        };
-        setSalesData(data.salesData ?? []);
-        setTierBars(data.tierBars ?? []);
-        setOpenRequests(data.openRequests ?? 0);
-        setDoorSalesCount(data.salesByChannel?.door ?? 0);
-      } catch {
-        /* keep prior */
-      }
+    try {
+      const res = await fetch(`/api/admin/dashboard/metrics?eventId=${eventId}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        salesData: number[];
+        tierBars: Array<{ label: string; sold: number; cap: number }>;
+        openRequests?: number;
+        salesByChannel?: { online: number; door: number };
+      };
+      setSalesData(data.salesData ?? []);
+      setTierBars(data.tierBars ?? []);
+      setOpenRequests(data.openRequests ?? 0);
+      setDoorSalesCount(data.salesByChannel?.door ?? 0);
+    } catch {
+      /* keep prior */
     }
-    void loadMetrics();
   }, [event?.id]);
+
+  const loadGuests = useCallback(async () => {
+    const guestUrl = event?.id
+      ? `/api/admin/guests?eventId=${event.id}`
+      : '/api/admin/guests';
+    try {
+      const gRes = await fetch(guestUrl);
+      const gData = (await gRes.json()) as { guests: GuestRow[] };
+      setGuests(gData.guests ?? []);
+    } catch {
+      /* keep prior */
+    }
+  }, [event?.id]);
+
+  const loadPendingPhotos = useCallback(async () => {
+    try {
+      const pRes = await fetch('/api/admin/media?status=pending');
+      const pData = (await pRes.json()) as { photos: PhotoRow[] };
+      setPhotos(pData.photos ?? []);
+    } catch {
+      /* keep prior */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMetrics();
+  }, [loadMetrics]);
+
+  useDashboardRealtime({
+    eventId: event?.id,
+    onMetricsResync: loadMetrics,
+    onGuestsResync: loadGuests,
+    onPhotosResync: loadPendingPhotos,
+    enabled: !loading,
+  });
 
   function exportGuestsCsv() {
     const header = ['code', 'name', 'handle', 'tier', 'status', 'purchased_at', 'amount_cents'];

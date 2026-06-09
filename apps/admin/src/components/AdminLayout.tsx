@@ -4,7 +4,8 @@ import { breakpoints, sidebarWidth } from '@hof/design-tokens';
 import { HofLogoMark } from '@hof/ui';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavCountsRealtime } from '@/hooks/useNavCountsRealtime';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import { createClient } from '@/lib/supabase';
@@ -75,20 +76,26 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('Crew');
 
-  useEffect(() => {
-    async function loadCounts() {
-      try {
-        const res = await fetch('/api/admin/nav-counts');
-        if (!res.ok) return;
-        const data = (await res.json()) as { mediaPending: number; modPending: number };
-        if (data.mediaPending > 0) setMediaBadge(String(data.mediaPending));
-        if (data.modPending > 0) setModBadge(String(data.modPending));
-      } catch {
-        /* silent */
-      }
+  const loadCounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/nav-counts');
+      if (!res.ok) return;
+      const data = (await res.json()) as { mediaPending: number; modPending: number };
+      setMediaBadge(data.mediaPending > 0 ? String(data.mediaPending) : undefined);
+      setModBadge(data.modPending > 0 ? String(data.modPending) : undefined);
+    } catch {
+      /* silent */
     }
-    void loadCounts();
   }, []);
+
+  useEffect(() => {
+    void loadCounts();
+  }, [loadCounts]);
+
+  useNavCountsRealtime({
+    onMediaPending: loadCounts,
+    onModPending: loadCounts,
+  });
 
   useEffect(() => {
     async function loadProfile() {

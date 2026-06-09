@@ -13,6 +13,7 @@ import {
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useAppPageColumn } from '@/hooks/useAppPageColumn';
@@ -87,6 +88,14 @@ export default function CommunityScreen() {
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  useCommunityRealtime({
+    channel: feedView === 'channel' ? activeChannel : undefined,
+    eventId: liveEventId,
+    onPostInsert: () => loadPosts(),
+    onPostUpdate: () => loadPosts(),
+    enabled: feedView === 'channel',
+  });
 
   const channelPosts = apiPosts.map((p) =>
     apiPostToUi(p, { myReactions: myReactionsByPost[p.id] }),

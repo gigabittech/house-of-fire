@@ -1,5 +1,6 @@
 'use client';
 
+import { RealtimeDisconnectedBanner, RealtimeProvider } from '@hof/realtime';
 import { HofAppShell, type NavId, ToastProvider } from '@hof/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
@@ -94,8 +95,11 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AppHeaderProvider defaultTitle={titleFromPath(pathname)}>
-      <AppChromeShell>{children}</AppChromeShell>
-    </AppHeaderProvider>
+    <RealtimeProvider>
+      <AppHeaderProvider defaultTitle={titleFromPath(pathname)}>
+        <AppChromeShell>{children}</AppChromeShell>
+        <RealtimeDisconnectedBanner />
+      </AppHeaderProvider>
+    </RealtimeProvider>
   );
 }

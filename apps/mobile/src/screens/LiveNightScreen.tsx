@@ -14,8 +14,9 @@ import {
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
 import { NO_EVENTS_MESSAGE } from '@/lib/eventDisplay';
 import { MapSheet } from '../sheets/MapSheet';
 
@@ -193,15 +194,13 @@ export default function LiveNightScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // Fetch posts
-  useEffect(() => {
-    let cancelled = false;
+  const loadPosts = useCallback(() => {
     setPostsLoading(true);
     setPostsError(false);
     fetch('/api/posts?channel=general&limit=3')
       .then((r) => r.json() as Promise<{ posts?: ApiPost[] }>)
       .then(({ posts: raw }) => {
-        if (cancelled || !raw) return;
+        if (!raw) return;
         const mapped: PostItem[] = raw.slice(0, 3).map((p) => {
           const profile = p.is_anonymous ? null : p.profiles;
           const displayName = profile?.display_name ?? 'Anonymous';
@@ -220,16 +219,21 @@ export default function LiveNightScreen() {
         });
         setPosts(mapped);
       })
-      .catch(() => {
-        if (!cancelled) setPostsError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setPostsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => setPostsError(true))
+      .finally(() => setPostsLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
+
+  useCommunityRealtime({
+    channel: 'general',
+    eventId: eventId ?? undefined,
+    onPostInsert: () => loadPosts(),
+    onPostUpdate: () => loadPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED,
+  });
 
   // Fetch upcoming event → then fetch lineup
   useEffect(() => {
