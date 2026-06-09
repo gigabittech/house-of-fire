@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { CUSTOMER_VISIBLE_PHOTO_STATUS } from '../../../../lib/eventPhotos.server';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 const STRIP_PHOTO_LIMIT = 8;
@@ -26,7 +27,7 @@ export async function GET() {
     .from('event_photos')
     .select('id, public_url')
     .eq('event_id', event.id)
-    .eq('status', 'approved')
+    .eq('status', CUSTOMER_VISIBLE_PHOTO_STATUS)
     .order('created_at', { ascending: false })
     .limit(STRIP_PHOTO_LIMIT);
 

@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useState } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { Pill } from '@/components/Pill';
+import { AllPostsTable } from './AllPostsTable';
 
 interface Report {
   id: string;
@@ -46,6 +47,20 @@ interface ModLogEntry {
   created_at: string;
   post: { id: string; title: string; channel: string } | null;
   moderator: { handle: string; display_name: string } | null;
+}
+
+function formatWhen(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
 }
 
 function timeAgo(dateStr: string): string {
@@ -633,6 +648,8 @@ export default function ModPage() {
         </div>
       </div>
 
+      <AllPostsTable onRefreshQueue={() => void loadQueue()} />
+
       {logOpen && (
         <div
           style={{
@@ -648,52 +665,113 @@ export default function ModPage() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 'min(100%, 420px)',
+              width: 'min(100%, 960px)',
               height: '100%',
               background: 'var(--hof-surface)',
               borderLeft: '1px solid var(--hof-border)',
               overflowY: 'auto',
-              padding: 20,
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 20, color: 'var(--hof-text)' }}>
-                Mod log
+            <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 20, color: 'var(--hof-text)' }}>
+                  Mod log
+                </div>
+                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)', marginTop: 4 }}>
+                  {logLoading ? 'Loading…' : `${logEntries.length} actions`}
+                </div>
               </div>
               <button type="button" onClick={() => setLogOpen(false)} style={ghostBtn}>
                 Close
               </button>
             </div>
-            {logLoading ? (
-              <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>Loading…</div>
-            ) : logEntries.length === 0 ? (
-              <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>No moderation actions yet</div>
-            ) : (
-              logEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  style={{
-                    padding: '12px 0',
-                    borderBottom: '1px solid var(--hof-border)',
-                    fontFamily: 'Inter, system-ui',
-                    fontSize: 12,
-                  }}
-                >
-                  <div style={{ fontWeight: 600, color: 'var(--hof-text)', textTransform: 'capitalize' }}>
-                    {entry.action}
-                  </div>
-                  <div style={{ color: 'var(--hof-text-sec)', marginTop: 4 }}>
-                    {entry.post?.title ?? 'Post'} · #{entry.post?.channel ?? '?'}
-                  </div>
-                  <div style={{ color: 'var(--hof-text-sec)', marginTop: 4 }}>
-                    by @{entry.moderator?.handle ?? 'mod'} · {timeAgo(entry.created_at)} ago
-                  </div>
-                  {entry.reason && (
-                    <div style={{ color: 'var(--hof-text-sec)', marginTop: 4, fontStyle: 'italic' }}>{entry.reason}</div>
-                  )}
+
+            <div
+              style={{
+                margin: 20,
+                border: '1px solid var(--hof-border)',
+                borderRadius: 12,
+                overflow: 'hidden',
+                background: 'var(--hof-bg)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '150px 100px 1fr 120px 1fr',
+                  gap: 12,
+                  padding: '10px 16px',
+                  borderBottom: '1px solid var(--hof-border)',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: 'var(--hof-text-sec)',
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <div>When</div>
+                <div>Action</div>
+                <div>Post</div>
+                <div>Moderator</div>
+                <div>Reason</div>
+              </div>
+
+              {logLoading ? (
+                <div style={{ padding: 20, fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+                  Loading…
                 </div>
-              ))
-            )}
+              ) : logEntries.length === 0 ? (
+                <div style={{ padding: 20, fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+                  No moderation actions yet
+                </div>
+              ) : (
+                logEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '150px 100px 1fr 120px 1fr',
+                      gap: 12,
+                      padding: '12px 16px',
+                      borderBottom: '1px solid var(--hof-border)',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--hof-text-sec)' }}>
+                      {formatWhen(entry.created_at)}
+                    </div>
+                    <div style={{ fontWeight: 600, color: 'var(--hof-text)', textTransform: 'capitalize' }}>
+                      {entry.action}
+                    </div>
+                    <div style={{ color: 'var(--hof-text)', minWidth: 0 }}>
+                      <div
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {entry.post?.title ?? 'Post'}
+                      </div>
+                      <div style={{ color: 'var(--hof-text-sec)', marginTop: 2, fontSize: 11 }}>
+                        #{entry.post?.channel ?? '?'}
+                      </div>
+                    </div>
+                    <div style={{ color: 'var(--hof-text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      @{entry.moderator?.handle ?? 'mod'}
+                    </div>
+                    <div style={{ color: 'var(--hof-text-sec)', fontStyle: entry.reason ? 'italic' : 'normal' }}>
+                      {entry.reason ?? '—'}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

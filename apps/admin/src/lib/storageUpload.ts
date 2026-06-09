@@ -39,6 +39,93 @@ export async function uploadEventHero(eventId: string, file: File): Promise<stri
   return data.hero_image_url;
 }
 
+export async function uploadEventPhoto(
+  eventId: string,
+  file: File,
+  caption?: string,
+): Promise<{ photoId: string; publicUrl: string }> {
+  const err = validateImageFile(file);
+  if (err) throw new Error(err);
+
+  const res = await fetch('/api/admin/media/upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      eventId,
+      fileName: file.name,
+      caption: caption?.trim() || undefined,
+    }),
+  });
+  const data = (await res.json()) as {
+    signedUrl?: string;
+    publicUrl?: string;
+    photoId?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.signedUrl || !data.publicUrl || !data.photoId) {
+    throw new Error(data.error ?? 'Could not start upload');
+  }
+  await putFileToSignedUrl(data.signedUrl, file);
+  return { photoId: data.photoId, publicUrl: data.publicUrl };
+}
+
+export type EventPhotoUploadResult = {
+  uploaded: Array<{ photoId: string; publicUrl: string; fileName: string }>;
+  failed: Array<{ fileName: string; error: string }>;
+};
+
+export async function uploadEventPhotos(
+  eventId: string,
+  files: File[],
+  caption?: string,
+  onProgress?: (completed: number, total: number) => void,
+): Promise<EventPhotoUploadResult> {
+  const uploaded: EventPhotoUploadResult['uploaded'] = [];
+  const failed: EventPhotoUploadResult['failed'] = [];
+  const total = files.length;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    try {
+      const result = await uploadEventPhoto(eventId, file, caption);
+      uploaded.push({ ...result, fileName: file.name });
+    } catch (err) {
+      failed.push({
+        fileName: file.name,
+        error: err instanceof Error ? err.message : 'Upload failed',
+      });
+    }
+    onProgress?.(i + 1, total);
+  }
+
+  return { uploaded, failed };
+}
+
+export async function uploadMemberAvatar(memberId: string, file: File): Promise<string> {
+  const err = validateImageFile(file);
+  if (err) throw new Error(err);
+
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`/api/admin/members/${memberId}/avatar`, {
+    method: 'POST',
+    body: form,
+  });
+  const data = (await res.json()) as { publicUrl?: string; error?: string };
+  if (!res.ok || !data.publicUrl) {
+    throw new Error(data.error ?? 'Could not upload photo');
+  }
+  return data.publicUrl;
+}
+
+export async function removeMemberAvatar(memberId: string): Promise<void> {
+  const res = await fetch(`/api/admin/members/${memberId}/avatar`, { method: 'DELETE' });
+  const data = (await res.json()) as { error?: string };
+  if (!res.ok) {
+    throw new Error(data.error ?? 'Could not remove photo');
+  }
+}
+
 export async function uploadAnnounceMedia(files: File[]): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files) {

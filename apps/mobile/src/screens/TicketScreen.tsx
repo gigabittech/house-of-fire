@@ -1,8 +1,7 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import type { ToastKind } from '@hof/ui';
-import { EmptyState, FakeQR, HofToast, Icon } from '@hof/ui';
+import { EmptyState, FakeQR, Icon, useToast, type ToastKind } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import type { CSSProperties } from 'react';
@@ -198,11 +197,7 @@ export default function TicketScreen() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [toast, setToast] = useState<{ shown: boolean; kind: ToastKind; message: string }>({
-    shown: false,
-    kind: 'success',
-    message: '',
-  });
+  const { showToast } = useToast();
   const [tickets, setTickets] = useState<TicketData[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [qrByTicketId, setQrByTicketId] = useState<Record<string, string>>({});
@@ -348,9 +343,8 @@ export default function TicketScreen() {
     setTouchStartX(null);
   }
 
-  function showToast(kind: ToastKind, message: string) {
-    setToast({ shown: true, kind, message });
-    setTimeout(() => setToast((t) => ({ ...t, shown: false })), 3500);
+  function notify(kind: ToastKind, message: string) {
+    showToast(message, { kind, placement: 'top', duration: 3500 });
   }
 
   function handleSavePdf() {
@@ -1020,15 +1014,6 @@ export default function TicketScreen() {
         ) : null}
       </div>
 
-      {/* Toast */}
-      {toast.shown && (
-        <div className="hof-no-print hof-ticket-toast">
-          <HofToast kind={toast.kind} onDismiss={() => setToast((t) => ({ ...t, shown: false }))}>
-            {toast.message}
-          </HofToast>
-        </div>
-      )}
-
       <TransferSheet
         open={transferOpen}
         onClose={() => setTransferOpen(false)}
@@ -1039,7 +1024,7 @@ export default function TicketScreen() {
             : undefined
         }
         onTransferred={() => {
-          showToast('success', 'Ticket transferred — they have 24h to accept.');
+          notify('success', 'Ticket transferred — they have 24h to accept.');
           void reloadTickets();
         }}
       />

@@ -1,8 +1,8 @@
 'use client';
 
-import { colors, layoutChrome } from '@hof/design-tokens';
+import { colors, spacing } from '@hof/design-tokens';
 import type { ReactionKey } from '@hof/ui';
-import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, HofToast, Icon, useResponsive } from '@hof/ui';
+import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useToast } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -33,9 +33,10 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [fetchDone, setFetchDone] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportSent, setReportSent] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isWide } = useResponsive();
+  const { showToast } = useToast();
+  const cardSectionPad = `0 16px ${spacing[2]}px`;
+  const cardTopPad = spacing[3];
 
   const handleBack = useCallback(() => router.back(), [router]);
 
@@ -142,40 +143,26 @@ export default function PostScreen({ postId }: PostScreenProps) {
         background: colors.bg,
       }}
     >
-      <div
-        className="hof-scroll"
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 720px)' : 'auto',
-          overflowY: 'auto',
-          paddingBottom: 80,
-          paddingTop: isWide ? 8 : layoutChrome.mobilePageHeaderInset,
-        }}
-      >
+      <div className="hof-scroll hof-post-scroll">
         {!fetchDone && !fetchError && (
-          <div style={{ padding: '0 16px 8px' }}>
+          <div style={{ padding: cardSectionPad, paddingTop: cardTopPad }}>
             <FeedSkeletonCard />
           </div>
         )}
         {fetchError && (
-          <div style={{ padding: '0 16px 8px' }}>
+          <div style={{ padding: cardSectionPad, paddingTop: cardTopPad }}>
             <ErrorState retry={loadPost} />
           </div>
         )}
         {post && (
-          <div style={{ padding: '0 16px 8px', position: 'relative' }}>
+          <div style={{ padding: cardSectionPad, paddingTop: cardTopPad, position: 'relative' }}>
             <button
               type="button"
               className="hof-btn"
               onClick={() => setMenuOpen((v) => !v)}
               style={{
                 position: 'absolute',
-                top: 8,
+                top: 18,
                 right: 24,
                 zIndex: 2,
                 width: 32,
@@ -195,7 +182,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
               <div
                 style={{
                   position: 'absolute',
-                  top: 44,
+                  top: 54,
                   right: 24,
                   zIndex: 3,
                   background: colors.surface,
@@ -353,20 +340,13 @@ export default function PostScreen({ postId }: PostScreenProps) {
       </div>
 
       <div
+        className="hof-post-composer"
         style={{
-          position: 'absolute',
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          bottom: 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 720px)' : 'auto',
-          boxSizing: 'border-box',
           zIndex: 20,
           background: 'rgba(10,10,8,0.92)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderTop: `1px solid ${colors.border}`,
-          padding: isWide ? '12px 16px 16px' : '10px 16px 34px',
           display: 'flex',
           gap: 10,
           alignItems: 'center',
@@ -452,7 +432,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
             zIndex: 100,
             background: 'rgba(0,0,0,0.6)',
             display: 'flex',
-            alignItems: 'flex-end',
+            alignItems: 'center',
             justifyContent: 'center',
             padding: 16,
           }}
@@ -488,7 +468,9 @@ export default function PostScreen({ postId }: PostScreenProps) {
                       body: JSON.stringify({ reason }),
                     });
                     setReportOpen(false);
-                    setReportSent(true);
+                    showToast('Report submitted — thanks for helping keep the board honest.', {
+                      placement: 'above-composer',
+                    });
                   }}
                   style={{
                     padding: '10px 12px',
@@ -507,14 +489,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {reportSent && (
-        <div style={{ position: 'absolute', left: 16, right: 16, bottom: 100, zIndex: 30 }}>
-          <HofToast kind="success" onDismiss={() => setReportSent(false)}>
-            Report submitted — thanks for helping keep the board honest.
-          </HofToast>
         </div>
       )}
     </div>
