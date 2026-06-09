@@ -166,23 +166,6 @@ a {
   }
 }
 
-.hof-ticket-toast {
-  position: absolute;
-  top: 100px;
-  left: 16px;
-  right: 16px;
-  z-index: 50;
-}
-
-@media (min-width: 768px) {
-  .hof-ticket-toast {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    width: min(calc(100% - 32px), 588px);
-  }
-}
-
 /* Tonight banner — tighter top spacing on narrow viewports */
 @media (max-width: 776px) {
   .hof-ticket-tonight-banner {

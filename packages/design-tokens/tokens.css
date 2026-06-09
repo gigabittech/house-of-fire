@@ -591,6 +591,59 @@ button.hof-btn {
   display: none;
 }
 
+/* ── Toast viewport — fixed position, compact bottom-right by default ─────── */
+.hof-toast-viewport {
+  --hof-toast-bottom: calc(72px + max(10px, env(safe-area-inset-bottom, 0px)) + 16px);
+  position: fixed;
+  right: 16px;
+  bottom: var(--hof-toast-bottom);
+  z-index: 200;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.hof-toast-viewport > * {
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport {
+    --hof-toast-bottom: 28px;
+  }
+}
+
+.hof-toast-viewport--above-composer {
+  --hof-toast-bottom: 100px;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--above-composer {
+    --hof-toast-bottom: 88px;
+  }
+}
+
+.hof-toast-viewport--top {
+  --hof-toast-bottom: auto;
+  top: 100px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: none;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--top {
+    top: 100px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(calc(100% - 32px), 588px);
+  }
+}
+
 @media (min-width: 768px) {
   .hof-show-mobile-only {
     display: none !important;

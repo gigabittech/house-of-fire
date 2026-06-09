@@ -65,6 +65,8 @@ export type { HofSkeletonProps } from './HofSkeleton';
 export { HofSkeleton } from './HofSkeleton';
 export type { HofToastProps, ToastKind } from './HofToast';
 export { HofToast } from './HofToast';
+export type { ToastOptions, ToastPlacement } from './ToastProvider';
+export { ToastProvider, useToast } from './ToastProvider';
 export type { HofTopBarProps } from './HofTopBar';
 export { HofTopBar } from './HofTopBar';
 export type { HofWordmarkProps } from './HofWordmark';

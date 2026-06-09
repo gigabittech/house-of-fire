@@ -2,7 +2,7 @@
 
 import { colors, spacing } from '@hof/design-tokens';
 import type { ReactionKey } from '@hof/ui';
-import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, HofToast, Icon } from '@hof/ui';
+import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useToast } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -33,8 +33,8 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const [fetchDone, setFetchDone] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportSent, setReportSent] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { showToast } = useToast();
   const cardSectionPad = `0 16px ${spacing[2]}px`;
   const cardTopPad = spacing[3];
 
@@ -468,7 +468,9 @@ export default function PostScreen({ postId }: PostScreenProps) {
                       body: JSON.stringify({ reason }),
                     });
                     setReportOpen(false);
-                    setReportSent(true);
+                    showToast('Report submitted — thanks for helping keep the board honest.', {
+                      placement: 'above-composer',
+                    });
                   }}
                   style={{
                     padding: '10px 12px',
@@ -487,23 +489,6 @@ export default function PostScreen({ postId }: PostScreenProps) {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {reportSent && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 16,
-            bottom: 100,
-            zIndex: 30,
-            width: 'max-content',
-            maxWidth: 'min(360px, calc(100% - 32px))',
-          }}
-        >
-          <HofToast kind="success" onDismiss={() => setReportSent(false)}>
-            Report submitted — thanks for helping keep the board honest.
-          </HofToast>
         </div>
       )}
     </div>
