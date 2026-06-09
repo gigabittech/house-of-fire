@@ -5,6 +5,7 @@ import { HofLogoMark } from '@hof/ui';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import { createClient } from '@/lib/supabase';
 
@@ -71,6 +72,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [modBadge, setModBadge] = useState<string | undefined>();
   const [userName, setUserName] = useState('Admin');
   const [userInitials, setUserInitials] = useState('AD');
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('Crew');
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       if (!user) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name, role')
+        .select('display_name, role, avatar_url')
         .eq('id', user.id)
         .maybeSingle();
       const name = profile?.display_name ?? user.email?.split('@')[0] ?? 'Admin';
@@ -110,12 +112,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           .slice(0, 2)
           .toUpperCase(),
       );
+      setUserAvatarUrl(profile?.avatar_url ?? null);
       const roleLabel =
         profile?.role === 'admin' ? 'Owner' : profile?.role === 'crew' ? 'Crew' : 'Member';
       setUserRole(roleLabel);
     }
     void loadProfile();
-  }, []);
+  }, [pathname]);
 
   // Close drawer whenever the route changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset drawer on pathname change
@@ -268,24 +271,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             justifyContent: compact ? 'center' : 'flex-start',
           }}
         >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--hof-amber), var(--hof-ember))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--hof-bg)',
-            }}
-          >
-            {userInitials}
-          </div>
+          <Avatar initials={userInitials} src={userAvatarUrl} alt={userName} size={32} />
           {!compact && (
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--hof-text)' }}>

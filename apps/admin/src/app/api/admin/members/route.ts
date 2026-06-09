@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { daysSince } from '@/lib/formatters';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
 
   const { data: profiles, error: profilesError } = await supabase

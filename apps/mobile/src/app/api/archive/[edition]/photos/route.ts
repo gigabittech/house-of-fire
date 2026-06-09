@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { CUSTOMER_VISIBLE_PHOTO_STATUS } from '../../../../../lib/eventPhotos.server';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 interface RouteContext {
@@ -29,7 +30,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     .from('event_photos')
     .select('id, public_url, storage_path, created_at')
     .eq('event_id', event.id)
-    .eq('status', 'approved')
+    .eq('status', CUSTOMER_VISIBLE_PHOTO_STATUS)
     .order('created_at', { ascending: false });
 
   if (photosError) {

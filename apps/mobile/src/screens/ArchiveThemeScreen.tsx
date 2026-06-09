@@ -96,7 +96,7 @@ export default function ArchiveThemeScreen() {
           position: 'absolute',
           inset: 0,
           overflowY: 'auto',
-          paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
+          paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
           paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
