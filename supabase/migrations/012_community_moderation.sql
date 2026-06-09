@@ -50,7 +50,7 @@ $$;
 
 DROP TRIGGER IF EXISTS on_post_reaction_change ON public.post_reactions;
 CREATE TRIGGER on_post_reaction_change
-  AFTER INSERT OR DELETE ON public.post_reactions
+  AFTER INSERT OR UPDATE OR DELETE ON public.post_reactions
   FOR EACH ROW
   EXECUTE PROCEDURE public.sync_post_reaction_counts();
 

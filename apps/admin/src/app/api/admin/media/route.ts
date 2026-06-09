@@ -18,6 +18,24 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+function escapeIlike(term: string): string {
+  return term.replace(/,/g, ' ').replace(/[%_]/g, '\\$&');
+}
+
+async function resolveUploaderIds(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
+  term: string,
+): Promise<string[]> {
+  const esc = escapeIlike(term);
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .or(`display_name.ilike.%${esc}%,handle.ilike.%${esc}%`);
+
+  if (error) return [];
+  return (data ?? []).map((row) => row.id);
+}
+
 async function fetchUserEmails(
   supabase: ReturnType<typeof createAdminSupabaseClient>,
   userIds: string[],
@@ -36,10 +54,16 @@ async function fetchUserEmails(
   return map;
 }
 
+const EMAIL_FILTER_FETCH_CAP = 500;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get('status') ?? 'pending';
   const eventId = searchParams.get('eventId')?.trim() ?? '';
+  const search = searchParams.get('search')?.trim() ?? '';
+  const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
+  const dateFrom = searchParams.get('dateFrom')?.trim() ?? '';
+  const dateTo = searchParams.get('dateTo')?.trim() ?? '';
   const page = asInt(searchParams.get('page'), 1);
   const limit = clamp(asInt(searchParams.get('limit'), 25), 1, 100);
   const offset = (page - 1) * limit;
@@ -85,8 +109,28 @@ export async function GET(request: NextRequest) {
   if (eventId) {
     query = query.eq('event_id', eventId);
   }
+  if (dateFrom) {
+    query = query.gte('created_at', `${dateFrom}T00:00:00.000Z`);
+  }
+  if (dateTo) {
+    query = query.lte('created_at', `${dateTo}T23:59:59.999Z`);
+  }
 
-  const { data, error, count } = await query.range(offset, offset + limit - 1);
+  if (search) {
+    const esc = escapeIlike(search);
+    const uploaderIds = await resolveUploaderIds(supabase, search);
+    const orParts = [`caption.ilike.%${esc}%`, `storage_path.ilike.%${esc}%`];
+    if (uploaderIds.length > 0) {
+      orParts.push(`uploader_id.in.(${uploaderIds.join(',')})`);
+    }
+    query = query.or(orParts.join(','));
+  }
+
+  const useEmailFilter = email.length > 0;
+
+  const { data, error, count } = useEmailFilter
+    ? await query.limit(EMAIL_FILTER_FETCH_CAP)
+    : await query.range(offset, offset + limit - 1);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -104,7 +148,7 @@ export async function GET(request: NextRequest) {
 
   const emailByUserId = await fetchUserEmails(supabase, uploaderIds);
 
-  const photos = rows.map((row) => {
+  let photos = rows.map((row) => {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     const profileId =
       profile && typeof profile === 'object' && 'id' in profile
@@ -117,11 +161,18 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  const total = count ?? 0;
+  if (useEmailFilter) {
+    photos = photos.filter((row) => row.uploader_email?.toLowerCase().includes(email));
+  }
+
+  const total = useEmailFilter ? photos.length : (count ?? 0);
+  const paginatedPhotos = useEmailFilter
+    ? photos.slice(offset, offset + limit)
+    : photos;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return NextResponse.json({
-    photos,
+    photos: paginatedPhotos,
     pagination: {
       page,
       limit,

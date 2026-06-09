@@ -33,6 +33,9 @@ importers:
       '@hof/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@hof/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@hof/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -82,6 +85,9 @@ importers:
       '@hof/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@hof/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@hof/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -143,6 +149,25 @@ importers:
 
   packages/design-tokens:
     devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/realtime:
+    dependencies:
+      react-dom:
+        specifier: ^18.3 || ^19.0
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.107.0
+        version: 2.107.0
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.15
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
       typescript:
         specifier: ^5.9.0
         version: 5.9.3

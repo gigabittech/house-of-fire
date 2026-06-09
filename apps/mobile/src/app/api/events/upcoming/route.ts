@@ -39,15 +39,27 @@ export async function GET() {
     .order('sort_order', { ascending: true });
 
   const inventorySupabase = await createServiceRoleClient();
-  const { data: tickets } = await inventorySupabase
-    .from('tickets')
-    .select('tier_id')
-    .eq('event_id', event.id)
-    .in('status', ['valid', 'used']);
 
   const soldByTier: Record<string, number> = {};
-  for (const t of tickets ?? []) {
-    soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+  const tiersHaveSoldCount = (tiers ?? []).some(
+    (t) => typeof (t as TicketTierRow & { sold_count?: number }).sold_count === 'number',
+  );
+
+  if (tiersHaveSoldCount) {
+    for (const tier of tiers ?? []) {
+      const sc = (tier as TicketTierRow & { sold_count?: number }).sold_count;
+      if (typeof sc === 'number') soldByTier[tier.id] = sc;
+    }
+  } else {
+    const { data: tickets } = await inventorySupabase
+      .from('tickets')
+      .select('tier_id')
+      .eq('event_id', event.id)
+      .in('status', ['valid', 'used']);
+
+    for (const t of tickets ?? []) {
+      soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+    }
   }
 
   const tiersWithRemaining = (tiers ?? []).map((tier) => {

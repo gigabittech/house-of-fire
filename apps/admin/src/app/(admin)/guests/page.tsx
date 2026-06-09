@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useGuestsRealtime } from '@/hooks/useGuestsRealtime';
 import { EventGuestSection } from '@/components/EventGuestSection';
 import {
   GuestFilters,
@@ -53,6 +54,7 @@ export default function GuestsPage() {
   const [tierStatus, setTierStatus] = useState<EventTierStatusGroup[]>([]);
   const [tierStatusLoading, setTierStatusLoading] = useState(true);
   const [pagesByEvent, setPagesByEvent] = useState<Record<string, number>>({});
+  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
 
   const debouncedEmail = useDebouncedValue(filters.email, 400);
   const debouncedCode = useDebouncedValue(filters.code, 400);
@@ -150,7 +152,7 @@ export default function GuestsPage() {
     return () => {
       cancelled = true;
     };
-  }, [eventsReady, filters.eventId, filters.tierId, debouncedEmail, debouncedCode]);
+  }, [eventsReady, filters.eventId, filters.tierId, debouncedEmail, debouncedCode, realtimeRefreshKey]);
 
   useEffect(() => {
     setPagesByEvent({});
@@ -185,7 +187,18 @@ export default function GuestsPage() {
     return () => {
       cancelled = true;
     };
-  }, [eventsReady, filters.eventId]);
+  }, [eventsReady, filters.eventId, realtimeRefreshKey]);
+
+  const bumpRealtime = useCallback(() => {
+    setRealtimeRefreshKey((k) => k + 1);
+  }, []);
+
+  useGuestsRealtime({
+    eventId: filters.eventId,
+    onResync: bumpRealtime,
+    onTierStatusResync: bumpRealtime,
+    enabled: eventsReady && !!filters.eventId,
+  });
 
   const tierStatusScopeLabel = useMemo(() => {
     if (filters.eventId) {

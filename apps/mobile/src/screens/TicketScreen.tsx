@@ -8,6 +8,8 @@ import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useSupabaseUserId } from '@/hooks/useSupabaseUserId';
+import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
 import { QR_RENDER_OPTIONS } from '@/lib/qrRenderOptions';
 import RefundSheet from '../sheets/RefundSheet';
@@ -189,6 +191,7 @@ function TicketDetailField({
 
 export default function TicketScreen() {
   const router = useRouter();
+  const userId = useSupabaseUserId();
   const searchParams = useSearchParams();
   const purchasedFromUrl = searchParams.get('purchased') === '1';
   const paymentIntentFromRedirect = searchParams.get('payment_intent');
@@ -243,6 +246,14 @@ export default function TicketScreen() {
     setActiveIndex((i) => Math.min(i, Math.max(0, list.length - 1)));
     return list;
   }, [paymentIntentFromRedirect]);
+
+  useTicketRealtime({
+    userId,
+    enabled: !loading && Boolean(userId),
+    onTicketUpdate: () => {
+      void reloadTickets();
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;

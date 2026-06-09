@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hof/design-tokens": "workspace:*",
+    "@hof/realtime": "workspace:*",
     "@hof/ui": "workspace:*",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",

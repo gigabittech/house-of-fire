@@ -7,6 +7,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
 import {
   formatDoorsRange,
   formatEventDateShort,
@@ -1444,6 +1445,7 @@ export default function CheckoutScreen() {
     UpcomingEvent,
     'name' | 'date' | 'venue_name' | 'doors_open' | 'doors_close'
   > | null>(null);
+  const [checkoutEventFull, setCheckoutEventFull] = useState<UpcomingEvent | null>(null);
   const [maxQtyCheckout, setMaxQtyCheckout] = useState(MAX_TICKETS_PER_ORDER);
   const [eventLoading, setEventLoading] = useState(true);
 
@@ -1484,6 +1486,7 @@ export default function CheckoutScreen() {
           event?: UpcomingEvent;
         }) => {
           if (d.event) {
+            setCheckoutEventFull(d.event);
             setCheckoutEvent({
               name: d.event.name,
               date: d.event.date,
@@ -1519,6 +1522,32 @@ export default function CheckoutScreen() {
       .catch(console.error)
       .finally(() => setEventLoading(false));
   }, []);
+
+  useEventInventoryRealtime({
+    event: checkoutEventFull,
+    onEventChange: (next) => {
+      setCheckoutEventFull(next);
+      if (!next.ticket_tiers) return;
+      const built: Record<string, TierData> = {};
+      for (const t of next.ticket_tiers) {
+        if (t.status === 'hidden') continue;
+        const effective = t.effective_status ?? t.status;
+        const remaining = t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0));
+        const soldOut = effective === 'sold_out' || remaining <= 0;
+        const tierName = t.display_name || t.name;
+        built[t.id] = {
+          name: tierName,
+          priceCents: t.price_cents,
+          feeCents: t.fee_cents ?? 0,
+          description: t.description ?? null,
+          remaining,
+          soldOut,
+        };
+      }
+      setTierData(built);
+    },
+    enabled: !eventLoading,
+  });
 
   // Ensure selected tier is a valid API tier id (UUID), not a stale slug
   useEffect(() => {
