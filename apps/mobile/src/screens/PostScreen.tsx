@@ -124,6 +124,27 @@ export default function PostScreen({ postId }: PostScreenProps) {
     }
   };
 
+  const submitReply = useCallback(async () => {
+    const body = reply.trim();
+    if (!body || !postId || sending) return;
+    setSending(true);
+    try {
+      const r = await fetch(`/api/posts/${postId}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      });
+      const d = (await r.json()) as { reply?: ApiReply };
+      if (d.reply) {
+        setReplies((prev) => [...prev, d.reply!]);
+        setApiPost((p) => (p ? { ...p, reply_count: p.reply_count + 1 } : p));
+      }
+      setReply('');
+    } finally {
+      setSending(false);
+    }
+  }, [reply, postId, sending]);
+
   const post = apiPost ? apiPostToUi(apiPost, { myReactions }) : null;
 
   if (fetchDone && !post) {
@@ -242,7 +263,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
               </div>
             )}
             <FeedPost
-              post={post}
+              post={{ ...post, replyCount: replies.length }}
               resolvePhoto={photoSrc}
               interactiveReactions={post.moderationStatus === 'approved' || !post.moderationStatus}
               onReact={(emoji) => void toggleReaction(emoji)}
@@ -396,6 +417,12 @@ export default function PostScreen({ postId }: PostScreenProps) {
         <input
           value={reply}
           onChange={(e) => setReply(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void submitReply();
+            }
+          }}
           placeholder="Add a reply…"
           style={{
             flex: 1,
@@ -412,24 +439,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
         <button
           className="hof-btn hof-press"
           disabled={reply.trim().length === 0 || sending}
-          onClick={async () => {
-            if (!reply.trim() || !postId || sending) return;
-            setSending(true);
-            const r = await fetch(`/api/posts/${postId}/replies`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ body: reply }),
-            });
-            const d = (await r.json()) as { reply?: ApiReply };
-            if (d.reply) {
-              setReplies((prev) => [...prev, d.reply!]);
-              if (apiPost) {
-                setApiPost({ ...apiPost, reply_count: apiPost.reply_count + 1 });
-              }
-            }
-            setReply('');
-            setSending(false);
-          }}
+          onClick={() => void submitReply()}
           style={{
             width: 36,
             height: 36,
