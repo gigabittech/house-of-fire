@@ -1,6 +1,7 @@
 'use client';
 
 import { DoorQrScanner, DoorScanResult, type DoorScanResultData } from '@hof/ui';
+import { writeRealtimeCache } from '@hof/realtime';
 import { useCallback, useEffect, useState } from 'react';
 import { DoorCheckInQueueBanner } from '@/components/DoorCheckInQueueBanner';
 import { DoorLiveGuests } from '@/components/DoorLiveGuests';
@@ -13,6 +14,7 @@ import { drainCheckInQueue } from '@/lib/doorCheckInQueue';
 import { prefetchGuestCache } from '@/lib/doorGuestCache';
 import { drainDoorSaleQueue } from '@/lib/doorSaleQueue';
 import { processDoorScan } from '@/lib/doorScanFlow';
+import { useDoorRealtime, useDoorTierRealtime } from '@/hooks/useDoorRealtime';
 import { formatDoorsTime } from '@/lib/formatters';
 
 const EVENT_STORAGE_KEY = 'hof-door-event-id';
@@ -156,6 +158,7 @@ export default function DoorPage() {
           : 'none yet',
       );
       setStatRemaining(String(data.stats.remaining));
+      writeRealtimeCache(`door-stats:${data.event.id}`, data.stats);
       setEventContext({
         edition_number: data.event.edition_number,
         name: data.event.name,
@@ -200,10 +203,49 @@ export default function DoorPage() {
     void loadStats();
   }, [loadStats]);
 
-  useEffect(() => {
-    const id = setInterval(() => void loadStats(), 15_000);
-    return () => clearInterval(id);
-  }, [loadStats]);
+  const applyStatsDelta = useCallback(
+    (delta: {
+      soldDelta?: number;
+      scannedDelta?: number;
+      walkupDelta?: number;
+      remainingDelta?: number;
+    }) => {
+      if (delta.soldDelta) {
+        setStatSold((s) => String(Math.max(0, Number(s === '—' ? 0 : s) + delta.soldDelta!)));
+      }
+      if (delta.scannedDelta) {
+        setStatScanned((s) => {
+          const next = Math.max(0, Number(s === '—' ? 0 : s) + delta.scannedDelta!);
+          setStatScannedSub(() => {
+            const sold = Number(statSold === '—' ? 0 : statSold);
+            return sold > 0 ? `${Math.round((next / sold) * 100)}% in` : '';
+          });
+          return String(next);
+        });
+      }
+      if (delta.walkupDelta) {
+        setStatWalkupCount((s) => String(Math.max(0, Number(s === '—' ? 0 : s) + delta.walkupDelta!)));
+      }
+      if (delta.remainingDelta) {
+        setStatRemaining((s) =>
+          String(Math.max(0, Number(s === '—' ? 0 : s) + delta.remainingDelta!)),
+        );
+      }
+    },
+    [statSold],
+  );
+
+  useDoorRealtime({
+    eventId: selectedEventId,
+    onTicketChange: applyStatsDelta,
+    onCheckIn: bumpGuests,
+    onResync: loadStats,
+  });
+
+  useDoorTierRealtime({
+    eventId: selectedEventId,
+    onTierUpdate: loadStats,
+  });
 
   useEffect(() => {
     void Promise.all([drainDoorSaleQueue(), drainCheckInQueue()]).then(() => void loadStats());

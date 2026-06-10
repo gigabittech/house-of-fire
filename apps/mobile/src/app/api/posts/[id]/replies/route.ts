@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { notifyPostAuthor } from '../../../../../lib/postNotifications.server';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,12 +57,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const replierName = replier?.display_name ?? replier?.handle ?? 'Someone';
     const preview = (post.body ?? post.title ?? 'your post').slice(0, 80);
 
-    await supabase.from('notifications').insert({
-      user_id: post.author_id,
+    await notifyPostAuthor({
+      authorId: post.author_id,
+      actorId: user.id,
+      postId: id,
       type: 'reply',
       title: replierName,
       body: preview,
-      link: `/community/${id}`,
     });
   }
 

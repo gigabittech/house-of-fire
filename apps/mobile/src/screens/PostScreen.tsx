@@ -45,9 +45,11 @@ export default function PostScreen({ postId }: PostScreenProps) {
     onBack: handleBack,
   });
 
-  const loadPost = useCallback(() => {
+  const loadPost = useCallback((options?: { silent?: boolean }) => {
     if (!postId) return;
-    setFetchDone(false);
+    if (!options?.silent) {
+      setFetchDone(false);
+    }
     setFetchError(false);
     fetch(`/api/posts/${postId}`)
       .then((r) => {
@@ -68,16 +70,22 @@ export default function PostScreen({ postId }: PostScreenProps) {
   }, [loadPost]);
 
   const toggleReaction = async (key: ReactionKey) => {
-    const had = myReactions.includes(key);
-    const prevReactions = myReactions;
-    const nextReactions = had ? myReactions.filter((k) => k !== key) : [...myReactions, key];
-    setMyReactions(nextReactions);
+    const prevReaction = myReactions[0] ?? null;
+    const removing = prevReaction === key;
+    const nextReaction = removing ? null : key;
+    setMyReactions(nextReaction ? [nextReaction] : []);
 
     if (apiPost) {
       const counts = { ...apiPost.reaction_counts };
-      const current = counts[key] ?? 0;
-      counts[key] = Math.max(0, current + (had ? -1 : 1));
-      if (counts[key] === 0) delete counts[key];
+      if (prevReaction) {
+        const prevCount = counts[prevReaction] ?? 0;
+        const nextCount = Math.max(0, prevCount - 1);
+        if (nextCount === 0) delete counts[prevReaction];
+        else counts[prevReaction] = nextCount;
+      }
+      if (nextReaction) {
+        counts[nextReaction] = (counts[nextReaction] ?? 0) + 1;
+      }
       setApiPost({ ...apiPost, reaction_counts: counts });
     }
 
@@ -87,13 +95,32 @@ export default function PostScreen({ postId }: PostScreenProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emoji: key }),
       });
-      const d = (await r.json()) as { toggled?: boolean; reactionCounts?: Record<string, number> };
-      if (d.reactionCounts && apiPost) {
+      const d = (await r.json()) as {
+        myReaction?: ReactionKey | null;
+        reactionCounts?: Record<string, number>;
+      };
+      if (d.reactionCounts) {
         setApiPost((p) => (p ? { ...p, reaction_counts: d.reactionCounts! } : p));
       }
+      if (d.myReaction !== undefined) {
+        setMyReactions(d.myReaction ? [d.myReaction] : []);
+      }
     } catch {
-      setMyReactions(prevReactions);
-      loadPost();
+      setMyReactions(prevReaction ? [prevReaction] : []);
+      if (apiPost) {
+        const counts = { ...apiPost.reaction_counts };
+        if (nextReaction) {
+          const nextCount = counts[nextReaction] ?? 0;
+          const reverted = Math.max(0, nextCount - 1);
+          if (reverted === 0) delete counts[nextReaction];
+          else counts[nextReaction] = reverted;
+        }
+        if (prevReaction) {
+          counts[prevReaction] = (counts[prevReaction] ?? 0) + 1;
+        }
+        setApiPost({ ...apiPost, reaction_counts: counts });
+      }
+      showToast('Could not save reaction');
     }
   };
 

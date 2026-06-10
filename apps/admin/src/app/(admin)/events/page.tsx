@@ -5,6 +5,7 @@ import { EventFormModal, parseFaqsFromJson } from '@/components/EventFormModal';
 import { PaneHeader } from '@/components/PaneHeader';
 import type { EventFormPayload, EventStatus } from '@/lib/eventPayload';
 import type { TierFormRow } from '@/lib/tierPayload';
+import { useEventsRealtime } from '@/hooks/useEventsRealtime';
 import { type EventRow, mapEventRow, mapEventStatus } from '@/lib/mapEventRow';
 
 type EventStatus = 'live' | 'draft' | 'past';
@@ -97,6 +98,28 @@ export default function EventsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEventsRealtime({
+    onEventUpdate: (row) => {
+      const rawStatus = row.status;
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === row.id
+            ? {
+                ...e,
+                rawStatus,
+                status: mapEventStatus(rawStatus),
+              }
+            : e,
+        ),
+      );
+    },
+    onTierUpdate: (row) => {
+      if (typeof row.sold_count === 'number') {
+        setSoldByTierId((prev) => ({ ...prev, [row.id]: row.sold_count ?? 0 }));
+      }
+    },
+  });
 
   const filtered = filter === 'all' ? events : events.filter((e) => e.status === filter);
   const liveCount = events.filter((e) => e.status === 'live').length;

@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS post_reactions (
   post_id  uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id  uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   emoji    text NOT NULL CHECK (emoji IN ('fire','eyes','heart','music','pray')),
-  UNIQUE (post_id, user_id, emoji)
+  UNIQUE (post_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS reply_reactions (
@@ -868,7 +868,7 @@ $$;
 
 DROP TRIGGER IF EXISTS on_post_reaction_change ON public.post_reactions;
 CREATE TRIGGER on_post_reaction_change
-  AFTER INSERT OR DELETE ON public.post_reactions
+  AFTER INSERT OR UPDATE OR DELETE ON public.post_reactions
   FOR EACH ROW
   EXECUTE PROCEDURE public.sync_post_reaction_counts();
 
@@ -882,6 +882,179 @@ CREATE POLICY "authenticated_report_content"
 -- ─── 013: Single live event ───
 -- Only one event may be live at a time.
 CREATE UNIQUE INDEX IF NOT EXISTS events_single_live_idx ON events ((1)) WHERE status = 'live';
+
+-- ─── 018: Realtime (RLS, inventory, publication) ───
+CREATE OR REPLACE FUNCTION public.is_crew_or_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role IN ('crew', 'admin')
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_crew_or_admin() TO authenticated;
+
+CREATE POLICY "crew_read_all_tickets"
+  ON public.tickets FOR SELECT
+  USING (public.is_crew_or_admin());
+
+CREATE POLICY "crew_read_all_refunds"
+  ON public.refund_requests FOR SELECT
+  USING (public.is_crew_or_admin());
+
+CREATE POLICY "crew_read_all_photos"
+  ON public.event_photos FOR SELECT
+  USING (public.is_crew_or_admin());
+
+DROP POLICY IF EXISTS "public_read_posts" ON public.posts;
+
+CREATE POLICY "moderated_read_posts"
+  ON public.posts FOR SELECT
+  USING (
+    (
+      moderation_status = 'approved'
+      AND (channel <> 'crew' OR public.is_crew_or_admin() OR author_id = auth.uid())
+    )
+    OR author_id = auth.uid()
+    OR public.is_crew_or_admin()
+  );
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.tickets
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.ticket_tiers
+  ADD COLUMN IF NOT EXISTS sold_count integer NOT NULL DEFAULT 0;
+
+ALTER TABLE public.ticket_tiers
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_updated_at_events ON public.events;
+CREATE TRIGGER set_updated_at_events
+  BEFORE UPDATE ON public.events
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_tickets ON public.tickets;
+CREATE TRIGGER set_updated_at_tickets
+  BEFORE UPDATE ON public.tickets
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_orders ON public.orders;
+CREATE TRIGGER set_updated_at_orders
+  BEFORE UPDATE ON public.orders
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_posts ON public.posts;
+CREATE TRIGGER set_updated_at_posts
+  BEFORE UPDATE ON public.posts
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_profiles ON public.profiles;
+CREATE TRIGGER set_updated_at_profiles
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_ticket_tiers ON public.ticket_tiers;
+CREATE TRIGGER set_updated_at_ticket_tiers
+  BEFORE UPDATE ON public.ticket_tiers
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+UPDATE public.ticket_tiers tt
+SET sold_count = COALESCE((
+  SELECT count(*)::integer
+  FROM public.tickets tk
+  WHERE tk.tier_id = tt.id
+    AND tk.status IN ('valid', 'used')
+), 0);
+
+CREATE OR REPLACE FUNCTION public.sync_tier_sold_count_for_tier(p_tier_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.ticket_tiers
+  SET sold_count = COALESCE((
+    SELECT count(*)::integer
+    FROM public.tickets
+    WHERE tier_id = p_tier_id
+      AND status IN ('valid', 'used')
+  ), 0),
+  updated_at = now()
+  WHERE id = p_tier_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_tier_sold_count_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM public.sync_tier_sold_count_for_tier(NEW.tier_id);
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.tier_id IS DISTINCT FROM NEW.tier_id THEN
+      PERFORM public.sync_tier_sold_count_for_tier(OLD.tier_id);
+    END IF;
+    PERFORM public.sync_tier_sold_count_for_tier(NEW.tier_id);
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    PERFORM public.sync_tier_sold_count_for_tier(OLD.tier_id);
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS tickets_sync_tier_sold_count ON public.tickets;
+CREATE TRIGGER tickets_sync_tier_sold_count
+  AFTER INSERT OR UPDATE OR DELETE ON public.tickets
+  FOR EACH ROW EXECUTE FUNCTION public.sync_tier_sold_count_trigger();
+
+CREATE INDEX IF NOT EXISTS idx_tickets_event_status
+  ON public.tickets (event_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_event_checked_in
+  ON public.tickets (event_id, checked_in_at DESC NULLS LAST);
+
+CREATE INDEX IF NOT EXISTS idx_posts_event_channel_created
+  ON public.posts (event_id, channel, created_at DESC);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_tiers;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.post_reactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.event_photos;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.refund_requests;
 
 -- ─── SEED: Artists, event, tiers, lineup, discount ───
 -- House of Fire — Seed Data (Edition 24 — Fireversary)

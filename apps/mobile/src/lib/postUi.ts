@@ -61,7 +61,7 @@ export function apiPostToUi(p: ApiPost, options: ApiPostToUiOptions = {}): UiPos
       .toUpperCase() || '?';
   const role = (p.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
   const reactions = parseReactions(p.reaction_counts);
-  const myReaction = (myReactions.find((k) => k in reactions) ?? null) as ReactionKey | null;
+  const myReaction = (myReactions[0] ?? null) as ReactionKey | null;
 
   return {
     id: p.id,

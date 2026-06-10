@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useSupabaseRealtime, useRealtimeStatus } from '@hof/realtime';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase';
 import { Pill } from '@/components/Pill';
 import { TablePagination } from '@/components/TablePagination';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
@@ -60,15 +62,41 @@ export function DoorLiveGuests({ eventId, refreshKey = 0 }: DoorLiveGuestsProps)
     }
   }, [eventId, page]);
 
+  const loadGuestsRef = useRef(loadGuests);
+  useEffect(() => {
+    loadGuestsRef.current = loadGuests;
+  }, [loadGuests]);
+
   useEffect(() => {
     void loadGuests();
   }, [loadGuests, refreshKey]);
 
+  const { status: globalStatus } = useRealtimeStatus();
+
+  useSupabaseRealtime({
+    supabase: createClient(),
+    table: 'tickets',
+    filter: eventId ? `event_id=eq.${eventId}` : undefined,
+    eventTypes: ['INSERT', 'UPDATE'],
+    enabled: !!eventId,
+    debounceMs: 300,
+    onInsert: (row) => {
+      if (row.status === 'used' && page === 1) void loadGuestsRef.current();
+    },
+    onUpdate: (row, oldRow) => {
+      if (oldRow.status !== 'used' && row.status === 'used' && page === 1) {
+        void loadGuestsRef.current();
+      }
+    },
+    onResync: () => void loadGuestsRef.current(),
+  });
+
   useEffect(() => {
     if (!eventId) return;
-    const id = setInterval(() => void loadGuests(), 15_000);
+    if (globalStatus !== 'disconnected' && globalStatus !== 'error') return;
+    const id = setInterval(() => void loadGuests(), 60_000);
     return () => clearInterval(id);
-  }, [eventId, loadGuests]);
+  }, [eventId, loadGuests, globalStatus]);
 
   useEffect(() => {
     setPage(1);

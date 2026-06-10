@@ -2,7 +2,9 @@
 
 import { colors } from '@hof/design-tokens';
 import { Avatar, EmptyState, Icon } from '@hof/ui';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useState } from 'react';
+import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
+import { useSupabaseUserId } from '@/hooks/useSupabaseUserId';
 import { useSheet } from './useSheet';
 
 import { apiNotifToItem, type ApiNotif, type NotifItem } from '../lib/notificationUi';
@@ -130,12 +132,12 @@ type NotifFilter = (typeof NOTIF_FILTERS)[number];
 
 export default function NotificationsSheet({ open, onClose, onOpenPost }: NotificationsSheetProps) {
   const { mounted, shown } = useSheet(open);
+  const userId = useSupabaseUserId();
   const [notifs, setNotifs] = useState<NotifItem[]>([]);
   const [filter, setFilter] = useState<NotifFilter>('All');
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  const loadNotifs = useCallback(() => {
     setLoaded(false);
     fetch('/api/notifications')
       .then((r) => r.json())
@@ -144,7 +146,18 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
       })
       .catch(console.error)
       .finally(() => setLoaded(true));
-  }, [open]);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    loadNotifs();
+  }, [open, loadNotifs]);
+
+  useNotificationsRealtime({
+    userId,
+    enabled: open && Boolean(userId),
+    onNotification: () => loadNotifs(),
+  });
 
   if (!mounted) return null;
 

@@ -5,7 +5,9 @@ import type { Post as UiPost } from '@hof/ui';
 import { EmptyState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
+import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -24,7 +26,7 @@ import {
 } from '@/lib/eventDisplay';
 import { archiveThemePath } from '@/lib/resolveEventSlug';
 import { photoSrc } from '../data/photos';
-import { apiPostToUi } from '../lib/postUi';
+import { apiPostToUi, type ApiPost } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
 import NotificationsSheet from '../sheets/NotificationsSheet';
 
@@ -154,6 +156,30 @@ export default function HomeScreen() {
       .finally(() => setEventLoaded(true));
   }, []);
 
+  useEventInventoryRealtime({
+    event: upcomingEvent,
+    onEventChange: setUpcomingEvent,
+    enabled: eventLoaded,
+  });
+
+  const loadTopPosts = useCallback(() => {
+    setTopPostsLoading(true);
+    fetch('/api/posts?channel=general&limit=3')
+      .then((r) => r.json())
+      .then((d: { posts?: ApiPost[] }) => {
+        if (d.posts) setTopPosts(d.posts.map(apiPostToUi));
+      })
+      .catch(console.error)
+      .finally(() => setTopPostsLoading(false));
+  }, []);
+
+  useCommunityRealtime({
+    channel: 'general',
+    onPostInsert: () => loadTopPosts(),
+    onPostUpdate: () => loadTopPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED,
+  });
+
   useEffect(() => {
     setLastNightLoading(true);
     fetch('/api/events/last-night')
@@ -173,15 +199,8 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    setTopPostsLoading(true);
-    fetch('/api/posts?channel=general&limit=3')
-      .then((r) => r.json())
-      .then((d: { posts?: ApiPost[] }) => {
-        if (d.posts) setTopPosts(d.posts.map(apiPostToUi));
-      })
-      .catch(console.error)
-      .finally(() => setTopPostsLoading(false));
-  }, []);
+    loadTopPosts();
+  }, [loadTopPosts]);
 
   const inventoryBadgeLabel = eventInventoryBadgeLabel(
     upcomingEvent ?? { status: 'upcoming' },
