@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { subscribeChannel } from './channelManager';
 import { RealtimeDedupe, rowId, rowsEqual } from './dedupe';
 import { useRealtimeStatus } from './RealtimeProvider';
+import { useRealtimeSupabase } from './supabaseContext';
 import type {
   PostgresChangePayload,
   RealtimeConnectionStatus,
@@ -47,7 +48,7 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
   options: UseSupabaseRealtimeOptions<T>,
 ): { status: RealtimeConnectionStatus } {
   const {
-    supabase,
+    supabase: supabaseProp,
     table,
     schema = 'public',
     filter,
@@ -60,6 +61,7 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
     onResync,
   } = options;
 
+  const supabase = useRealtimeSupabase(supabaseProp);
   const { setStatus: setGlobalStatus } = useRealtimeStatus();
   const [status, setStatus] = useState<RealtimeConnectionStatus>('connecting');
 
@@ -134,7 +136,7 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
       unsubscribe();
       setStatus('disconnected');
     };
-  }, [supabase, table, schema, filter, enabled, debounceMs, eventTypes.join(','), setGlobalStatus]);
+  }, [table, schema, filter, enabled, debounceMs, eventTypes.join(','), setGlobalStatus, supabase]);
 
   return { status };
 }

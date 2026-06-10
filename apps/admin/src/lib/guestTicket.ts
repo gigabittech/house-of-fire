@@ -1,5 +1,53 @@
 import { formatCents } from '@/lib/formatters';
 
+/** Shared select for admin guest ticket rows (door list + single-ticket fetch). */
+export const ADMIN_GUEST_SELECT = `
+  id,
+  code,
+  event_id,
+  tier_id,
+  order_id,
+  amount_cents,
+  fee_cents,
+  status,
+  purchased_at,
+  used_at,
+  checked_in_at,
+  source,
+  metadata,
+  qr_data,
+  stripe_charge_id,
+  profiles!tickets_holder_id_fkey (
+    id,
+    display_name,
+    handle,
+    avatar_url
+  ),
+  ticket_tiers!tickets_tier_id_fkey (
+    id,
+    display_name,
+    name
+  ),
+  events!tickets_event_id_fkey (
+    id,
+    edition_number,
+    name,
+    date,
+    venue_name,
+    status
+  ),
+  orders!tickets_order_id_fkey (
+    id,
+    subtotal_cents,
+    discount_cents,
+    fee_cents,
+    total_cents,
+    stripe_payment_intent_id,
+    status,
+    created_at
+  )
+`;
+
 export type TicketMetadata = {
   holder_name?: string | null;
   holder_email?: string | null;

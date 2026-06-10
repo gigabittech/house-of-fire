@@ -2,6 +2,8 @@
 
 export { subscribeChannel, getActiveChannelCount } from './channelManager';
 export { RealtimeDedupe, rowId, rowsEqual } from './dedupe';
+export { clampCount, removeById, updateById, upsertById } from './statePatch';
+export { SupabaseProvider, useRealtimeSupabase } from './supabaseContext';
 export {
   RealtimeDisconnectedBanner,
   RealtimeProvider,

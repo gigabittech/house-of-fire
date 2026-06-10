@@ -136,6 +136,7 @@ function Section({ title, children }: SectionProps) {
 // ─── Sub-view: Notifications ─────────────────────────────────────────────────
 function SettingsNotifs() {
   const [push, setPush] = useState(true);
+  const [pushError, setPushError] = useState<string | null>(null);
   const [email, setEmail] = useState(true);
   const [sms, setSms] = useState(false);
   const [lineupAlerts, setLineupAlerts] = useState(true);
@@ -179,7 +180,17 @@ function SettingsNotifs() {
               on={push}
               onChange={(v) => {
                 setPush(v);
+                setPushError(null);
                 persist('push_notifications', v);
+                void import('@/lib/push/client').then(({ syncPushSubscription }) =>
+                  syncPushSubscription(v).then((err) => {
+                    if (err) {
+                      setPushError(err);
+                      setPush(false);
+                      persist('push_notifications', false);
+                    }
+                  }),
+                );
               }}
             />
           }
@@ -211,6 +222,19 @@ function SettingsNotifs() {
             />
           }
         />
+        {pushError ? (
+          <div
+            style={{
+              padding: '10px 14px 0',
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: '#f87171',
+              lineHeight: 1.45,
+            }}
+          >
+            {pushError}
+          </div>
+        ) : null}
       </Section>
       <Section title="Topics">
         <ActionRow

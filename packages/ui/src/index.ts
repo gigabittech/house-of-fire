@@ -1,7 +1,7 @@
 // @hof/ui — House of Fire component library, productionized from the prototype
 // (design/prototypes/hof-ui.jsx + posts-data.jsx). Consumes @hof/design-tokens.
 
-export type { DoorQrScannerProps } from './DoorQrScanner';
+export type { CameraState, DoorQrScannerProps } from './DoorQrScanner';
 export { DoorQrScanner } from './DoorQrScanner';
 export type { DoorScanResultData, DoorScanResultProps, DoorScanResultState } from './DoorScanResult';
 export { DoorScanResult } from './DoorScanResult';
@@ -18,6 +18,10 @@ export type { ChannelTagProps } from './feed/ChannelTag';
 export { ChannelTag } from './feed/ChannelTag';
 export type { ImageLightboxProps } from './ImageLightbox';
 export { ImageLightbox } from './ImageLightbox';
+export type { LazyEventPhotoProps } from './LazyEventPhoto';
+export { LazyEventPhoto } from './LazyEventPhoto';
+export type { VirtualPhotoGridItem, VirtualPhotoGridProps } from './VirtualPhotoGrid';
+export { VirtualPhotoGrid } from './VirtualPhotoGrid';
 export type { FeedPostProps } from './feed/FeedPost';
 // Feed / community atoms
 export { FeedPost } from './feed/FeedPost';

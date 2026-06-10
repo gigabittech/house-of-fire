@@ -2,6 +2,8 @@ import type { Json } from '@/lib/database.types';
 
 export type EventStatus = 'upcoming' | 'live' | 'past' | 'cancelled';
 
+export type EventVisibility = 'public' | 'hidden';
+
 export interface EventFaq {
   q: string;
   a: string;
@@ -22,11 +24,14 @@ export interface EventFormPayload {
   capacity: number;
   max_tickets_per_user: number;
   status: EventStatus;
+  visibility: EventVisibility;
+  dress_code: string | null;
   hero_image_url: string | null;
   faqs: EventFaq[];
 }
 
 const STATUSES: EventStatus[] = ['upcoming', 'live', 'past', 'cancelled'];
+const VISIBILITIES: EventVisibility[] = ['public', 'hidden'];
 
 function normalizeTime(raw: string): string | null {
   const t = raw.trim();
@@ -154,6 +159,23 @@ export function parseEventPayload(
     out.status = 'upcoming';
   }
 
+  if (b.visibility !== undefined) {
+    const v = String(b.visibility) as EventVisibility;
+    if (!VISIBILITIES.includes(v)) return { ok: false, error: 'Invalid visibility' };
+    out.visibility = v;
+  } else if (!partial) {
+    out.visibility = 'public';
+  }
+
+  if (b.dress_code !== undefined) {
+    out.dress_code =
+      b.dress_code === null || b.dress_code === ''
+        ? null
+        : String(b.dress_code).trim();
+  } else if (!partial) {
+    out.dress_code = null;
+  }
+
   if (b.hero_image_url !== undefined) {
     out.hero_image_url =
       b.hero_image_url === null || b.hero_image_url === ''
@@ -187,6 +209,8 @@ export function eventFormPayloadToInsert(data: EventFormPayload) {
     capacity: data.capacity,
     max_tickets_per_user: data.max_tickets_per_user,
     status: data.status,
+    visibility: data.visibility,
+    dress_code: data.dress_code,
     hero_image_url: data.hero_image_url,
     faqs: data.faqs as unknown as Json,
   };
@@ -206,6 +230,8 @@ export const DEFAULT_EVENT_FORM: EventFormPayload = {
   capacity: 0,
   max_tickets_per_user: 4,
   status: 'upcoming',
+  visibility: 'public',
+  dress_code: null,
   hero_image_url: null,
   faqs: [],
 };

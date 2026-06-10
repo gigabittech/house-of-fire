@@ -1,21 +1,24 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
+import { buildFeedResponse, listAuthorPostsRpc } from '../../../../lib/communityApi.server';
+import { parseFeedCursor, parsePageSize } from '../../../../lib/cursorPagination';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
-    .eq('author_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const { searchParams } = new URL(request.url);
+  const cursor = parseFeedCursor(searchParams);
+  const pageSize = parsePageSize(searchParams, 20, 50);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ posts: data ?? [] });
+  try {
+    const { posts, hasMore } = await listAuthorPostsRpc(supabase, user.id, cursor, pageSize);
+    return NextResponse.json(buildFeedResponse(posts, hasMore));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load posts';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

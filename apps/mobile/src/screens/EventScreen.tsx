@@ -9,7 +9,7 @@ import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
-import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   formatCapacityMeta,
@@ -328,10 +328,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .finally(() => setEventLoading(false));
   }, []);
 
-  useEventInventoryRealtime({
+  useEventInventory({
     event: eventData,
     onEventChange: setEventData,
     enabled: !eventLoading,
+    pollIntervalMs: INVENTORY_POLL_MS.event,
   });
 
   const loadEventPosts = useCallback(() => {
@@ -341,17 +342,52 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
       .then((r) => r.json())
       .then((d: { posts?: ApiPost[] }) => {
-        if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+        if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
         else setEventPosts([]);
       })
       .catch(() => setPostsError(true))
       .finally(() => setPostsLoading(false));
   }, [eventData?.id]);
 
+  const patchEventPost = useCallback(
+    (row: { id: string; reaction_counts?: Record<string, number>; reply_count?: number }) => {
+      setEventPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reactions: row.reaction_counts ?? p.reactions,
+                replyCount: row.reply_count ?? p.replyCount,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
   useCommunityRealtime({
     eventId: eventData?.id,
-    onPostInsert: () => loadEventPosts(),
-    onPostUpdate: () => loadEventPosts(),
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        setEventPosts((prev) => {
+          const next = [apiPostToUi(d.post!), ...prev.filter((p) => p.id !== d.post!.id)];
+          return next.slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: (row) => patchEventPost(row),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) setEventPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadEventPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED && !!eventData?.id,
   });
 
   useEffect(() => {
@@ -413,7 +449,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     { t: '1:00', name: 'After', note: 'DJ residents close' },
   ];
 
-  const apiFaqs = parseEventFaqs(eventData?.faqs);
+  const dressCodeText = eventData?.dress_code?.trim() || '';
+  const apiFaqs = parseEventFaqs(eventData?.faqs).filter(
+    (f) => !dressCodeText || !/^dress code/i.test(f.q.trim()),
+  );
   const faqs =
     apiFaqs.length > 0
       ? apiFaqs
@@ -422,10 +461,14 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             q: 'Where do I get in?',
             a: 'The side entrance on 23rd Street. Look for the orange light. We do not use the main door.',
           },
-          {
-            q: 'Dress code?',
-            a: 'No code. People show up looking like themselves. Wear what makes you move.',
-          },
+          ...(dressCodeText
+            ? []
+            : [
+                {
+                  q: 'Dress code?',
+                  a: 'No code. People show up looking like themselves. Wear what makes you move.',
+                },
+              ]),
           {
             q: 'Is there a coat check?',
             a: 'Yes — $3. Cash or in-app. The line moves fastest before 10:30.',
@@ -637,6 +680,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               label="Capacity"
               value={formatCapacityMeta(eventCapacity, ticketsSold)}
             />
+            {dressCodeText ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <MetaItem icon="star" label="Dress code" value={dressCodeText} />
+              </div>
+            ) : null}
           </div>
 
           {/* Add to Calendar */}
@@ -1213,7 +1261,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                   fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
                     .then((r) => r.json())
                     .then((d: { posts?: ApiPost[] }) => {
-                      if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+                      if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
                       else setEventPosts([]);
                     })
                     .catch(() => setPostsError(true))

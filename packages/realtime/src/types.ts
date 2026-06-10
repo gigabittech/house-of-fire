@@ -14,7 +14,8 @@ export type PostgresChangePayload<T extends Record<string, unknown> = Record<str
 };
 
 export type UseSupabaseRealtimeOptions<T extends Record<string, unknown> = Record<string, unknown>> = {
-  supabase: SupabaseClient;
+  /** Optional when RealtimeProvider supplies a singleton client. */
+  supabase?: SupabaseClient;
   table: string;
   schema?: string;
   filter?: string;

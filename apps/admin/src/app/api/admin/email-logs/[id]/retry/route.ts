@@ -56,7 +56,7 @@ async function retryAuthMagicLink(row: {
   await updateEmailLog(row.id, { status: 'sent', sentAt: new Date(), errorMessage: null });
 }
 
-async function retryReceipt(row: { id: string; meta: unknown }): Promise<void> {
+async function retryReceipt(row: { id: string; meta: unknown }, actorId: string): Promise<void> {
   const orderId = metaRecord(row.meta).orderId;
   if (typeof orderId !== 'string' || !orderId.trim()) {
     throw new Error('Receipt retry missing orderId in log metadata.');
@@ -68,13 +68,18 @@ async function retryReceipt(row: { id: string; meta: unknown }): Promise<void> {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   }
 
-  const res = await fetch(`${mobileUrl}/api/admin/retry-receipt`, {
+  const res = await fetch(`${mobileUrl}/api/admin/resend-receipt`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({ orderId, logId: row.id }),
+    body: JSON.stringify({
+      orderId,
+      logId: row.id,
+      actorId,
+      source: 'admin_email_log_retry',
+    }),
   });
 
   if (!res.ok) {
@@ -111,7 +116,7 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
     }
 
     if (row.kind === 'receipt') {
-      await retryReceipt(row);
+      await retryReceipt(row, auth.userId);
       return NextResponse.json({ ok: true, id: row.id });
     }
 

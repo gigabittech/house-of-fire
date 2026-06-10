@@ -1046,7 +1046,6 @@ CREATE INDEX IF NOT EXISTS idx_posts_event_channel_created
   ON public.posts (event_id, channel, created_at DESC);
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_tiers;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
@@ -1055,6 +1054,994 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.event_photos;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.refund_requests;
+
+-- ─── 020: Query performance indexes + incremental triggers ───────────────────
+
+CREATE INDEX IF NOT EXISTS idx_tickets_tier_status
+  ON public.tickets (tier_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_tiers_event_id
+  ON public.ticket_tiers (event_id);
+
+CREATE INDEX IF NOT EXISTS idx_events_status_edition
+  ON public.events (status, edition_number DESC);
+
+CREATE INDEX IF NOT EXISTS idx_posts_mod_channel_created
+  ON public.posts (moderation_status, channel, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_event_photos_event_status_created
+  ON public.event_photos (event_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_posts_author_created
+  ON public.posts (author_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_refund_requests_status_created
+  ON public.refund_requests (status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_holder_purchased
+  ON public.tickets (holder_id, purchased_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_post_reactions_user_post
+  ON public.post_reactions (user_id, post_id);
+
+CREATE INDEX IF NOT EXISTS idx_content_reports_status_created
+  ON public.content_reports (status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_events_status_date
+  ON public.events (status, date DESC);
+
+DROP INDEX IF EXISTS public.idx_tickets_event_id;
+DROP INDEX IF EXISTS public.idx_posts_moderation_status;
+DROP INDEX IF EXISTS public.idx_content_reports_status;
+
+CREATE OR REPLACE FUNCTION public.ticket_status_counts_toward_sold(p_status text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT p_status IN ('valid', 'used');
+$$;
+
+CREATE OR REPLACE FUNCTION public.adjust_tier_sold_count(p_tier_id uuid, p_delta integer)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.ticket_tiers
+  SET
+    sold_count = GREATEST(0, sold_count + p_delta),
+    updated_at = now()
+  WHERE id = p_tier_id
+    AND p_delta <> 0;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_tier_sold_count_for_tier(p_tier_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.ticket_tiers
+  SET sold_count = COALESCE((
+    SELECT count(*)::integer
+    FROM public.tickets
+    WHERE tier_id = p_tier_id
+      AND status IN ('valid', 'used')
+  ), 0),
+  updated_at = now()
+  WHERE id = p_tier_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_tier_sold_count_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  old_counts boolean;
+  new_counts boolean;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF public.ticket_status_counts_toward_sold(NEW.status) THEN
+      PERFORM public.adjust_tier_sold_count(NEW.tier_id, 1);
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF public.ticket_status_counts_toward_sold(OLD.status) THEN
+      PERFORM public.adjust_tier_sold_count(OLD.tier_id, -1);
+    END IF;
+    RETURN OLD;
+  ELSIF TG_OP = 'UPDATE' THEN
+    old_counts := public.ticket_status_counts_toward_sold(OLD.status);
+    new_counts := public.ticket_status_counts_toward_sold(NEW.status);
+
+    IF OLD.tier_id IS DISTINCT FROM NEW.tier_id THEN
+      IF old_counts THEN
+        PERFORM public.adjust_tier_sold_count(OLD.tier_id, -1);
+      END IF;
+      IF new_counts THEN
+        PERFORM public.adjust_tier_sold_count(NEW.tier_id, 1);
+      END IF;
+    ELSIF old_counts AND NOT new_counts THEN
+      PERFORM public.adjust_tier_sold_count(NEW.tier_id, -1);
+    ELSIF NOT old_counts AND new_counts THEN
+      PERFORM public.adjust_tier_sold_count(NEW.tier_id, 1);
+    END IF;
+    RETURN NEW;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.tier_available_count(p_tier_id uuid)
+RETURNS integer
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT GREATEST(0, (t.capacity - t.sold_count))::integer
+  FROM public.ticket_tiers t
+  WHERE t.id = p_tier_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.adjust_post_reaction_counts(
+  p_post_id uuid,
+  p_emoji text,
+  p_delta integer
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_count integer;
+BEGIN
+  IF p_delta = 0 OR p_emoji IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT COALESCE((reaction_counts ->> p_emoji)::integer, 0)
+  INTO current_count
+  FROM public.posts
+  WHERE id = p_post_id;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  current_count := GREATEST(0, current_count + p_delta);
+
+  IF current_count = 0 THEN
+    UPDATE public.posts
+    SET reaction_counts = COALESCE(reaction_counts, '{}'::jsonb) - p_emoji
+    WHERE id = p_post_id;
+  ELSE
+    UPDATE public.posts
+    SET reaction_counts = jsonb_set(
+      COALESCE(reaction_counts, '{}'::jsonb),
+      ARRAY[p_emoji],
+      to_jsonb(current_count),
+      true
+    )
+    WHERE id = p_post_id;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_post_reaction_counts()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  target_post_id uuid;
+BEGIN
+  target_post_id := COALESCE(NEW.post_id, OLD.post_id);
+
+  IF TG_OP = 'INSERT' THEN
+    PERFORM public.adjust_post_reaction_counts(target_post_id, NEW.emoji, 1);
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    PERFORM public.adjust_post_reaction_counts(target_post_id, OLD.emoji, -1);
+    RETURN OLD;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.emoji IS DISTINCT FROM NEW.emoji THEN
+      PERFORM public.adjust_post_reaction_counts(target_post_id, OLD.emoji, -1);
+      PERFORM public.adjust_post_reaction_counts(target_post_id, NEW.emoji, 1);
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+
+-- ─── 021: Admin query RPCs ─────────────────────────────────────────────────
+-- Admin list/stats RPCs: pagination, search, sort, SQL aggregation (100k+ scale).
+
+-- ─── Members ─────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.admin_members_stats()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH ticket_agg AS (
+    SELECT
+      t.holder_id,
+      count(*)::int AS ticket_count,
+      max(e.edition_number) AS last_edition,
+      max(t.purchased_at) AS latest_purchase
+    FROM public.tickets t
+    JOIN public.events e ON e.id = t.event_id
+    WHERE t.holder_id IS NOT NULL
+      AND t.status IN ('valid', 'used', 'transferred')
+    GROUP BY t.holder_id
+  ),
+  holders_with_tickets AS (
+    SELECT count(*)::int AS cnt FROM ticket_agg
+  ),
+  returning_holders AS (
+    SELECT count(*)::int AS cnt
+    FROM (
+      SELECT holder_id
+      FROM public.tickets
+      WHERE holder_id IS NOT NULL
+        AND status IN ('valid', 'used', 'transferred')
+      GROUP BY holder_id
+      HAVING count(*) >= 2
+    ) r
+  )
+  SELECT jsonb_build_object(
+    'total', (SELECT count(*)::int FROM public.profiles),
+    'new_this_month', (
+      SELECT count(*)::int
+      FROM public.profiles
+      WHERE member_since >= date_trunc('month', now())
+    ),
+    'crew_count', (
+      SELECT count(*)::int
+      FROM public.profiles
+      WHERE role IN ('crew', 'admin')
+    ),
+    'photographer_count', (
+      SELECT count(*)::int
+      FROM public.profiles
+      WHERE coalesce((settings->>'photographer')::boolean, false)
+    ),
+    'return_rate', CASE
+      WHEN (SELECT cnt FROM holders_with_tickets) = 0 THEN 0
+      ELSE (
+        SELECT round((SELECT cnt FROM returning_holders)::numeric * 100 / (SELECT cnt FROM holders_with_tickets))
+      )::int
+    END,
+    'active_90', (
+      SELECT count(*)::int
+      FROM public.profiles p
+      LEFT JOIN ticket_agg ta ON ta.holder_id = p.id
+      WHERE ta.latest_purchase >= now() - interval '90 days'
+         OR p.member_since >= now() - interval '90 days'
+    )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_list_members(
+  p_page int DEFAULT 1,
+  p_page_size int DEFAULT 25,
+  p_search text DEFAULT NULL,
+  p_sort text DEFAULT 'member_since',
+  p_sort_dir text DEFAULT 'desc'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page int := GREATEST(coalesce(p_page, 1), 1);
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 25), 1), 100);
+  v_offset int := (v_page - 1) * v_page_size;
+  v_total bigint;
+  v_sort text := lower(coalesce(nullif(trim(p_sort), ''), 'member_since'));
+  v_dir text := CASE WHEN lower(coalesce(p_sort_dir, 'desc')) = 'asc' THEN 'asc' ELSE 'desc' END;
+  v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_rows jsonb;
+BEGIN
+  SELECT count(*)::bigint INTO v_total
+  FROM public.profiles p
+  WHERE v_search IS NULL
+     OR p.display_name ILIKE '%' || v_search || '%'
+     OR p.handle ILIKE '%' || v_search || '%';
+
+  WITH ticket_stats AS (
+    SELECT
+      t.holder_id,
+      count(*)::int AS ticket_count,
+      max(e.edition_number) AS last_edition
+    FROM public.tickets t
+    JOIN public.events e ON e.id = t.event_id
+    WHERE t.holder_id IS NOT NULL
+      AND t.status IN ('valid', 'used', 'transferred')
+    GROUP BY t.holder_id
+  ),
+  latest_tier AS (
+    SELECT DISTINCT ON (t.holder_id)
+      t.holder_id,
+      coalesce(tt.display_name, tt.name) AS latest_tier_name
+    FROM public.tickets t
+    JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+    WHERE t.holder_id IS NOT NULL
+      AND t.status IN ('valid', 'used', 'transferred')
+    ORDER BY t.holder_id, t.purchased_at DESC
+  ),
+  post_stats AS (
+    SELECT author_id, count(*)::int AS post_count
+    FROM public.posts
+    GROUP BY author_id
+  ),
+  filtered AS (
+    SELECT
+      p.id,
+      p.handle,
+      p.display_name,
+      p.avatar_url,
+      p.member_since,
+      p.role,
+      p.settings,
+      coalesce(ts.ticket_count, 0) AS ticket_count,
+      coalesce(ps.post_count, 0) AS post_count,
+      ts.last_edition,
+      lt.latest_tier_name
+    FROM public.profiles p
+    LEFT JOIN ticket_stats ts ON ts.holder_id = p.id
+    LEFT JOIN latest_tier lt ON lt.holder_id = p.id
+    LEFT JOIN post_stats ps ON ps.author_id = p.id
+    WHERE v_search IS NULL
+       OR p.display_name ILIKE '%' || v_search || '%'
+       OR p.handle ILIKE '%' || v_search || '%'
+  ),
+  sorted AS (
+    SELECT *
+    FROM filtered f
+    ORDER BY
+      CASE WHEN v_sort = 'display_name' AND v_dir = 'asc' THEN f.display_name END ASC NULLS LAST,
+      CASE WHEN v_sort = 'display_name' AND v_dir = 'desc' THEN f.display_name END DESC NULLS LAST,
+      CASE WHEN v_sort = 'handle' AND v_dir = 'asc' THEN f.handle END ASC NULLS LAST,
+      CASE WHEN v_sort = 'handle' AND v_dir = 'desc' THEN f.handle END DESC NULLS LAST,
+      CASE WHEN v_sort = 'ticket_count' AND v_dir = 'asc' THEN f.ticket_count END ASC NULLS LAST,
+      CASE WHEN v_sort = 'ticket_count' AND v_dir = 'desc' THEN f.ticket_count END DESC NULLS LAST,
+      CASE WHEN v_sort = 'post_count' AND v_dir = 'asc' THEN f.post_count END ASC NULLS LAST,
+      CASE WHEN v_sort = 'post_count' AND v_dir = 'desc' THEN f.post_count END DESC NULLS LAST,
+      CASE WHEN v_sort = 'last_edition' AND v_dir = 'asc' THEN f.last_edition END ASC NULLS LAST,
+      CASE WHEN v_sort = 'last_edition' AND v_dir = 'desc' THEN f.last_edition END DESC NULLS LAST,
+      CASE WHEN v_sort = 'member_since' AND v_dir = 'asc' THEN f.member_since END ASC NULLS LAST,
+      CASE WHEN v_sort = 'member_since' AND v_dir = 'desc' THEN f.member_since END DESC NULLS LAST,
+      f.id ASC
+    OFFSET v_offset
+    LIMIT v_page_size
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) INTO v_rows FROM sorted s;
+
+  RETURN jsonb_build_object(
+    'members', v_rows,
+    'pagination', jsonb_build_object(
+      'page', v_page,
+      'pageSize', v_page_size,
+      'totalCount', v_total,
+      'totalPages', GREATEST(1, ceil(v_total::numeric / v_page_size)::int)
+    )
+  );
+END;
+$$;
+
+-- ─── Guests (tickets) ────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.admin_list_guests(
+  p_page int DEFAULT 1,
+  p_page_size int DEFAULT 25,
+  p_event_id uuid DEFAULT NULL,
+  p_tier_id uuid DEFAULT NULL,
+  p_email text DEFAULT NULL,
+  p_code text DEFAULT NULL,
+  p_name_search text DEFAULT NULL,
+  p_sort text DEFAULT 'purchased_at',
+  p_sort_dir text DEFAULT 'desc'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page int := GREATEST(coalesce(p_page, 1), 1);
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 25), 1), 100);
+  v_offset int := (v_page - 1) * v_page_size;
+  v_total bigint;
+  v_sort text := lower(coalesce(nullif(trim(p_sort), ''), 'purchased_at'));
+  v_dir text := CASE WHEN lower(coalesce(p_sort_dir, 'desc')) = 'asc' THEN 'asc' ELSE 'desc' END;
+  v_email text := nullif(trim(coalesce(p_email, '')), '');
+  v_code text := nullif(trim(coalesce(p_code, '')), '');
+  v_name text := nullif(trim(coalesce(p_name_search, '')), '');
+  v_rows jsonb;
+BEGIN
+  SELECT count(*)::bigint INTO v_total
+  FROM public.tickets t
+  LEFT JOIN public.profiles pr ON pr.id = t.holder_id
+  WHERE (p_event_id IS NULL OR t.event_id = p_event_id)
+    AND (p_tier_id IS NULL OR t.tier_id = p_tier_id)
+    AND (v_code IS NULL OR t.code ILIKE '%' || v_code || '%')
+    AND (
+      v_email IS NULL
+      OR coalesce(t.metadata->>'holder_email', '') ILIKE '%' || v_email || '%'
+      OR coalesce(t.metadata->>'email', '') ILIKE '%' || v_email || '%'
+      OR coalesce(pr.handle, '') ILIKE '%' || v_email || '%'
+    )
+    AND (
+      v_name IS NULL
+      OR coalesce(pr.display_name, '') ILIKE '%' || v_name || '%'
+      OR coalesce(pr.handle, '') ILIKE '%' || v_name || '%'
+      OR coalesce(t.metadata->>'holder_name', '') ILIKE '%' || v_name || '%'
+      OR trim(
+        coalesce(t.metadata->>'first_name', '') || ' ' || coalesce(t.metadata->>'last_name', '')
+      ) ILIKE '%' || v_name || '%'
+    );
+
+  WITH base AS (
+    SELECT
+      t.id,
+      t.code,
+      t.event_id,
+      t.tier_id,
+      t.order_id,
+      t.amount_cents,
+      t.fee_cents,
+      t.status,
+      t.purchased_at,
+      t.used_at,
+      t.checked_in_at,
+      t.source,
+      t.metadata,
+      t.qr_data,
+      t.stripe_charge_id,
+      CASE WHEN pr.id IS NULL THEN NULL ELSE jsonb_build_object(
+        'id', pr.id,
+        'display_name', pr.display_name,
+        'handle', pr.handle,
+        'avatar_url', pr.avatar_url
+      ) END AS profiles,
+      jsonb_build_object(
+        'id', tt.id,
+        'display_name', tt.display_name,
+        'name', tt.name
+      ) AS ticket_tiers,
+      jsonb_build_object(
+        'id', e.id,
+        'edition_number', e.edition_number,
+        'name', e.name,
+        'date', e.date,
+        'venue_name', e.venue_name,
+        'status', e.status
+      ) AS events,
+      CASE WHEN o.id IS NULL THEN NULL ELSE jsonb_build_object(
+        'id', o.id,
+        'subtotal_cents', o.subtotal_cents,
+        'discount_cents', o.discount_cents,
+        'fee_cents', o.fee_cents,
+        'total_cents', o.total_cents,
+        'stripe_payment_intent_id', o.stripe_payment_intent_id,
+        'status', o.status,
+        'created_at', o.created_at
+      ) END AS orders
+    FROM public.tickets t
+    JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+    JOIN public.events e ON e.id = t.event_id
+    LEFT JOIN public.profiles pr ON pr.id = t.holder_id
+    LEFT JOIN public.orders o ON o.id = t.order_id
+    WHERE (p_event_id IS NULL OR t.event_id = p_event_id)
+      AND (p_tier_id IS NULL OR t.tier_id = p_tier_id)
+      AND (v_code IS NULL OR t.code ILIKE '%' || v_code || '%')
+      AND (
+        v_email IS NULL
+        OR coalesce(t.metadata->>'holder_email', '') ILIKE '%' || v_email || '%'
+        OR coalesce(t.metadata->>'email', '') ILIKE '%' || v_email || '%'
+        OR coalesce(pr.handle, '') ILIKE '%' || v_email || '%'
+      )
+      AND (
+        v_name IS NULL
+        OR coalesce(pr.display_name, '') ILIKE '%' || v_name || '%'
+        OR coalesce(pr.handle, '') ILIKE '%' || v_name || '%'
+        OR coalesce(t.metadata->>'holder_name', '') ILIKE '%' || v_name || '%'
+        OR trim(
+          coalesce(t.metadata->>'first_name', '') || ' ' || coalesce(t.metadata->>'last_name', '')
+        ) ILIKE '%' || v_name || '%'
+      )
+  ),
+  sorted AS (
+    SELECT *
+    FROM base b
+    ORDER BY
+      CASE WHEN v_sort = 'code' AND v_dir = 'asc' THEN b.code END ASC NULLS LAST,
+      CASE WHEN v_sort = 'code' AND v_dir = 'desc' THEN b.code END DESC NULLS LAST,
+      CASE WHEN v_sort = 'status' AND v_dir = 'asc' THEN b.status END ASC NULLS LAST,
+      CASE WHEN v_sort = 'status' AND v_dir = 'desc' THEN b.status END DESC NULLS LAST,
+      CASE WHEN v_sort = 'amount_cents' AND v_dir = 'asc' THEN b.amount_cents END ASC NULLS LAST,
+      CASE WHEN v_sort = 'amount_cents' AND v_dir = 'desc' THEN b.amount_cents END DESC NULLS LAST,
+      CASE WHEN v_sort = 'purchased_at' AND v_dir = 'asc' THEN b.purchased_at END ASC NULLS LAST,
+      CASE WHEN v_sort = 'purchased_at' AND v_dir = 'desc' THEN b.purchased_at END DESC NULLS LAST,
+      b.id ASC
+    OFFSET v_offset
+    LIMIT v_page_size
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) INTO v_rows FROM sorted s;
+
+  RETURN jsonb_build_object(
+    'guests', v_rows,
+    'pagination', jsonb_build_object(
+      'page', v_page,
+      'pageSize', v_page_size,
+      'totalCount', v_total,
+      'totalPages', GREATEST(1, ceil(v_total::numeric / v_page_size)::int)
+    )
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_guests_tier_status(p_event_id uuid DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH tier_rows AS (
+    SELECT
+      tt.id AS tier_id,
+      tt.event_id,
+      tt.name,
+      tt.display_name,
+      tt.capacity,
+      tt.status AS tier_status,
+      tt.sort_order,
+      GREATEST(0, coalesce(tt.sold_count, 0)) AS sold
+    FROM public.ticket_tiers tt
+    WHERE tt.status <> 'hidden'
+      AND (p_event_id IS NULL OR tt.event_id = p_event_id)
+  ),
+  grouped AS (
+    SELECT
+      e.id AS event_id,
+      e.edition_number,
+      e.name,
+      e.status,
+      jsonb_agg(
+        jsonb_build_object(
+          'tier_id', tr.tier_id,
+          'name', tr.name,
+          'display_name', tr.display_name,
+          'capacity', tr.capacity,
+          'sold', tr.sold,
+          'remaining', GREATEST(0, tr.capacity - tr.sold),
+          'tier_status', tr.tier_status
+        )
+        ORDER BY tr.sort_order
+      ) AS tiers
+    FROM tier_rows tr
+    JOIN public.events e ON e.id = tr.event_id
+    GROUP BY e.id, e.edition_number, e.name, e.status
+  )
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'event_id', g.event_id,
+        'edition_number', g.edition_number,
+        'name', g.name,
+        'status', g.status,
+        'tiers', g.tiers
+      )
+      ORDER BY g.edition_number DESC
+    ),
+    '[]'::jsonb
+  )
+  FROM grouped g;
+$$;
+
+-- ─── Financials ──────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.admin_financials_list(
+  p_page int DEFAULT 1,
+  p_page_size int DEFAULT 25,
+  p_search text DEFAULT NULL,
+  p_sort text DEFAULT 'edition_number',
+  p_sort_dir text DEFAULT 'desc'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page int := GREATEST(coalesce(p_page, 1), 1);
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 25), 1), 100);
+  v_offset int := (v_page - 1) * v_page_size;
+  v_total bigint;
+  v_sort text := lower(coalesce(nullif(trim(p_sort), ''), 'edition_number'));
+  v_dir text := CASE WHEN lower(coalesce(p_sort_dir, 'desc')) = 'asc' THEN 'asc' ELSE 'desc' END;
+  v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_rows jsonb;
+  v_totals jsonb;
+BEGIN
+  WITH revenue AS (
+    SELECT
+      t.event_id,
+      sum(t.amount_cents)::bigint AS gross_cents,
+      count(*)::int AS ticket_count
+    FROM public.tickets t
+    WHERE t.status IN ('valid', 'used')
+    GROUP BY t.event_id
+  ),
+  joined AS (
+    SELECT
+      e.id AS event_id,
+      e.edition_number,
+      e.name,
+      e.date,
+      e.status,
+      coalesce(r.gross_cents, 0)::bigint AS gross_cents,
+      coalesce(r.ticket_count, 0)::int AS ticket_count
+    FROM public.events e
+    LEFT JOIN revenue r ON r.event_id = e.id
+    WHERE v_search IS NULL
+       OR e.name ILIKE '%' || v_search || '%'
+       OR e.edition_number::text ILIKE '%' || v_search || '%'
+  )
+  SELECT count(*)::bigint INTO v_total FROM joined;
+
+  SELECT jsonb_build_object(
+    'gross_cents', coalesce(sum(gross_cents), 0),
+    'ticket_count', coalesce(sum(ticket_count), 0)
+  ) INTO v_totals
+  FROM (
+    SELECT
+      e.id AS event_id,
+      coalesce(r.gross_cents, 0)::bigint AS gross_cents,
+      coalesce(r.ticket_count, 0)::int AS ticket_count
+    FROM public.events e
+    LEFT JOIN (
+      SELECT event_id, sum(amount_cents)::bigint AS gross_cents, count(*)::int AS ticket_count
+      FROM public.tickets
+      WHERE status IN ('valid', 'used')
+      GROUP BY event_id
+    ) r ON r.event_id = e.id
+    WHERE v_search IS NULL
+       OR e.name ILIKE '%' || v_search || '%'
+       OR e.edition_number::text ILIKE '%' || v_search || '%'
+  ) all_rows;
+
+  WITH revenue AS (
+    SELECT
+      t.event_id,
+      sum(t.amount_cents)::bigint AS gross_cents,
+      count(*)::int AS ticket_count
+    FROM public.tickets t
+    WHERE t.status IN ('valid', 'used')
+    GROUP BY t.event_id
+  ),
+  joined AS (
+    SELECT
+      e.id AS event_id,
+      e.edition_number,
+      e.name,
+      e.date,
+      e.status,
+      coalesce(r.gross_cents, 0)::bigint AS gross_cents,
+      coalesce(r.ticket_count, 0)::int AS ticket_count
+    FROM public.events e
+    LEFT JOIN revenue r ON r.event_id = e.id
+    WHERE v_search IS NULL
+       OR e.name ILIKE '%' || v_search || '%'
+       OR e.edition_number::text ILIKE '%' || v_search || '%'
+  ),
+  sorted AS (
+    SELECT *
+    FROM joined j
+    ORDER BY
+      CASE WHEN v_sort = 'name' AND v_dir = 'asc' THEN j.name END ASC NULLS LAST,
+      CASE WHEN v_sort = 'name' AND v_dir = 'desc' THEN j.name END DESC NULLS LAST,
+      CASE WHEN v_sort = 'date' AND v_dir = 'asc' THEN j.date END ASC NULLS LAST,
+      CASE WHEN v_sort = 'date' AND v_dir = 'desc' THEN j.date END DESC NULLS LAST,
+      CASE WHEN v_sort = 'gross_cents' AND v_dir = 'asc' THEN j.gross_cents END ASC NULLS LAST,
+      CASE WHEN v_sort = 'gross_cents' AND v_dir = 'desc' THEN j.gross_cents END DESC NULLS LAST,
+      CASE WHEN v_sort = 'ticket_count' AND v_dir = 'asc' THEN j.ticket_count END ASC NULLS LAST,
+      CASE WHEN v_sort = 'ticket_count' AND v_dir = 'desc' THEN j.ticket_count END DESC NULLS LAST,
+      CASE WHEN v_sort = 'edition_number' AND v_dir = 'asc' THEN j.edition_number END ASC NULLS LAST,
+      CASE WHEN v_sort = 'edition_number' AND v_dir = 'desc' THEN j.edition_number END DESC NULLS LAST,
+      j.event_id ASC
+    OFFSET v_offset
+    LIMIT v_page_size
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) INTO v_rows FROM sorted s;
+
+  RETURN jsonb_build_object(
+    'financials', v_rows,
+    'totals', v_totals,
+    'pagination', jsonb_build_object(
+      'page', v_page,
+      'pageSize', v_page_size,
+      'totalCount', v_total,
+      'totalPages', GREATEST(1, ceil(v_total::numeric / v_page_size)::int)
+    )
+  );
+END;
+$$;
+
+-- ─── Event stats (door + dashboard) ────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.admin_event_ticket_stats(p_event_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH agg AS (
+    SELECT
+      count(*) FILTER (WHERE status IN ('valid', 'used'))::int AS sold,
+      count(*) FILTER (WHERE status = 'used')::int AS scanned,
+      count(*) FILTER (
+        WHERE status IN ('valid', 'used')
+          AND (source = 'door' OR coalesce(stripe_charge_id, '') LIKE 'door-%')
+      )::int AS walkup_count,
+      coalesce(sum(amount_cents) FILTER (
+        WHERE status IN ('valid', 'used')
+          AND (source = 'door' OR coalesce(stripe_charge_id, '') LIKE 'door-%')
+      ), 0)::bigint AS walkup_gross_cents
+    FROM public.tickets
+    WHERE event_id = p_event_id
+  ),
+  tier_sold AS (
+    SELECT
+      tt.id,
+      tt.name,
+      tt.display_name,
+      tt.description,
+      tt.price_cents,
+      coalesce(tt.fee_cents, 0) AS fee_cents,
+      tt.capacity,
+      tt.status,
+      tt.sort_order,
+      GREATEST(0, coalesce(tt.sold_count, 0)) AS sold
+    FROM public.ticket_tiers tt
+    WHERE tt.event_id = p_event_id
+      AND tt.status <> 'hidden'
+    ORDER BY tt.sort_order
+  )
+  SELECT jsonb_build_object(
+    'stats', (
+      SELECT jsonb_build_object(
+        'sold', a.sold,
+        'scanned', a.scanned,
+        'walkupCount', a.walkup_count,
+        'walkupGrossCents', a.walkup_gross_cents,
+        'remaining', GREATEST(0, (SELECT capacity FROM public.events WHERE id = p_event_id) - a.sold),
+        'capacity', (SELECT capacity FROM public.events WHERE id = p_event_id)
+      )
+      FROM agg a
+    ),
+    'tiers', coalesce((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id', ts.id,
+          'name', ts.name,
+          'display_name', ts.display_name,
+          'description', ts.description,
+          'price_cents', ts.price_cents,
+          'fee_cents', ts.fee_cents,
+          'status', ts.status,
+          'sold', ts.sold,
+          'remaining', GREATEST(0, ts.capacity - ts.sold),
+          'purchasable', ts.status = 'available'
+            AND GREATEST(0, ts.capacity - ts.sold) > 0
+            AND GREATEST(0, (SELECT capacity FROM public.events WHERE id = p_event_id) - (SELECT sold FROM agg)) > 0
+        )
+        ORDER BY ts.sort_order
+      )
+      FROM tier_sold ts
+    ), '[]'::jsonb)
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_dashboard_event_metrics(p_event_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH daily AS (
+    SELECT
+      (t.purchased_at AT TIME ZONE 'UTC')::date AS day,
+      count(*)::int AS cnt,
+      count(*) FILTER (
+        WHERE t.source = 'door' OR coalesce(t.stripe_charge_id, '') LIKE 'door-%'
+      )::int AS door_cnt,
+      count(*) FILTER (
+        WHERE NOT (t.source = 'door' OR coalesce(t.stripe_charge_id, '') LIKE 'door-%')
+      )::int AS online_cnt
+    FROM public.tickets t
+    WHERE t.event_id = p_event_id
+      AND t.status IN ('valid', 'used')
+    GROUP BY 1
+  ),
+  last_days AS (
+    SELECT day, cnt, door_cnt
+    FROM daily
+    ORDER BY day DESC
+    LIMIT 14
+  ),
+  sales_series AS (
+    SELECT coalesce(array_agg(cnt ORDER BY day ASC), ARRAY[0]::int[]) AS arr
+    FROM (SELECT day, cnt FROM last_days ORDER BY day ASC) s
+  ),
+  door_series AS (
+    SELECT coalesce(array_agg(door_cnt ORDER BY day ASC), ARRAY[0]::int[]) AS arr
+    FROM (SELECT day, door_cnt FROM last_days ORDER BY day ASC) s
+  ),
+  channel AS (
+    SELECT
+      coalesce(sum(online_cnt), 0)::int AS online,
+      coalesce(sum(door_cnt), 0)::int AS door
+    FROM daily
+  ),
+  tier_bars AS (
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'label', coalesce(tt.display_name, tt.name),
+          'sold', GREATEST(0, coalesce(tt.sold_count, 0)),
+          'cap', tt.capacity
+        )
+        ORDER BY tt.sort_order
+      ),
+      '[]'::jsonb
+    ) AS bars
+    FROM public.ticket_tiers tt
+    WHERE tt.event_id = p_event_id
+  )
+  SELECT jsonb_build_object(
+    'salesData', (SELECT to_jsonb(arr) FROM sales_series),
+    'doorSalesByDay', (SELECT to_jsonb(arr) FROM door_series),
+    'salesByChannel', (SELECT jsonb_build_object('online', online, 'door', door) FROM channel),
+    'tierBars', (SELECT bars FROM tier_bars),
+    'openRequests', (
+      SELECT count(*)::int
+      FROM public.refund_requests
+      WHERE status = 'pending'
+    ),
+    'eventStats', (
+      SELECT jsonb_build_object(
+        'sold', count(*) FILTER (WHERE status IN ('valid', 'used'))::int,
+        'scanned', count(*) FILTER (WHERE status = 'used')::int,
+        'gross_cents', coalesce(sum(amount_cents) FILTER (WHERE status IN ('valid', 'used')), 0)::bigint
+      )
+      FROM public.tickets
+      WHERE event_id = p_event_id
+    )
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_members_stats() TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_list_members(int, int, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_list_guests(int, int, uuid, uuid, text, text, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_guests_tier_status(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_financials_list(int, int, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_event_ticket_stats(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_dashboard_event_metrics(uuid) TO service_role;
+
+-- ─── 022: Event inventory snapshot + drop ticket_tiers from realtime ─────────
+
+CREATE OR REPLACE FUNCTION public.event_inventory_snapshot(p_event_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_event jsonb;
+  v_tiers jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'id', e.id,
+    'status', e.status,
+    'name', e.name,
+    'edition_number', e.edition_number,
+    'capacity', e.capacity,
+    'updated_at', e.updated_at
+  )
+  INTO v_event
+  FROM public.events e
+  WHERE e.id = p_event_id;
+
+  IF v_event IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', tt.id,
+        'name', tt.name,
+        'display_name', tt.display_name,
+        'description', tt.description,
+        'price_cents', tt.price_cents,
+        'fee_cents', coalesce(tt.fee_cents, 0),
+        'capacity', tt.capacity,
+        'status', tt.status,
+        'sort_order', tt.sort_order,
+        'sold', GREATEST(0, coalesce(tt.sold_count, 0)),
+        'remaining', GREATEST(0, tt.capacity - GREATEST(0, coalesce(tt.sold_count, 0))),
+        'effective_status', CASE
+          WHEN tt.status = 'hidden' THEN 'hidden'
+          WHEN tt.status = 'sold_out'
+            OR GREATEST(0, tt.capacity - GREATEST(0, coalesce(tt.sold_count, 0))) <= 0
+            THEN 'sold_out'
+          ELSE 'available'
+        END,
+        'updated_at', tt.updated_at
+      )
+      ORDER BY tt.sort_order
+    ),
+    '[]'::jsonb
+  )
+  INTO v_tiers
+  FROM public.ticket_tiers tt
+  WHERE tt.event_id = p_event_id;
+
+  RETURN jsonb_build_object(
+    'event', v_event,
+    'tiers', v_tiers,
+    'snapshot_at', now()
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.event_inventory_snapshot(uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.event_inventory_snapshot(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.event_inventory_snapshot(uuid) TO service_role;
+
+-- ticket_tiers intentionally omitted from supabase_realtime (see 022 / docs/inventory-architecture.md)
+
+-- ─── 023: Door check-in idempotency + guest cache index ─────────────────────
+
+CREATE TABLE IF NOT EXISTS public.door_check_in_scans (
+  client_scan_id uuid PRIMARY KEY,
+  ticket_id uuid NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
+  event_id uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  code text NOT NULL,
+  scanned_at timestamptz NOT NULL,
+  used_at timestamptz NOT NULL,
+  outcome text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_door_check_in_scans_event_created
+  ON public.door_check_in_scans (event_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_event_status_code
+  ON public.tickets (event_id, status, code);
+
+ALTER TABLE public.door_check_in_scans ENABLE ROW LEVEL SECURITY;
 
 -- ─── SEED: Artists, event, tiers, lineup, discount ───
 -- House of Fire — Seed Data (Edition 24 — Fireversary)
@@ -1154,6 +2141,435 @@ ON CONFLICT (edition_number) DO UPDATE SET
 -- Login: admin@houseoffire.co / HouseOfFire2026!
 -- Change the password in production.
 
+-- 024_community_cursors.sql
+CREATE INDEX IF NOT EXISTS idx_posts_feed_cursor
+  ON public.posts (moderation_status, channel, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_posts_author_cursor
+  ON public.posts (author_id, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_replies_post_cursor
+  ON public.replies (post_id, created_at ASC, id ASC);
+
+CREATE OR REPLACE FUNCTION public.list_community_posts(
+  p_channel text DEFAULT NULL,
+  p_event_id uuid DEFAULT NULL,
+  p_active_event_id uuid DEFAULT NULL,
+  p_cursor_created_at timestamptz DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_page_size int DEFAULT 20
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 20), 1), 50);
+  v_fetch int := v_page_size + 1;
+  v_rows jsonb;
+  v_count int;
+BEGIN
+  WITH filtered AS (
+    SELECT
+      p.*,
+      jsonb_build_object(
+        'handle', pr.handle,
+        'display_name', pr.display_name,
+        'role', pr.role,
+        'avatar_url', pr.avatar_url
+      ) AS profiles
+    FROM public.posts p
+    LEFT JOIN public.profiles pr ON pr.id = p.author_id
+    WHERE p.moderation_status = 'approved'
+      AND (p_channel IS NULL OR p.channel = p_channel)
+      AND (
+        (p_event_id IS NOT NULL AND p.event_id = p_event_id)
+        OR (
+          p_event_id IS NULL
+          AND p_active_event_id IS NOT NULL
+          AND (p.event_id IS NULL OR p.event_id = p_active_event_id)
+        )
+        OR (
+          p_event_id IS NULL
+          AND p_active_event_id IS NULL
+          AND p.event_id IS NULL
+        )
+      )
+      AND (
+        p_cursor_created_at IS NULL
+        OR p_cursor_id IS NULL
+        OR (p.created_at, p.id) < (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY p.created_at DESC, p.id DESC
+    LIMIT v_fetch
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(filtered) - 'profiles' || jsonb_build_object('profiles', filtered.profiles)), '[]'::jsonb),
+         count(*)::int
+  INTO v_rows, v_count
+  FROM (SELECT * FROM filtered) filtered;
+
+  RETURN jsonb_build_object(
+    'posts', coalesce((
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_rows) WITH ORDINALITY AS t(elem, ord)
+        WHERE ord <= v_page_size
+      ) s
+    ), '[]'::jsonb),
+    'hasMore', v_count > v_page_size
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_author_posts(
+  p_author_id uuid,
+  p_cursor_created_at timestamptz DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_page_size int DEFAULT 20
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 20), 1), 50);
+  v_fetch int := v_page_size + 1;
+  v_rows jsonb;
+  v_count int;
+BEGIN
+  WITH filtered AS (
+    SELECT
+      p.*,
+      jsonb_build_object(
+        'handle', pr.handle,
+        'display_name', pr.display_name,
+        'role', pr.role,
+        'avatar_url', pr.avatar_url
+      ) AS profiles
+    FROM public.posts p
+    LEFT JOIN public.profiles pr ON pr.id = p.author_id
+    WHERE p.author_id = p_author_id
+      AND (
+        p_cursor_created_at IS NULL
+        OR p_cursor_id IS NULL
+        OR (p.created_at, p.id) < (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY p.created_at DESC, p.id DESC
+    LIMIT v_fetch
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(filtered) - 'profiles' || jsonb_build_object('profiles', filtered.profiles)), '[]'::jsonb),
+         count(*)::int
+  INTO v_rows, v_count
+  FROM (SELECT * FROM filtered) filtered;
+
+  RETURN jsonb_build_object(
+    'posts', coalesce((
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_rows) WITH ORDINALITY AS t(elem, ord)
+        WHERE ord <= v_page_size
+      ) s
+    ), '[]'::jsonb),
+    'hasMore', v_count > v_page_size
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_post_replies(
+  p_post_id uuid,
+  p_cursor_created_at timestamptz DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_page_size int DEFAULT 30
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 30), 1), 100);
+  v_fetch int := v_page_size + 1;
+  v_rows jsonb;
+  v_count int;
+BEGIN
+  WITH filtered AS (
+    SELECT
+      r.*,
+      jsonb_build_object(
+        'handle', pr.handle,
+        'display_name', pr.display_name,
+        'role', pr.role,
+        'avatar_url', pr.avatar_url
+      ) AS profiles
+    FROM public.replies r
+    LEFT JOIN public.profiles pr ON pr.id = r.author_id
+    WHERE r.post_id = p_post_id
+      AND (
+        p_cursor_created_at IS NULL
+        OR p_cursor_id IS NULL
+        OR (r.created_at, r.id) > (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY r.created_at ASC, r.id ASC
+    LIMIT v_fetch
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(filtered) - 'profiles' || jsonb_build_object('profiles', filtered.profiles)), '[]'::jsonb),
+         count(*)::int
+  INTO v_rows, v_count
+  FROM (SELECT * FROM filtered) filtered;
+
+  RETURN jsonb_build_object(
+    'replies', coalesce((
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_rows) WITH ORDINALITY AS t(elem, ord)
+        WHERE ord <= v_page_size
+      ) s
+    ), '[]'::jsonb),
+    'hasMore', v_count > v_page_size
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.list_community_posts(text, uuid, uuid, timestamptz, uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_community_posts(text, uuid, uuid, timestamptz, uuid, int) TO anon;
+GRANT EXECUTE ON FUNCTION public.list_author_posts(uuid, timestamptz, uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_post_replies(uuid, timestamptz, uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_post_replies(uuid, timestamptz, uuid, int) TO anon;
+
+-- 025_event_photo_cursors.sql
+CREATE INDEX IF NOT EXISTS idx_event_photos_event_cursor
+  ON public.event_photos (event_id, status, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_event_photos_admin_cursor
+  ON public.event_photos (status, created_at DESC, id DESC);
+
+CREATE OR REPLACE FUNCTION public.count_event_photos(
+  p_event_id uuid,
+  p_status text DEFAULT 'approved'
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT count(*)::bigint
+  FROM public.event_photos
+  WHERE event_id = p_event_id
+    AND status = p_status;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_event_photos(
+  p_event_id uuid,
+  p_status text DEFAULT 'approved',
+  p_cursor_created_at timestamptz DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_page_size int DEFAULT 48
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 48), 1), 100);
+  v_fetch int := v_page_size + 1;
+  v_rows jsonb;
+  v_count int;
+BEGIN
+  WITH filtered AS (
+    SELECT
+      id,
+      storage_path,
+      public_url,
+      caption,
+      created_at
+    FROM public.event_photos
+    WHERE event_id = p_event_id
+      AND status = p_status
+      AND (
+        p_cursor_created_at IS NULL
+        OR p_cursor_id IS NULL
+        OR (created_at, id) < (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY created_at DESC, id DESC
+    LIMIT v_fetch
+  )
+  SELECT coalesce(jsonb_agg(to_jsonb(filtered)), '[]'::jsonb),
+         count(*)::int
+  INTO v_rows, v_count
+  FROM filtered;
+
+  RETURN jsonb_build_object(
+    'photos', coalesce((
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_rows) WITH ORDINALITY AS t(elem, ord)
+        WHERE ord <= v_page_size
+      ) s
+    ), '[]'::jsonb),
+    'hasMore', v_count > v_page_size
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_admin_media_photos(
+  p_status text DEFAULT NULL,
+  p_event_id uuid DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_uploader_ids uuid[] DEFAULT NULL,
+  p_email text DEFAULT NULL,
+  p_date_from timestamptz DEFAULT NULL,
+  p_date_to timestamptz DEFAULT NULL,
+  p_cursor_created_at timestamptz DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_page_size int DEFAULT 25
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_page_size int := LEAST(GREATEST(coalesce(p_page_size, 25), 1), 100);
+  v_fetch int := v_page_size + 1;
+  v_rows jsonb;
+  v_count int;
+  v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_email text := nullif(lower(trim(coalesce(p_email, ''))), '');
+BEGIN
+  WITH filtered AS (
+    SELECT
+      ep.*,
+      jsonb_build_object(
+        'edition_number', ev.edition_number,
+        'name', ev.name
+      ) AS events,
+      jsonb_build_object(
+        'id', pr.id,
+        'handle', pr.handle,
+        'display_name', pr.display_name,
+        'avatar_url', pr.avatar_url
+      ) AS profiles
+    FROM public.event_photos ep
+    LEFT JOIN public.events ev ON ev.id = ep.event_id
+    LEFT JOIN public.profiles pr ON pr.id = ep.uploader_id
+    WHERE (p_status IS NULL OR ep.status = p_status)
+      AND (p_event_id IS NULL OR ep.event_id = p_event_id)
+      AND (p_date_from IS NULL OR ep.created_at >= p_date_from)
+      AND (p_date_to IS NULL OR ep.created_at <= p_date_to)
+      AND (
+        v_search IS NULL
+        OR ep.caption ILIKE ('%' || v_search || '%')
+        OR ep.storage_path ILIKE ('%' || v_search || '%')
+        OR (
+          p_uploader_ids IS NOT NULL
+          AND cardinality(p_uploader_ids) > 0
+          AND ep.uploader_id = ANY(p_uploader_ids)
+        )
+      )
+      AND (
+        v_email IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM auth.users u
+          WHERE u.id = ep.uploader_id
+            AND lower(coalesce(u.email, '')) LIKE ('%' || v_email || '%')
+        )
+      )
+      AND (
+        p_cursor_created_at IS NULL
+        OR p_cursor_id IS NULL
+        OR (ep.created_at, ep.id) < (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY ep.created_at DESC, ep.id DESC
+    LIMIT v_fetch
+  )
+  SELECT coalesce(
+           jsonb_agg(
+             to_jsonb(filtered) - 'events' - 'profiles'
+             || jsonb_build_object('events', filtered.events, 'profiles', filtered.profiles)
+           ),
+           '[]'::jsonb
+         ),
+         count(*)::int
+  INTO v_rows, v_count
+  FROM filtered;
+
+  RETURN jsonb_build_object(
+    'photos', coalesce((
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_rows) WITH ORDINALITY AS t(elem, ord)
+        WHERE ord <= v_page_size
+      ) s
+    ), '[]'::jsonb),
+    'hasMore', v_count > v_page_size
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.count_admin_media_photos(
+  p_status text DEFAULT NULL,
+  p_event_id uuid DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_uploader_ids uuid[] DEFAULT NULL,
+  p_email text DEFAULT NULL,
+  p_date_from timestamptz DEFAULT NULL,
+  p_date_to timestamptz DEFAULT NULL
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT count(*)::bigint
+  FROM public.event_photos ep
+  WHERE (p_status IS NULL OR ep.status = p_status)
+    AND (p_event_id IS NULL OR ep.event_id = p_event_id)
+    AND (p_date_from IS NULL OR ep.created_at >= p_date_from)
+    AND (p_date_to IS NULL OR ep.created_at <= p_date_to)
+    AND (
+      nullif(trim(coalesce(p_search, '')), '') IS NULL
+      OR ep.caption ILIKE ('%' || trim(p_search) || '%')
+      OR ep.storage_path ILIKE ('%' || trim(p_search) || '%')
+      OR (
+        p_uploader_ids IS NOT NULL
+        AND cardinality(p_uploader_ids) > 0
+        AND ep.uploader_id = ANY(p_uploader_ids)
+      )
+    )
+    AND (
+      nullif(lower(trim(coalesce(p_email, ''))), '') IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM auth.users u
+        WHERE u.id = ep.uploader_id
+          AND lower(coalesce(u.email, '')) LIKE ('%' || lower(trim(p_email)) || '%')
+      )
+    );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.count_event_photos(uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.count_event_photos(uuid, text) TO anon;
+GRANT EXECUTE ON FUNCTION public.list_event_photos(uuid, text, timestamptz, uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_event_photos(uuid, text, timestamptz, uuid, int) TO anon;
+GRANT EXECUTE ON FUNCTION public.list_admin_media_photos(text, uuid, text, uuid[], text, timestamptz, timestamptz, timestamptz, uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.count_admin_media_photos(text, uuid, text, uuid[], text, timestamptz, timestamptz) TO authenticated;
+
 DO $$
 DECLARE
   v_admin_id uuid := 'a0000000-0000-0000-0000-000000000001';
@@ -1233,3 +2649,301 @@ BEGIN
     display_name = EXCLUDED.display_name,
     role = 'admin';
 END $$;
+
+-- ─── 026 Phase 1 launch ───────────────────────────────────────────────────────
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS dress_code text,
+  ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public'
+    CHECK (visibility IN ('public', 'hidden'));
+
+CREATE INDEX IF NOT EXISTS idx_events_visibility_status_edition
+  ON public.events (visibility, status, edition_number DESC);
+
+CREATE OR REPLACE FUNCTION public.event_purchasable_remaining(p_event_id uuid)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(SUM(
+    CASE
+      WHEN tt.status = 'hidden' THEN 0::bigint
+      WHEN tt.status = 'sold_out' THEN 0::bigint
+      ELSE GREATEST(
+        0::bigint,
+        tt.capacity::bigint - COALESCE(sold.c, 0)::bigint
+      )
+    END
+  ), 0)::bigint
+  FROM public.ticket_tiers tt
+  LEFT JOIN (
+    SELECT tier_id, COUNT(*)::int AS c
+    FROM public.tickets
+    WHERE event_id = p_event_id
+      AND status IN ('valid', 'used')
+    GROUP BY tier_id
+  ) sold ON sold.tier_id = tt.id
+  WHERE tt.event_id = p_event_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.event_is_sold_out(p_event_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.ticket_tiers tt
+    WHERE tt.event_id = p_event_id
+      AND tt.status <> 'hidden'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.ticket_tiers tt
+    LEFT JOIN (
+      SELECT tier_id, COUNT(*)::int AS c
+      FROM public.tickets
+      WHERE event_id = p_event_id
+        AND status IN ('valid', 'used')
+      GROUP BY tier_id
+    ) sold ON sold.tier_id = tt.id
+    WHERE tt.event_id = p_event_id
+      AND tt.status <> 'hidden'
+      AND tt.status <> 'sold_out'
+      AND GREATEST(0, tt.capacity - COALESCE(sold.c, 0)) > 0
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.event_display_status(
+  p_status text,
+  p_visibility text,
+  p_event_id uuid
+)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT CASE
+    WHEN COALESCE(p_visibility, 'public') = 'hidden' THEN 'hidden'
+    WHEN p_status = 'live' THEN 'live'
+    WHEN public.event_is_sold_out(p_event_id) THEN 'sold_out'
+    WHEN p_status = 'upcoming' THEN 'upcoming'
+    ELSE 'upcoming'
+  END;
+$$;
+
+CREATE TABLE IF NOT EXISTS public.email_resend_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  order_id uuid REFERENCES public.orders(id) ON DELETE SET NULL,
+  email_log_id uuid REFERENCES public.email_logs(id) ON DELETE SET NULL,
+  actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  actor_type text NOT NULL CHECK (actor_type IN ('admin', 'member', 'system')),
+  recipient text NOT NULL,
+  source text NOT NULL,
+  meta jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS email_resend_audit_order_id_idx
+  ON public.email_resend_audit (order_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS email_resend_audit_created_at_idx
+  ON public.email_resend_audit (created_at DESC);
+
+ALTER TABLE public.email_resend_audit ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "no_public_access_email_resend_audit" ON public.email_resend_audit;
+CREATE POLICY "no_public_access_email_resend_audit"
+ON public.email_resend_audit
+AS RESTRICTIVE
+FOR ALL
+TO public
+USING (false)
+WITH CHECK (false);
+
+-- ─── 027 Push notifications ─────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.push_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  body text NOT NULL,
+  url text,
+  segment text NOT NULL CHECK (segment IN ('all_members', 'event_attendees', 'vip_members')),
+  event_id uuid REFERENCES public.events(id) ON DELETE SET NULL,
+  status text NOT NULL DEFAULT 'queued'
+    CHECK (status IN ('queued', 'sending', 'completed', 'partial', 'failed')),
+  target_count integer NOT NULL DEFAULT 0,
+  sent_count integer NOT NULL DEFAULT 0,
+  failed_count integer NOT NULL DEFAULT 0,
+  expired_count integer NOT NULL DEFAULT 0,
+  meta jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS push_campaigns_created_at_idx
+  ON public.push_campaigns (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS push_campaigns_status_idx
+  ON public.push_campaigns (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.push_deliveries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id uuid NOT NULL REFERENCES public.push_campaigns(id) ON DELETE CASCADE,
+  subscription_id uuid NOT NULL REFERENCES public.push_subscriptions(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'sent', 'failed', 'expired')),
+  error_message text,
+  attempt_count integer NOT NULL DEFAULT 0,
+  sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (campaign_id, subscription_id)
+);
+
+CREATE INDEX IF NOT EXISTS push_deliveries_campaign_status_idx
+  ON public.push_deliveries (campaign_id, status);
+
+CREATE INDEX IF NOT EXISTS push_deliveries_subscription_idx
+  ON public.push_deliveries (subscription_id);
+
+ALTER TABLE public.push_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_deliveries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "no_public_access_push_campaigns" ON public.push_campaigns;
+CREATE POLICY "no_public_access_push_campaigns"
+ON public.push_campaigns
+AS RESTRICTIVE
+FOR ALL
+TO public
+USING (false)
+WITH CHECK (false);
+
+DROP POLICY IF EXISTS "no_public_access_push_deliveries" ON public.push_deliveries;
+CREATE POLICY "no_public_access_push_deliveries"
+ON public.push_deliveries
+AS RESTRICTIVE
+FOR ALL
+TO public
+USING (false)
+WITH CHECK (false);
+
+CREATE OR REPLACE FUNCTION public.profile_push_enabled(p_settings jsonb)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT COALESCE((p_settings->>'push_notifications')::boolean, true);
+$$;
+
+CREATE OR REPLACE FUNCTION public.count_push_recipients(
+  p_segment text,
+  p_event_id uuid DEFAULT NULL
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COUNT(*)::bigint
+  FROM public.push_subscriptions ps
+  INNER JOIN public.profiles p ON p.id = ps.user_id
+  WHERE public.profile_push_enabled(p.settings)
+    AND CASE
+      WHEN p_segment = 'all_members' THEN true
+      WHEN p_segment = 'event_attendees' AND p_event_id IS NOT NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        WHERE t.holder_id = ps.user_id
+          AND t.event_id = p_event_id
+          AND t.status IN ('valid', 'used')
+      )
+      WHEN p_segment = 'vip_members' AND p_event_id IS NOT NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        INNER JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+        WHERE t.holder_id = ps.user_id
+          AND t.event_id = p_event_id
+          AND t.status IN ('valid', 'used')
+          AND (tt.name = 'vip' OR lower(tt.display_name) LIKE '%vip%')
+      )
+      WHEN p_segment = 'vip_members' AND p_event_id IS NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        INNER JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+        WHERE t.holder_id = ps.user_id
+          AND t.status IN ('valid', 'used')
+          AND (tt.name = 'vip' OR lower(tt.display_name) LIKE '%vip%')
+      )
+      ELSE false
+    END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.list_push_recipients(
+  p_segment text,
+  p_event_id uuid DEFAULT NULL,
+  p_cursor_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 100
+)
+RETURNS TABLE (
+  subscription_id uuid,
+  user_id uuid,
+  endpoint text,
+  p256dh text,
+  auth_key text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    ps.id AS subscription_id,
+    ps.user_id,
+    ps.endpoint,
+    ps.p256dh,
+    ps.auth_key
+  FROM public.push_subscriptions ps
+  INNER JOIN public.profiles p ON p.id = ps.user_id
+  WHERE public.profile_push_enabled(p.settings)
+    AND (p_cursor_id IS NULL OR ps.id > p_cursor_id)
+    AND CASE
+      WHEN p_segment = 'all_members' THEN true
+      WHEN p_segment = 'event_attendees' AND p_event_id IS NOT NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        WHERE t.holder_id = ps.user_id
+          AND t.event_id = p_event_id
+          AND t.status IN ('valid', 'used')
+      )
+      WHEN p_segment = 'vip_members' AND p_event_id IS NOT NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        INNER JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+        WHERE t.holder_id = ps.user_id
+          AND t.event_id = p_event_id
+          AND t.status IN ('valid', 'used')
+          AND (tt.name = 'vip' OR lower(tt.display_name) LIKE '%vip%')
+      )
+      WHEN p_segment = 'vip_members' AND p_event_id IS NULL THEN EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        INNER JOIN public.ticket_tiers tt ON tt.id = t.tier_id
+        WHERE t.holder_id = ps.user_id
+          AND t.status IN ('valid', 'used')
+          AND (tt.name = 'vip' OR lower(tt.display_name) LIKE '%vip%')
+      )
+      ELSE false
+    END
+  ORDER BY ps.id
+  LIMIT LEAST(GREATEST(COALESCE(p_limit, 100), 1), 500);
+$$;

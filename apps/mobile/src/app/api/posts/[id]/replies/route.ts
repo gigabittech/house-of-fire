@@ -1,19 +1,41 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import {
+  buildRepliesResponse,
+  listPostRepliesRpc,
+} from '../../../../../lib/communityApi.server';
+import { parseFeedCursor, parsePageSize } from '../../../../../lib/cursorPagination';
 import { notifyPostAuthor } from '../../../../../lib/postNotifications.server';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
+  const { searchParams } = new URL(request.url);
+  const replyId = searchParams.get('replyId');
 
-  const { data, error } = await supabase
-    .from('replies')
-    .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
-    .eq('post_id', id)
-    .order('created_at', { ascending: true });
+  if (replyId) {
+    const { data, error } = await supabase
+      .from('replies')
+      .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
+      .eq('post_id', id)
+      .eq('id', replyId)
+      .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ replies: data ?? [] });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: 'Reply not found' }, { status: 404 });
+    return NextResponse.json({ reply: data });
+  }
+
+  const cursor = parseFeedCursor(searchParams);
+  const pageSize = parsePageSize(searchParams, 30, 100);
+
+  try {
+    const { replies, hasMore } = await listPostRepliesRpc(supabase, id, cursor, pageSize);
+    return NextResponse.json(buildRepliesResponse(replies, hasMore));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load replies';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

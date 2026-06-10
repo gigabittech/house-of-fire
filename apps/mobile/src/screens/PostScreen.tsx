@@ -4,9 +4,13 @@ import { colors, spacing } from '@hof/design-tokens';
 import type { ReactionKey } from '@hof/ui';
 import { Avatar, ErrorState, FeedPost, FeedSkeletonCard, Icon, useToast } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ApiReply } from '@/lib/communityApi.server';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { usePostReplies } from '@/hooks/usePostReplies';
+import { usePostRealtime } from '@/hooks/usePostRealtime';
 import { photoSrc } from '../data/photos';
 import { apiPostToUi, timeAgo, type ApiPost } from '../lib/postUi';
 
@@ -14,19 +18,12 @@ interface PostScreenProps {
   postId: string;
 }
 
-type ApiReply = {
-  id: string;
-  body: string;
-  is_anonymous: boolean;
-  created_at: string;
-  profiles: { handle: string; display_name: string; role: string; avatar_url: string | null } | null;
-};
-
 export default function PostScreen({ postId }: PostScreenProps) {
   const router = useRouter();
   const authUser = useAuthUser();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const ownReplyIdsRef = useRef(new Set<string>());
   const [apiPost, setApiPost] = useState<ApiPost | null>(null);
-  const [replies, setReplies] = useState<ApiReply[]>([]);
   const [sending, setSending] = useState(false);
   const [myReactions, setMyReactions] = useState<string[]>([]);
   const [reply, setReply] = useState('');
@@ -37,6 +34,19 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const { showToast } = useToast();
   const cardSectionPad = `0 16px ${spacing[2]}px`;
   const cardTopPad = spacing[3];
+
+  const {
+    replies,
+    hasMore: hasMoreReplies,
+    loading: repliesLoading,
+    loadingMore: repliesLoadingMore,
+    error: repliesError,
+    refresh: refreshReplies,
+    loadMore: loadMoreReplies,
+    appendReply,
+    replaceReply,
+    removeReply,
+  } = usePostReplies(postId);
 
   const handleBack = useCallback(() => router.back(), [router]);
 
@@ -56,9 +66,8 @@ export default function PostScreen({ postId }: PostScreenProps) {
         if (!r.ok) throw new Error('not found');
         return r.json();
       })
-      .then((d: { post?: ApiPost; replies?: ApiReply[]; myReactions?: string[] }) => {
+      .then((d: { post?: ApiPost; myReactions?: string[] }) => {
         if (d.post) setApiPost(d.post);
-        if (d.replies) setReplies(d.replies);
         if (d.myReactions) setMyReactions(d.myReactions);
       })
       .catch(() => setFetchError(true))
@@ -69,12 +78,54 @@ export default function PostScreen({ postId }: PostScreenProps) {
     loadPost();
   }, [loadPost]);
 
+  useEffect(() => {
+    void refreshReplies();
+  }, [refreshReplies]);
+
+  usePostRealtime({
+    postId,
+    onPostUpdate: (row) => {
+      setApiPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              reaction_counts: row.reaction_counts ?? prev.reaction_counts,
+              reply_count: row.reply_count ?? prev.reply_count,
+              moderation_status:
+                (row.moderation_status as ApiPost['moderation_status']) ?? prev.moderation_status,
+            }
+          : prev,
+      );
+    },
+    onReplyInsert: (row) => {
+      if (ownReplyIdsRef.current.has(row.id)) return;
+      void (async () => {
+        try {
+          const response = await fetch(`/api/posts/${postId}/replies?replyId=${row.id}`);
+          if (!response.ok) return;
+          const data = (await response.json()) as { reply?: ApiReply };
+          if (data.reply) appendReply(data.reply);
+        } catch {
+          /* keep list */
+        }
+      })();
+    },
+  });
+
+  const repliesSentinelRef = useInfiniteScroll({
+    onLoadMore: () => void loadMoreReplies(),
+    hasMore: hasMoreReplies,
+    loading: repliesLoading || repliesLoadingMore,
+    rootRef: scrollRef,
+  });
+
   const toggleReaction = async (key: ReactionKey) => {
     const prevReaction = myReactions[0] ?? null;
     const removing = prevReaction === key;
     const nextReaction = removing ? null : key;
     setMyReactions(nextReaction ? [nextReaction] : []);
 
+    const prevCounts = apiPost ? { ...apiPost.reaction_counts } : null;
     if (apiPost) {
       const counts = { ...apiPost.reaction_counts };
       if (prevReaction) {
@@ -107,18 +158,8 @@ export default function PostScreen({ postId }: PostScreenProps) {
       }
     } catch {
       setMyReactions(prevReaction ? [prevReaction] : []);
-      if (apiPost) {
-        const counts = { ...apiPost.reaction_counts };
-        if (nextReaction) {
-          const nextCount = counts[nextReaction] ?? 0;
-          const reverted = Math.max(0, nextCount - 1);
-          if (reverted === 0) delete counts[nextReaction];
-          else counts[nextReaction] = reverted;
-        }
-        if (prevReaction) {
-          counts[prevReaction] = (counts[prevReaction] ?? 0) + 1;
-        }
-        setApiPost({ ...apiPost, reaction_counts: counts });
+      if (apiPost && prevCounts) {
+        setApiPost({ ...apiPost, reaction_counts: prevCounts });
       }
       showToast('Could not save reaction');
     }
@@ -127,25 +168,63 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const submitReply = useCallback(async () => {
     const body = reply.trim();
     if (!body || !postId || sending) return;
+
+    const tempId = `pending-${crypto.randomUUID()}`;
+    const optimisticReply: ApiReply = {
+      id: tempId,
+      body,
+      is_anonymous: false,
+      created_at: new Date().toISOString(),
+      profiles: authUser
+        ? {
+            handle: authUser.name.toLowerCase().replace(/\s+/g, ''),
+            display_name: authUser.name,
+            role: 'member',
+            avatar_url: authUser.avatarUrl ?? null,
+          }
+        : null,
+    };
+
     setSending(true);
+    appendReply(optimisticReply);
+    setApiPost((prev) => (prev ? { ...prev, reply_count: prev.reply_count + 1 } : prev));
+    setReply('');
+
     try {
       const r = await fetch(`/api/posts/${postId}/replies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body }),
       });
-      const d = (await r.json()) as { reply?: ApiReply };
-      if (d.reply) {
-        setReplies((prev) => [...prev, d.reply!]);
-        setApiPost((p) => (p ? { ...p, reply_count: p.reply_count + 1 } : p));
+      const d = (await r.json()) as { reply?: ApiReply; error?: string };
+      if (!r.ok || !d.reply) {
+        throw new Error(d.error ?? 'Failed to send reply');
       }
-      setReply('');
+      ownReplyIdsRef.current.add(d.reply.id);
+      replaceReply(tempId, d.reply);
+    } catch {
+      removeReply(tempId);
+      setApiPost((prev) =>
+        prev ? { ...prev, reply_count: Math.max(0, prev.reply_count - 1) } : prev,
+      );
+      setReply(body);
+      showToast('Could not send reply');
     } finally {
       setSending(false);
     }
-  }, [reply, postId, sending]);
+  }, [
+    appendReply,
+    authUser,
+    postId,
+    removeReply,
+    replaceReply,
+    reply,
+    sending,
+    showToast,
+  ]);
 
   const post = apiPost ? apiPostToUi(apiPost, { myReactions }) : null;
+  const replyCount = apiPost?.reply_count ?? replies.length;
 
   if (fetchDone && !post) {
     return (
@@ -191,7 +270,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
         background: colors.bg,
       }}
     >
-      <div className="hof-scroll hof-post-scroll">
+      <div ref={scrollRef} className="hof-scroll hof-post-scroll">
         {!fetchDone && !fetchError && (
           <div style={{ padding: cardSectionPad, paddingTop: cardTopPad }}>
             <FeedSkeletonCard />
@@ -263,7 +342,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
               </div>
             )}
             <FeedPost
-              post={{ ...post, replyCount: replies.length }}
+              post={{ ...post, replyCount }}
               resolvePhoto={photoSrc}
               interactiveReactions={post.moderationStatus === 'approved' || !post.moderationStatus}
               onReact={(emoji) => void toggleReaction(emoji)}
@@ -289,87 +368,97 @@ export default function PostScreen({ postId }: PostScreenProps) {
               textTransform: 'uppercase',
             }}
           >
-            {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+            {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
           </div>
           <div style={{ flex: 1, height: 1, background: colors.border }} />
         </div>
 
         <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {replies.map((r, i) => {
-            const rName = r.is_anonymous
-              ? 'Anonymous'
-              : (r.profiles?.display_name ?? r.profiles?.handle ?? 'Member');
-            const rInitials =
-              rName
-                .split(' ')
-                .map((w) => w[0] ?? '')
-                .slice(0, 2)
-                .join('')
-                .toUpperCase() || '?';
-            const rRole = (r.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
-            return (
-              <div
-                key={r.id ?? i}
-                style={{
-                  display: 'flex',
-                  gap: 10,
-                  padding: '12px 0',
-                  borderBottom: i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
-                }}
-              >
-                <Avatar
-                  initials={rInitials}
-                  userRole={rRole}
-                  src={r.is_anonymous ? undefined : (r.profiles?.avatar_url ?? undefined)}
-                  alt={rName}
-                  size={30}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      gap: 6,
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span
+          {repliesLoading && replies.length === 0 ? (
+            <div style={{ padding: '16px 0' }}>
+              <FeedSkeletonCard />
+            </div>
+          ) : repliesError ? (
+            <ErrorState retry={() => void refreshReplies()} />
+          ) : (
+            replies.map((r, i) => {
+              const rName = r.is_anonymous
+                ? 'Anonymous'
+                : (r.profiles?.display_name ?? r.profiles?.handle ?? 'Member');
+              const rInitials =
+                rName
+                  .split(' ')
+                  .map((w) => w[0] ?? '')
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase() || '?';
+              const rRole = (r.profiles?.role === 'crew' ? 'crew' : 'member') as 'crew' | 'member';
+              const isPending = r.id.startsWith('pending-');
+              return (
+                <div
+                  key={r.id ?? i}
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    padding: '12px 0',
+                    borderBottom: i < replies.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    opacity: isPending ? 0.7 : 1,
+                  }}
+                >
+                  <Avatar
+                    initials={rInitials}
+                    userRole={rRole}
+                    src={r.is_anonymous ? undefined : (r.profiles?.avatar_url ?? undefined)}
+                    alt={rName}
+                    size={30}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: 6,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'Inter',
+                          fontWeight: 500,
+                          fontSize: 13,
+                          color: colors.text,
+                        }}
+                      >
+                        {rName}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: 'JetBrains Mono',
+                          fontSize: 10,
+                          color: colors.textDis,
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        {isPending ? 'Sending…' : `${timeAgo(r.created_at)} ago`}
+                      </span>
+                    </div>
+                    <div
                       style={{
                         fontFamily: 'Inter',
-                        fontWeight: 500,
                         fontSize: 13,
-                        color: colors.text,
+                        color: colors.textSec,
+                        lineHeight: 1.5,
                       }}
                     >
-                      {rName}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: 10,
-                        color: colors.textDis,
-                        marginLeft: 'auto',
-                      }}
-                    >
-                      {timeAgo(r.created_at)} ago
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: colors.textSec,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {r.body}
+                      {r.body}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
 
-          {replies.length === 0 && (
+          {!repliesLoading && replies.length === 0 && !repliesError && (
             <div
               style={{
                 textAlign: 'center',
@@ -380,6 +469,16 @@ export default function PostScreen({ postId }: PostScreenProps) {
               }}
             >
               No replies yet — be first.
+            </div>
+          )}
+
+          {hasMoreReplies && (
+            <div ref={repliesSentinelRef} style={{ padding: '12px 0', textAlign: 'center' }}>
+              {repliesLoadingMore ? (
+                <span style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
+                  Loading more replies…
+                </span>
+              ) : null}
             </div>
           )}
         </div>

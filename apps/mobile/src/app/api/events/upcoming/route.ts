@@ -3,6 +3,7 @@ import type { Database } from '../../../../lib/database.types';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
 import { getUserEventTicketCount } from '../../../../lib/ticketInventory';
 import { effectiveMaxTicketsPerUser } from '../../../../lib/ticketLimits';
+import { resolveEventDisplayStatus } from '../../../../lib/eventDisplay';
 import {
   createServerSupabaseClient,
   createServiceRoleClient,
@@ -95,9 +96,20 @@ export async function GET() {
     }
   }
 
+  const visibility =
+    (event as { visibility?: 'public' | 'hidden' }).visibility ?? 'public';
+  const dressCode = (event as { dress_code?: string | null }).dress_code ?? null;
+  const displayStatus = resolveEventDisplayStatus(
+    { status: event.status, visibility },
+    tiersWithRemaining,
+  );
+
   return NextResponse.json({
     event: {
       ...event,
+      visibility,
+      dress_code: dressCode,
+      display_status: displayStatus,
       doors_open: normalizeDbTime(event.doors_open),
       doors_close: normalizeDbTime(event.doors_close),
       faqs,

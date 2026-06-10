@@ -2,95 +2,99 @@
 
 import { useSupabaseRealtime } from '@hof/realtime';
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
+import type { TicketRealtimeRow } from '@/lib/realtimePatch';
 
-type UseDashboardRealtimeOptions = {
-  eventId: string | null | undefined;
-  onMetricsResync: () => void;
-  onGuestsResync: () => void;
-  onPhotosResync?: () => void;
-  enabled?: boolean;
-};
+type RefundRow = { status?: string };
+type PhotoRow = { id: string; status?: string; event_id?: string };
 
 export function useDashboardRealtime({
   eventId,
-  onMetricsResync,
-  onGuestsResync,
-  onPhotosResync,
+  onTicketInsert,
+  onTicketUpdate,
+  onRefundInsert,
+  onRefundUpdate,
+  onPhotoInsert,
+  onPhotoUpdate,
+  onResync,
   enabled = true,
-}: UseDashboardRealtimeOptions) {
-  const supabase = createClient();
+}: {
+  eventId: string | null | undefined;
+  onTicketInsert?: (row: TicketRealtimeRow) => void;
+  onTicketUpdate?: (row: TicketRealtimeRow, oldRow: Partial<TicketRealtimeRow>) => void;
+  onRefundInsert?: (row: RefundRow) => void;
+  onRefundUpdate?: (row: RefundRow, oldRow: Partial<RefundRow>) => void;
+  onPhotoInsert?: (row: PhotoRow) => void;
+  onPhotoUpdate?: (row: PhotoRow, oldRow: Partial<PhotoRow>) => void;
+  onResync?: () => void;
+  enabled?: boolean;
+}) {
   const callbacksRef = useRef({
-    onMetricsResync,
-    onGuestsResync,
-    onPhotosResync,
+    onTicketInsert,
+    onTicketUpdate,
+    onRefundInsert,
+    onRefundUpdate,
+    onPhotoInsert,
+    onPhotoUpdate,
+    onResync,
   });
 
   useEffect(() => {
-    callbacksRef.current = { onMetricsResync, onGuestsResync, onPhotosResync };
-  }, [onMetricsResync, onGuestsResync, onPhotosResync]);
+    callbacksRef.current = {
+      onTicketInsert,
+      onTicketUpdate,
+      onRefundInsert,
+      onRefundUpdate,
+      onPhotoInsert,
+      onPhotoUpdate,
+      onResync,
+    };
+  }, [
+    onTicketInsert,
+    onTicketUpdate,
+    onRefundInsert,
+    onRefundUpdate,
+    onPhotoInsert,
+    onPhotoUpdate,
+    onResync,
+  ]);
 
-  const ticketFilter = eventId ? `event_id=eq.${eventId}` : undefined;
-  const orderFilter = eventId ? `event_id=eq.${eventId}` : undefined;
-  const tierFilter = eventId ? `event_id=eq.${eventId}` : undefined;
+  const scoped = eventId ? `event_id=eq.${eventId}` : undefined;
 
-  useSupabaseRealtime({
-    supabase,
+  useSupabaseRealtime<TicketRealtimeRow>({
     table: 'tickets',
-    filter: ticketFilter,
+    filter: scoped,
     eventTypes: ['INSERT', 'UPDATE'],
     enabled: enabled && !!eventId,
-    debounceMs: 300,
-    onInsert: () => {
-      callbacksRef.current.onMetricsResync();
-      callbacksRef.current.onGuestsResync();
-    },
-    onUpdate: () => {
-      callbacksRef.current.onMetricsResync();
-      callbacksRef.current.onGuestsResync();
-    },
-    onResync: () => callbacksRef.current.onMetricsResync(),
+    debounceMs: 150,
+    onInsert: (row) => callbacksRef.current.onTicketInsert?.(row),
+    onUpdate: (row, oldRow) => callbacksRef.current.onTicketUpdate?.(row, oldRow),
+    onResync: () => callbacksRef.current.onResync?.(),
   });
 
-  useSupabaseRealtime({
-    supabase,
-    table: 'orders',
-    filter: orderFilter,
-    eventTypes: ['INSERT'],
-    enabled: enabled && !!eventId,
-    debounceMs: 300,
-    onInsert: () => callbacksRef.current.onMetricsResync(),
-    onResync: () => callbacksRef.current.onMetricsResync(),
-  });
-
-  useSupabaseRealtime({
-    supabase,
-    table: 'ticket_tiers',
-    filter: tierFilter,
-    eventTypes: ['UPDATE'],
-    enabled: enabled && !!eventId,
-    debounceMs: 300,
-    onUpdate: () => callbacksRef.current.onMetricsResync(),
-  });
-
-  useSupabaseRealtime({
-    supabase,
+  useSupabaseRealtime<RefundRow>({
     table: 'refund_requests',
-    eventTypes: ['INSERT', 'UPDATE'],
+    filter: 'status=eq.pending',
+    eventTypes: ['INSERT', 'UPDATE', 'DELETE'],
     enabled,
     debounceMs: 300,
-    onInsert: () => callbacksRef.current.onMetricsResync(),
-    onUpdate: () => callbacksRef.current.onMetricsResync(),
+    onInsert: (row) => callbacksRef.current.onRefundInsert?.(row),
+    onUpdate: (row, oldRow) => callbacksRef.current.onRefundUpdate?.(row, oldRow),
+    onDelete: () =>
+      callbacksRef.current.onRefundUpdate?.({ status: 'processed' }, { status: 'pending' }),
   });
 
-  useSupabaseRealtime({
-    supabase,
+  useSupabaseRealtime<PhotoRow>({
     table: 'event_photos',
     filter: 'status=eq.pending',
-    eventTypes: ['INSERT', 'UPDATE'],
+    eventTypes: ['INSERT', 'UPDATE', 'DELETE'],
     enabled,
     debounceMs: 300,
-    onInsert: () => callbacksRef.current.onPhotosResync?.(),
-    onUpdate: () => callbacksRef.current.onPhotosResync?.(),
+    onInsert: (row) => callbacksRef.current.onPhotoInsert?.(row),
+    onUpdate: (row, oldRow) => callbacksRef.current.onPhotoUpdate?.(row, oldRow),
+    onDelete: (oldRow) =>
+      callbacksRef.current.onPhotoUpdate?.(
+        { id: String(oldRow.id), status: 'approved' },
+        { status: 'pending' },
+      ),
   });
 }

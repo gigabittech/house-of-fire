@@ -41,6 +41,8 @@ export type Database = {
           capacity: number;
           max_tickets_per_user: number;
           status: 'upcoming' | 'live' | 'past' | 'cancelled';
+          visibility: 'public' | 'hidden';
+          dress_code: string | null;
           hero_image_url: string | null;
           faqs: Json;
           created_at: string;
@@ -470,6 +472,120 @@ export type Database = {
           },
         ];
       };
+      email_resend_audit: {
+        Row: {
+          id: string;
+          created_at: string;
+          order_id: string | null;
+          email_log_id: string | null;
+          actor_id: string | null;
+          actor_type: 'admin' | 'member' | 'system';
+          recipient: string;
+          source: string;
+          meta: Json;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          order_id?: string | null;
+          email_log_id?: string | null;
+          actor_id?: string | null;
+          actor_type: 'admin' | 'member' | 'system';
+          recipient: string;
+          source: string;
+          meta?: Json;
+        };
+        Update: Partial<Database['public']['Tables']['email_resend_audit']['Insert']>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+          platform: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+          platform?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['push_subscriptions']['Insert']>;
+        Relationships: [];
+      };
+      push_campaigns: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          title: string;
+          body: string;
+          url: string | null;
+          segment: 'all_members' | 'event_attendees' | 'vip_members';
+          event_id: string | null;
+          status: 'queued' | 'sending' | 'completed' | 'partial' | 'failed';
+          target_count: number;
+          sent_count: number;
+          failed_count: number;
+          expired_count: number;
+          meta: Json;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          title: string;
+          body: string;
+          url?: string | null;
+          segment: 'all_members' | 'event_attendees' | 'vip_members';
+          event_id?: string | null;
+          status?: 'queued' | 'sending' | 'completed' | 'partial' | 'failed';
+          target_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          expired_count?: number;
+          meta?: Json;
+        };
+        Update: Partial<Database['public']['Tables']['push_campaigns']['Insert']>;
+        Relationships: [];
+      };
+      push_deliveries: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          subscription_id: string;
+          user_id: string;
+          status: 'pending' | 'sent' | 'failed' | 'expired';
+          error_message: string | null;
+          attempt_count: number;
+          sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          subscription_id: string;
+          user_id: string;
+          status?: 'pending' | 'sent' | 'failed' | 'expired';
+          error_message?: string | null;
+          attempt_count?: number;
+          sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['push_deliveries']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -478,6 +594,75 @@ export type Database = {
       sync_discount_code_uses: {
         Args: Record<string, never>;
         Returns: undefined;
+      };
+      admin_members_stats: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      admin_list_members: {
+        Args: {
+          p_page?: number;
+          p_page_size?: number;
+          p_search?: string | null;
+          p_sort?: string;
+          p_sort_dir?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_guests: {
+        Args: {
+          p_page?: number;
+          p_page_size?: number;
+          p_event_id?: string | null;
+          p_tier_id?: string | null;
+          p_email?: string | null;
+          p_code?: string | null;
+          p_name_search?: string | null;
+          p_sort?: string;
+          p_sort_dir?: string;
+        };
+        Returns: Json;
+      };
+      admin_guests_tier_status: {
+        Args: { p_event_id?: string | null };
+        Returns: Json;
+      };
+      admin_financials_list: {
+        Args: {
+          p_page?: number;
+          p_page_size?: number;
+          p_search?: string | null;
+          p_sort?: string;
+          p_sort_dir?: string;
+        };
+        Returns: Json;
+      };
+      admin_event_ticket_stats: {
+        Args: { p_event_id: string };
+        Returns: Json;
+      };
+      admin_dashboard_event_metrics: {
+        Args: { p_event_id: string };
+        Returns: Json;
+      };
+      count_push_recipients: {
+        Args: { p_segment: string; p_event_id?: string | null };
+        Returns: number;
+      };
+      list_push_recipients: {
+        Args: {
+          p_segment: string;
+          p_event_id?: string | null;
+          p_cursor_id?: string | null;
+          p_limit?: number;
+        };
+        Returns: Array<{
+          subscription_id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+        }>;
       };
     };
     Enums: {

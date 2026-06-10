@@ -20,6 +20,7 @@ const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; 
     { id: 'members', href: '/members', icon: 'user', label: 'Members' },
     { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation' },
     { id: 'announce', href: '/announce', icon: 'bell', label: 'Announcements' },
+    { id: 'push', href: '/push', icon: 'bell', label: 'Push' },
     { id: 'email-log', href: '/email-log', icon: 'mail', label: 'Email log' },
     { id: 'codes', href: '/codes', icon: 'tag', label: 'Codes & comps' },
     { id: 'financials', href: '/financials', icon: 'wallet', label: 'Financials' },
@@ -92,9 +93,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     void loadCounts();
   }, [loadCounts]);
 
+  const applyMediaDelta = useCallback((delta: number) => {
+    setMediaBadge((prev) => {
+      const n = Math.max(0, (prev ? Number.parseInt(prev, 10) : 0) + delta);
+      return n > 0 ? String(n) : undefined;
+    });
+  }, []);
+
+  const applyModDelta = useCallback((delta: number) => {
+    setModBadge((prev) => {
+      const n = Math.max(0, (prev ? Number.parseInt(prev, 10) : 0) + delta);
+      return n > 0 ? String(n) : undefined;
+    });
+  }, []);
+
   useNavCountsRealtime({
-    onMediaPending: loadCounts,
-    onModPending: loadCounts,
+    onMediaDelta: applyMediaDelta,
+    onModDelta: applyModDelta,
   });
 
   useEffect(() => {

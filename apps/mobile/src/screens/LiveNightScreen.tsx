@@ -66,6 +66,7 @@ interface ApiTicket {
 // ── Display shapes used in render ─────────────────────────────────────────
 
 interface PostItem {
+  id: string;
   i: string; // initials
   n: string; // display name
   role: 'crew' | 'member';
@@ -209,6 +210,7 @@ export default function LiveNightScreen() {
               ? ('crew' as const)
               : ('member' as const);
           return {
+            id: p.id,
             i: initialsFrom(displayName),
             n: displayName,
             role,
@@ -227,11 +229,63 @@ export default function LiveNightScreen() {
     loadPosts();
   }, [loadPosts]);
 
+  const apiPostToItem = useCallback((p: ApiPost): PostItem => {
+    const profile = p.is_anonymous ? null : p.profiles;
+    const displayName = profile?.display_name ?? 'Anonymous';
+    const role =
+      profile?.role === 'crew' || profile?.role === 'admin' ? ('crew' as const) : ('member' as const);
+    return {
+      id: p.id,
+      i: initialsFrom(displayName),
+      n: displayName,
+      role,
+      avatarUrl: p.is_anonymous ? undefined : (profile?.avatar_url ?? undefined),
+      t: relativeTime(p.created_at),
+      b: p.body ?? p.title,
+    };
+  }, []);
+
   useCommunityRealtime({
     channel: 'general',
     eventId: eventId ?? undefined,
-    onPostInsert: () => loadPosts(),
-    onPostUpdate: () => loadPosts(),
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        const item = apiPostToItem(d.post);
+        setPosts((prev) => {
+          if (prev.some((p) => p.id === item.id)) return prev;
+          return [item, ...prev].slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        const item = apiPostToItem(d.post);
+        setPosts((prev) => {
+          const idx = prev.findIndex((p) => p.id === item.id);
+          if (idx === -1) return prev;
+          const next = prev.slice();
+          next[idx] = item;
+          return next;
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostDelete: (oldRow) => {
+      if (!oldRow.id) return;
+      setPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadPosts(),
     enabled: COMMUNITY_FEATURE_ENABLED,
   });
 

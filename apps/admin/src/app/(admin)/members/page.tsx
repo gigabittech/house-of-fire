@@ -6,15 +6,17 @@ import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
 import { MemberEditModal } from '@/components/MemberEditModal';
 import { Pill } from '@/components/Pill';
+import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
+import type { ApiPagination } from '@/lib/pagination';
 import { type MemberApiPayload, type MemberRow, mapMemberRow } from '@/lib/mapMemberRow';
 
 interface MembersStats {
   total: number;
-  newThisMonth: number;
-  crewCount: number;
-  photographerCount: number;
-  returnRate: number;
-  active90: number;
+  new_this_month: number;
+  crew_count: number;
+  photographer_count: number;
+  return_rate: number;
+  active_90: number;
 }
 
 interface ToastState {
@@ -22,21 +24,45 @@ interface ToastState {
   message: string;
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export default function MembersPage() {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 350);
+  const [page, setPage] = useState(1);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [stats, setStats] = useState<MembersStats | null>(null);
+  const [pagination, setPagination] = useState<ApiPagination>({
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+    totalCount: 0,
+    totalPages: 1,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const loadMembers = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/admin/members');
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('pageSize', String(DEFAULT_PAGE_SIZE));
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+
+      const res = await fetch(`/api/admin/members?${params}`);
       const data = (await res.json()) as {
         members?: MemberApiPayload[];
         stats?: MembersStats;
+        pagination?: ApiPagination;
         error?: string;
       };
       if (data.error) {
@@ -44,6 +70,7 @@ export default function MembersPage() {
       } else {
         setMembers((data.members ?? []).map(mapMemberRow));
         setStats(data.stats ?? null);
+        if (data.pagination) setPagination(data.pagination);
         setError(null);
       }
     } catch (err) {
@@ -51,20 +78,15 @@ export default function MembersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     void loadMembers();
   }, [loadMembers]);
 
-  const filtered = members.filter((m) => {
-    const q = search.toLowerCase();
-    return (
-      m.name.toLowerCase().includes(q) ||
-      m.handle.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q)
-    );
-  });
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   return (
     <>
@@ -111,7 +133,7 @@ export default function MembersPage() {
           >
             {loading || !stats
               ? 'Loading…'
-              : `+${stats.newThisMonth} this month · ${stats.returnRate}% return rate · ${stats.crewCount} Crew · ${stats.photographerCount} Photographers`}
+              : `+${stats.new_this_month} this month · ${stats.return_rate}% return rate · ${stats.crew_count} Crew · ${stats.photographer_count} Photographers`}
           </div>
         </div>
         <div
@@ -152,7 +174,6 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {/* KPI strip */}
       <div
         style={{
           padding: '20px 28px 0',
@@ -164,29 +185,29 @@ export default function MembersPage() {
         <Kpi
           label="Total members"
           value={loading ? '…' : String(stats?.total ?? 0)}
-          delta={stats ? `+${stats.newThisMonth} this month` : ''}
+          delta={stats ? `+${stats.new_this_month} this month` : ''}
           tone="amber"
         />
         <Kpi
           label="Active (90 day)"
-          value={loading ? '…' : String(stats?.active90 ?? 0)}
+          value={loading ? '…' : String(stats?.active_90 ?? 0)}
           delta={
             stats && stats.total > 0
-              ? `${Math.round((stats.active90 / stats.total) * 100)}% of total`
+              ? `${Math.round((stats.active_90 / stats.total) * 100)}% of total`
               : ''
           }
           tone="neutral"
         />
         <Kpi
           label="Return rate"
-          value={loading ? '…' : `${stats?.returnRate ?? 0}%`}
+          value={loading ? '…' : `${stats?.return_rate ?? 0}%`}
           delta=""
           tone="amber"
         />
         <Kpi
           label="Crew & comp"
-          value={loading ? '…' : String(stats?.crewCount ?? 0)}
-          delta={stats ? `${stats.crewCount} Crew · ${stats.photographerCount} Photographers` : ''}
+          value={loading ? '…' : String(stats?.crew_count ?? 0)}
+          delta={stats ? `${stats.crew_count} Crew · ${stats.photographer_count} Photographers` : ''}
           tone="muted"
         />
       </div>
@@ -231,7 +252,7 @@ export default function MembersPage() {
           )}
           {!loading &&
             !error &&
-            filtered.map((m, i) => {
+            members.map((m, i) => {
               const initials = m.name
                 .split(' ')
                 .map((s) => s[0] ?? '')
@@ -254,7 +275,10 @@ export default function MembersPage() {
                     gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.8fr 1fr 80px',
                     padding: '12px 18px',
                     alignItems: 'center',
-                    borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
+                    borderBottom:
+                      i < members.length - 1 || pagination.totalCount > pagination.pageSize
+                        ? '1px solid var(--hof-border)'
+                        : 'none',
                     fontFamily: 'Inter, system-ui',
                     fontSize: 13,
                     color: 'var(--hof-text)',
@@ -369,6 +393,17 @@ export default function MembersPage() {
                 </div>
               );
             })}
+          {!loading && !error && members.length === 0 && (
+            <div style={{ padding: 18, color: 'var(--hof-text-sec)', fontSize: 13 }}>
+              No members match your search.
+            </div>
+          )}
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.totalCount}
+            onPageChange={setPage}
+          />
         </div>
       </div>
 

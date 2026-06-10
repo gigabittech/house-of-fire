@@ -8,8 +8,11 @@ import { AppHeaderProvider, useAppHeaderContext } from '@/context/AppHeaderConte
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { COMMUNITY_EXCLUDED_NAV_IDS, COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { navHref } from '@/lib/nav';
+import { PushSubscriptionSync } from '@/components/PushSubscriptionSync';
 import { clearProfileCache } from '@/lib/profileCache';
 import { createClient } from '@/lib/supabase';
+
+const supabase = createClient();
 
 const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing'];
 
@@ -95,8 +98,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <RealtimeProvider>
+    <RealtimeProvider supabase={supabase}>
       <AppHeaderProvider defaultTitle={titleFromPath(pathname)}>
+        <PushSubscriptionSync />
         <AppChromeShell>{children}</AppChromeShell>
         <RealtimeDisconnectedBanner />
       </AppHeaderProvider>

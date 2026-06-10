@@ -39,6 +39,8 @@ function eventToForm(ev: {
   capacity: number;
   max_tickets_per_user?: number;
   status: EventFormPayload['status'];
+  visibility?: EventFormPayload['visibility'];
+  dress_code?: string | null;
   hero_image_url: string | null;
   faqs: unknown;
 }): EventFormPayload {
@@ -56,6 +58,8 @@ function eventToForm(ev: {
     capacity: ev.capacity,
     max_tickets_per_user: ev.max_tickets_per_user ?? 4,
     status: ev.status,
+    visibility: ev.visibility ?? 'public',
+    dress_code: ev.dress_code ?? null,
     hero_image_url: ev.hero_image_url,
     faqs: parseFaqsFromJson(ev.faqs),
   };
@@ -113,11 +117,6 @@ export default function EventsPage() {
             : e,
         ),
       );
-    },
-    onTierUpdate: (row) => {
-      if (typeof row.sold_count === 'number') {
-        setSoldByTierId((prev) => ({ ...prev, [row.id]: row.sold_count ?? 0 }));
-      }
     },
   });
 

@@ -7,7 +7,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
-import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import {
   formatDoorsRange,
   formatEventDateShort,
@@ -17,6 +17,7 @@ import {
 import { computeCheckoutAmounts } from '@/lib/ticketPricing';
 import { MAX_TICKETS_PER_ORDER } from '@/lib/ticketLimits';
 import { formatZipCodeInput, isValidZipCode } from '@/lib/zipCode';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
@@ -740,6 +741,7 @@ function StepAccount({
   setField,
   errors,
   isLoggedIn = false,
+  checkoutReturn,
 }: {
   mode: 'guest' | 'signup' | 'signin';
   setMode: (m: 'guest' | 'signup' | 'signin') => void;
@@ -747,8 +749,35 @@ function StepAccount({
   setField: (k: keyof Details, v: string) => void;
   errors: { email?: boolean; phone?: boolean; zipCode?: boolean };
   isLoggedIn?: boolean;
+  checkoutReturn: string;
 }) {
   const isSignIn = mode === 'signin';
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [signInSent, setSignInSent] = useState(false);
+  const [signInError, setSignInError] = useState('');
+  const signInEmailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim());
+
+  async function sendCheckoutSignInLink() {
+    setSignInLoading(true);
+    setSignInError('');
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: details.email.trim(),
+        flow: 'sign_in',
+        redirectTo: `${window.location.origin}/auth/callback/client?next=${encodeURIComponent(checkoutReturn)}&flow=sign_in`,
+      }),
+    });
+    setSignInLoading(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setSignInError(data.error ?? 'Could not send sign-in link.');
+      return;
+    }
+    setSignInSent(true);
+  }
+
   return (
     <div style={{ padding: '4px 16px 8px' }}>
       <div
@@ -777,43 +806,70 @@ function StepAccount({
 
       {isSignIn && (
         <div style={{ marginTop: 22 }}>
-          <button
-            className="hof-btn hof-press"
-            style={{
-              width: '100%',
-              height: 48,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              background: colors.elevated,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 12,
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 15,
-              color: colors.text,
-            }}
-          >
-            <Icon name="apple" size={16} color={colors.text} />
-            Continue with Apple
-          </button>
+          <GoogleSignInButton flow="sign_in" next={checkoutReturn} disabled={signInLoading} />
           <Divider>or email</Divider>
-          <FieldLabel>Email address</FieldLabel>
-          <TextInput
-            value={details.email}
-            onChange={(e) => setField('email', e.target.value)}
-            placeholder="you@example.com"
-            type="email"
-          />
-          <div style={{ height: 10 }} />
-          <FieldLabel>Password</FieldLabel>
-          <TextInput
-            value={details.password}
-            onChange={(e) => setField('password', e.target.value)}
-            type="password"
-            placeholder="••••••••"
-          />
+          {!signInSent ? (
+            <>
+              <FieldLabel>Email address</FieldLabel>
+              <TextInput
+                value={details.email}
+                onChange={(e) => setField('email', e.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                autoComplete="email"
+              />
+              {signInError ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: '#f87171',
+                  }}
+                >
+                  {signInError}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="hof-btn hof-press"
+                disabled={!signInEmailOk || signInLoading}
+                onClick={() => {
+                  void sendCheckoutSignInLink();
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: 16,
+                  height: 48,
+                  borderRadius: 12,
+                  background: colors.amber,
+                  color: colors.bg,
+                  fontFamily: 'Inter',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  opacity: !signInEmailOk || signInLoading ? 0.5 : 1,
+                }}
+              >
+                {signInLoading ? 'Sending link…' : 'Send sign-in link'}
+              </button>
+            </>
+          ) : (
+            <div
+              style={{
+                padding: '14px',
+                borderRadius: 12,
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: colors.textSec,
+                lineHeight: 1.5,
+              }}
+            >
+              Check your email for a sign-in link. After signing in, you&apos;ll return here to
+              finish checkout.
+            </div>
+          )}
           <button
             className="hof-btn"
             onClick={() => setMode('guest')}
@@ -831,7 +887,13 @@ function StepAccount({
 
       {!isSignIn && (
         <>
-          <div style={{ marginTop: 22, display: 'flex', gap: 10 }}>
+          {!isLoggedIn && mode === 'signup' ? (
+            <div style={{ marginTop: 22 }}>
+              <GoogleSignInButton flow="sign_up" next={checkoutReturn} />
+              <Divider>or continue as guest</Divider>
+            </div>
+          ) : null}
+          <div style={{ marginTop: isLoggedIn || mode !== 'signup' ? 22 : 0, display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <FieldLabel>First name</FieldLabel>
               <TextInput
@@ -1523,7 +1585,7 @@ export default function CheckoutScreen() {
       .finally(() => setEventLoading(false));
   }, []);
 
-  useEventInventoryRealtime({
+  useEventInventory({
     event: checkoutEventFull,
     onEventChange: (next) => {
       setCheckoutEventFull(next);
@@ -1547,6 +1609,7 @@ export default function CheckoutScreen() {
       setTierData(built);
     },
     enabled: !eventLoading,
+    pollIntervalMs: INVENTORY_POLL_MS.checkout,
   });
 
   // Ensure selected tier is a valid API tier id (UUID), not a stale slug
@@ -1616,9 +1679,17 @@ export default function CheckoutScreen() {
   const zipOk = isValidZipCode(details.zipCode);
   const nameOk = details.firstName.trim().length >= 1 && details.lastName.trim().length >= 1;
   const passwordOk = accountMode !== 'signup' || details.password.length >= 6;
+  const checkoutReturn = useMemo(() => {
+    const params = new URLSearchParams();
+    if (tier) params.set('tierId', tier);
+    if (qty > 1) params.set('qty', String(qty));
+    const qs = params.toString();
+    return qs ? `/checkout?${qs}` : '/checkout';
+  }, [tier, qty]);
+
   const step2Valid =
     accountMode === 'signin'
-      ? emailOk && details.password.length >= 1
+      ? isLoggedIn && emailOk
       : nameOk && emailOk && phoneOk && zipOk && (isLoggedIn || passwordOk);
 
   async function syncPaymentIntent(opts?: { codeId?: string; promoCode?: string }) {
@@ -1954,6 +2025,7 @@ export default function CheckoutScreen() {
               zipCode: details.zipCode.length > 0 ? !zipOk : undefined,
             }}
             isLoggedIn={isLoggedIn}
+            checkoutReturn={checkoutReturn}
           />
         )}
         {step === 3 && (

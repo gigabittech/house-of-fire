@@ -1,5 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { parsePhotoCursor, parsePhotoPageSize } from '@hof/media';
+import {
+  buildAdminMediaPageResponse,
+  countAdminMediaPhotosRpc,
+  listAdminMediaPhotosRpc,
+} from '@/lib/adminMediaApi.server';
 import { applyPhotoStatusChange } from '@/lib/eventPhotoStorage';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
@@ -7,16 +13,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 type PhotoStatus = 'pending' | 'approved' | 'rejected' | 'inactive';
 
 const PHOTO_STATUSES: PhotoStatus[] = ['pending', 'approved', 'rejected', 'inactive'];
-
-function asInt(value: string | null, fallback: number): number {
-  if (!value) return fallback;
-  const n = Number.parseInt(value, 10);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
 
 function escapeIlike(term: string): string {
   return term.replace(/,/g, ' ').replace(/[%_]/g, '\\$&');
@@ -54,8 +50,6 @@ async function fetchUserEmails(
   return map;
 }
 
-const EMAIL_FILTER_FETCH_CAP = 500;
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get('status') ?? 'pending';
@@ -64,9 +58,8 @@ export async function GET(request: NextRequest) {
   const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
   const dateFrom = searchParams.get('dateFrom')?.trim() ?? '';
   const dateTo = searchParams.get('dateTo')?.trim() ?? '';
-  const page = asInt(searchParams.get('page'), 1);
-  const limit = clamp(asInt(searchParams.get('limit'), 25), 1, 100);
-  const offset = (page - 1) * limit;
+  const cursor = parsePhotoCursor(searchParams);
+  const pageSize = parsePhotoPageSize(searchParams, 25, 100);
 
   const status: PhotoStatus | null =
     statusParam === 'all'
@@ -77,111 +70,38 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminSupabaseClient();
 
-  let query = supabase
-    .from('event_photos')
-    .select(
-      `
-      id,
-      event_id,
-      storage_path,
-      public_url,
-      caption,
-      status,
-      created_at,
-      events!event_photos_event_id_fkey (
-        edition_number,
-        name
-      ),
-      profiles!event_photos_uploader_id_fkey (
-        id,
-        handle,
-        display_name,
-        avatar_url
-      )
-    `,
-      { count: 'exact' },
-    )
-    .order('created_at', { ascending: false });
+  const uploaderIds = search ? await resolveUploaderIds(supabase, search) : null;
+  const filters = {
+    status,
+    eventId: eventId || null,
+    search: search || null,
+    uploaderIds: uploaderIds && uploaderIds.length > 0 ? uploaderIds : null,
+    email: email || null,
+    dateFrom: dateFrom || null,
+    dateTo: dateTo || null,
+  };
 
-  if (status) {
-    query = query.eq('status', status);
-  }
-  if (eventId) {
-    query = query.eq('event_id', eventId);
-  }
-  if (dateFrom) {
-    query = query.gte('created_at', `${dateFrom}T00:00:00.000Z`);
-  }
-  if (dateTo) {
-    query = query.lte('created_at', `${dateTo}T23:59:59.999Z`);
-  }
+  try {
+    const [{ photos, hasMore }, totalCount] = await Promise.all([
+      listAdminMediaPhotosRpc(supabase, filters, cursor, pageSize),
+      cursor ? Promise.resolve(undefined) : countAdminMediaPhotosRpc(supabase, filters),
+    ]);
 
-  if (search) {
-    const esc = escapeIlike(search);
-    const uploaderIds = await resolveUploaderIds(supabase, search);
-    const orParts = [`caption.ilike.%${esc}%`, `storage_path.ilike.%${esc}%`];
-    if (uploaderIds.length > 0) {
-      orParts.push(`uploader_id.in.(${uploaderIds.join(',')})`);
-    }
-    query = query.or(orParts.join(','));
-  }
+    const profileIds = photos
+      .map((row) => row.profiles?.id)
+      .filter((id): id is string => Boolean(id));
+    const emailByUserId = await fetchUserEmails(supabase, profileIds);
 
-  const useEmailFilter = email.length > 0;
-
-  const { data, error, count } = useEmailFilter
-    ? await query.limit(EMAIL_FILTER_FETCH_CAP)
-    : await query.range(offset, offset + limit - 1);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  const rows = data ?? [];
-  const uploaderIds = rows
-    .map((row) => {
-      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-      return profile && typeof profile === 'object' && 'id' in profile
-        ? (profile as { id: string }).id
-        : null;
-    })
-    .filter((id): id is string => Boolean(id));
-
-  const emailByUserId = await fetchUserEmails(supabase, uploaderIds);
-
-  let photos = rows.map((row) => {
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    const profileId =
-      profile && typeof profile === 'object' && 'id' in profile
-        ? (profile as { id: string }).id
-        : null;
-
-    return {
+    const enriched = photos.map((row) => ({
       ...row,
-      uploader_email: profileId ? (emailByUserId.get(profileId) ?? null) : null,
-    };
-  });
+      uploader_email: row.profiles?.id ? (emailByUserId.get(row.profiles.id) ?? null) : null,
+    }));
 
-  if (useEmailFilter) {
-    photos = photos.filter((row) => row.uploader_email?.toLowerCase().includes(email));
+    return NextResponse.json(buildAdminMediaPageResponse(enriched, hasMore, totalCount));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load photos';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const total = useEmailFilter ? photos.length : (count ?? 0);
-  const paginatedPhotos = useEmailFilter
-    ? photos.slice(offset, offset + limit)
-    : photos;
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-
-  return NextResponse.json({
-    photos: paginatedPhotos,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
-    },
-  });
 }
 
 export async function PATCH(request: NextRequest) {

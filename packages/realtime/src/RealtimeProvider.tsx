@@ -1,6 +1,8 @@
 'use client';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { SupabaseProvider } from './supabaseContext';
 import type { RealtimeConnectionStatus } from './types';
 
 type RealtimeContextValue = {
@@ -14,7 +16,13 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 const BANNER_DELAY_MS = 30_000;
 
-export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+export function RealtimeProvider({
+  children,
+  supabase,
+}: {
+  children: React.ReactNode;
+  supabase: SupabaseClient;
+}) {
   const [status, setStatusState] = useState<RealtimeConnectionStatus>('connecting');
   const [disconnectedSince, setDisconnectedSince] = useState<number | null>(null);
   const [showDisconnectedBanner, setShowDisconnectedBanner] = useState(false);
@@ -44,7 +52,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     [status, setStatus, disconnectedSince, showDisconnectedBanner],
   );
 
-  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+  return (
+    <SupabaseProvider client={supabase}>
+      <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>
+    </SupabaseProvider>
+  );
 }
 
 export function useRealtimeStatus(): RealtimeContextValue {

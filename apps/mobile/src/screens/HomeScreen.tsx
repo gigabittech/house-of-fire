@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
-import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -137,7 +137,7 @@ export default function HomeScreen() {
   const [topPostsLoading, setTopPostsLoading] = useState(true);
   const [lastNight, setLastNight] = useState<{
     event: { edition_number: number; name: string; date: string };
-    photos: Array<{ id: string; public_url: string | null }>;
+    photos: Array<{ id: string; public_url: string | null; thumb_url?: string | null }>;
   } | null>(null);
   const [lastNightLoading, setLastNightLoading] = useState(true);
 
@@ -156,10 +156,11 @@ export default function HomeScreen() {
       .finally(() => setEventLoaded(true));
   }, []);
 
-  useEventInventoryRealtime({
+  useEventInventory({
     event: upcomingEvent,
     onEventChange: setUpcomingEvent,
     enabled: eventLoaded,
+    pollIntervalMs: INVENTORY_POLL_MS.home,
   });
 
   const loadTopPosts = useCallback(() => {
@@ -173,10 +174,44 @@ export default function HomeScreen() {
       .finally(() => setTopPostsLoading(false));
   }, []);
 
+  const patchTopPost = useCallback(
+    (row: { id: string; reaction_counts?: Record<string, number>; reply_count?: number }) => {
+      setTopPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reactions: row.reaction_counts ?? p.reactions,
+                replyCount: row.reply_count ?? p.replyCount,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
   useCommunityRealtime({
     channel: 'general',
-    onPostInsert: () => loadTopPosts(),
-    onPostUpdate: () => loadTopPosts(),
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        setTopPosts((prev) => {
+          const next = [apiPostToUi(d.post!), ...prev.filter((p) => p.id !== d.post!.id)];
+          return next.slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: (row) => patchTopPost(row),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) setTopPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadTopPosts(),
     enabled: COMMUNITY_FEATURE_ENABLED,
   });
 
@@ -186,7 +221,7 @@ export default function HomeScreen() {
       .then((r) => r.json())
       .then((d: {
         event?: { edition_number: number; name: string; date: string } | null;
-        photos?: Array<{ id: string; public_url: string | null }>;
+        photos?: Array<{ id: string; public_url: string | null; thumb_url?: string | null }>;
       }) => {
         if (d.event) {
           setLastNight({ event: d.event, photos: d.photos ?? [] });
@@ -712,7 +747,7 @@ export default function HomeScreen() {
               {(lastNight.photos.length > 0
                 ? lastNight.photos.map((photo, idx) => ({
                     key: photo.id,
-                    src: photo.public_url ?? photoSrc(idx),
+                    src: photo.thumb_url ?? photo.public_url ?? photoSrc(idx),
                     idx,
                   }))
                 : [0, 1, 2, 3].map((seed, idx) => ({

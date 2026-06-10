@@ -9,24 +9,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [postRes, repliesRes] = await Promise.all([
-    supabase
-      .from('posts')
-      .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
-      .eq('id', id)
-      .single(),
-    supabase
-      .from('replies')
-      .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
-      .eq('post_id', id)
-      .order('created_at', { ascending: true }),
-  ]);
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
+    .eq('id', id)
+    .single();
 
-  if (postRes.error || !postRes.data) {
+  if (error || !post) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 });
   }
 
-  const post = postRes.data;
   const isAuthor = user?.id === post.author_id;
   const isApproved = post.moderation_status === 'approved';
 
@@ -41,12 +33,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .select('emoji')
       .eq('post_id', id)
       .eq('user_id', user.id);
-    myReactions = (reactions ?? []).map((r) => r.emoji);
+    myReactions = (reactions ?? []).map((reaction) => reaction.emoji);
   }
 
   return NextResponse.json({
     post,
-    replies: repliesRes.data ?? [],
     myReactions,
   });
 }

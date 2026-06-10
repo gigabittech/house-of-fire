@@ -1,97 +1,81 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import {
-  normalizeGuestTicket,
-  ticketMatchesEmail,
-  type AdminGuestTicket,
-} from '@/lib/guestTicket';
+import { ADMIN_GUEST_SELECT, normalizeGuestTicket } from '@/lib/guestTicket';
+import { normalizePagination, parsePagination, parseSort } from '@/lib/pagination';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
-const GUEST_SELECT = `
-  id,
-  code,
-  event_id,
-  tier_id,
-  order_id,
-  amount_cents,
-  fee_cents,
-  status,
-  purchased_at,
-  used_at,
-  checked_in_at,
-  source,
-  metadata,
-  qr_data,
-  stripe_charge_id,
-  profiles!tickets_holder_id_fkey (
-    id,
-    display_name,
-    handle,
-    avatar_url
-  ),
-  ticket_tiers!tickets_tier_id_fkey (
-    id,
-    display_name,
-    name
-  ),
-  events!tickets_event_id_fkey (
-    id,
-    edition_number,
-    name,
-    date,
-    venue_name,
-    status
-  ),
-  orders!tickets_order_id_fkey (
-    id,
-    subtotal_cents,
-    discount_cents,
-    fee_cents,
-    total_cents,
-    stripe_payment_intent_id,
-    status,
-    created_at
-  )
-`;
+const GUEST_SORT_FIELDS = ['purchased_at', 'code', 'status', 'amount_cents'] as const;
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const eventId = searchParams.get('eventId');
-  const tierId = searchParams.get('tierId');
+  const { page, pageSize } = parsePagination(searchParams);
+  const { sort, sortDir } = parseSort(searchParams, GUEST_SORT_FIELDS, 'purchased_at');
+
+  const ticketId = searchParams.get('ticketId')?.trim() || null;
+  const eventId = searchParams.get('eventId')?.trim() || null;
+  const tierId = searchParams.get('tierId')?.trim() || null;
   const email = searchParams.get('email')?.trim() ?? '';
   const code = searchParams.get('code')?.trim() ?? '';
+  const nameSearch = searchParams.get('nameSearch')?.trim() ?? searchParams.get('search')?.trim() ?? '';
 
   const supabase = createAdminSupabaseClient();
 
-  let query = supabase.from('tickets').select(GUEST_SELECT).order('purchased_at', { ascending: false });
+  if (ticketId) {
+    const { data: row, error: oneError } = await supabase
+      .from('tickets')
+      .select(ADMIN_GUEST_SELECT)
+      .eq('id', ticketId)
+      .maybeSingle();
 
-  if (eventId) {
-    query = query.eq('event_id', eventId);
-  }
-  if (tierId) {
-    query = query.eq('tier_id', tierId);
-  }
-  if (code) {
-    query = query.ilike('code', `%${code}%`);
+    if (oneError) {
+      return NextResponse.json({ error: oneError.message }, { status: 500 });
+    }
+    if (!row) {
+      return NextResponse.json({
+        guests: [],
+        pagination: normalizePagination(null, 1, 1, 0),
+      });
+    }
+
+    const guest = normalizeGuestTicket(row as Record<string, unknown>);
+    return NextResponse.json({
+      guests: [guest],
+      pagination: normalizePagination({ page: 1, pageSize: 1, totalCount: 1, totalPages: 1 }, 1, 1, 1),
+    });
   }
 
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('admin_list_guests', {
+    p_page: page,
+    p_page_size: pageSize,
+    p_event_id: eventId,
+    p_tier_id: tierId && !tierId.startsWith('group:') ? tierId : null,
+    p_email: email || null,
+    p_code: code || null,
+    p_name_search: nameSearch || null,
+    p_sort: sort,
+    p_sort_dir: sortDir,
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  let tickets: AdminGuestTicket[] = (data ?? []).map((row) =>
+  const payload = data as {
+    guests?: unknown[];
+    pagination?: { page?: number; pageSize?: number; totalCount?: number; totalPages?: number };
+  } | null;
+
+  const guests = (payload?.guests ?? []).map((row) =>
     normalizeGuestTicket(row as Record<string, unknown>),
   );
+  const totalCount = payload?.pagination?.totalCount ?? guests.length;
 
-  if (email) {
-    tickets = tickets.filter((t) => ticketMatchesEmail(t, email));
-  }
-
-  return NextResponse.json({ guests: tickets });
+  return NextResponse.json({
+    guests,
+    pagination: normalizePagination(payload?.pagination, page, pageSize, totalCount),
+  });
 }

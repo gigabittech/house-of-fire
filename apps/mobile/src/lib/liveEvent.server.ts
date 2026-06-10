@@ -10,6 +10,7 @@ export async function getLiveEvent<T extends string = '*'>(supabase: EventsClien
     .from('events')
     .select(select)
     .eq('status', 'live')
+    .eq('visibility', 'public')
     .order('edition_number', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -25,6 +26,7 @@ export async function getActiveEvent<T extends string = '*'>(supabase: EventsCli
     .from('events')
     .select(select)
     .eq('status', 'upcoming')
+    .eq('visibility', 'public')
     .order('edition_number', { ascending: false })
     .limit(1)
     .maybeSingle();

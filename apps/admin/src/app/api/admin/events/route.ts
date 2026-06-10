@@ -40,14 +40,23 @@ export async function GET(request: NextRequest) {
     };
   }
 
-  const withStats = (events ?? []).map((ev) => {
-    const s = statsByEvent[ev.id] ?? { sold: 0, gross_cents: 0 };
-    return {
-      ...ev,
-      sold: s.sold,
-      gross_cents: s.gross_cents,
-    };
-  });
+  const withStats = await Promise.all(
+    (events ?? []).map(async (ev) => {
+      const s = statsByEvent[ev.id] ?? { sold: 0, gross_cents: 0 };
+      const visibility = (ev as { visibility?: string }).visibility ?? 'public';
+      const { data: displayStatus } = await supabase.rpc('event_display_status', {
+        p_status: ev.status,
+        p_visibility: visibility,
+        p_event_id: ev.id,
+      });
+      return {
+        ...ev,
+        sold: s.sold,
+        gross_cents: s.gross_cents,
+        display_status: displayStatus ?? 'upcoming',
+      };
+    }),
+  );
 
   return NextResponse.json({ events: withStats });
 }
@@ -104,6 +113,8 @@ export async function POST(request: NextRequest) {
         capacity: body.capacity ?? source.capacity,
         max_tickets_per_user: source.max_tickets_per_user ?? 4,
         status: 'upcoming',
+        visibility: (source as { visibility?: string }).visibility ?? 'public',
+        dress_code: (source as { dress_code?: string | null }).dress_code ?? null,
         hero_image_url: source.hero_image_url,
         faqs: source.faqs ?? [],
       })

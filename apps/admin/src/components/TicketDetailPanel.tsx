@@ -351,6 +351,9 @@ function TicketStubCard({
 export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailPanelProps) {
   const [qrUrl, setQrUrl] = useState('');
   const [qrLoading, setQrLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   const loadQr = useCallback(async (t: AdminGuestTicket) => {
     setQrLoading(true);
@@ -398,6 +401,27 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
     a.download = `receipt-${ticket!.code}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function resendReceiptEmail() {
+    const orderId = ticket?.orders?.id ?? ticket?.order_id;
+    if (!orderId || receipt.kind !== 'order') return;
+    setResendLoading(true);
+    setResendMessage(null);
+    setResendError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/resend-receipt`, { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; recipient?: string };
+      if (!res.ok) {
+        setResendError(data.error ?? 'Could not resend receipt.');
+        return;
+      }
+      setResendMessage(data.recipient ? `Receipt resent to ${data.recipient}.` : 'Receipt resent.');
+    } catch {
+      setResendError('Network error — try again.');
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   const eventDate = ev
@@ -562,24 +586,49 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
               }}
             >
               <div style={eyebrow}>Receipt</div>
-              <button
-                type="button"
-                onClick={downloadReceipt}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'var(--hof-amber)',
-                  fontFamily: 'Inter, system-ui',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--hof-bg)',
-                  cursor: 'pointer',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Download
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {receipt.kind === 'order' && (ticket.orders?.id ?? ticket.order_id) ? (
+                  <button
+                    type="button"
+                    disabled={resendLoading}
+                    onClick={() => {
+                      void resendReceiptEmail();
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--hof-border)',
+                      background: 'var(--hof-elevated)',
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--hof-text)',
+                      cursor: resendLoading ? 'wait' : 'pointer',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {resendLoading ? 'Sending…' : 'Resend email'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={downloadReceipt}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'var(--hof-amber)',
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--hof-bg)',
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Download
+                </button>
+              </div>
             </div>
             <div style={{ padding: '12px 16px 14px' }}>
               {[
@@ -621,6 +670,30 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
               </div>
               <CopyableId label="Stripe Payment Intent" value={receipt.stripePaymentIntentId} />
               <CopyableId label="Charge ID" value={receipt.stripeChargeId} />
+              {resendError ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-danger, #f87171)',
+                  }}
+                >
+                  {resendError}
+                </div>
+              ) : null}
+              {resendMessage ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-success, #4caf6e)',
+                  }}
+                >
+                  {resendMessage}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

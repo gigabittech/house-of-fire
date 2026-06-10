@@ -2,7 +2,6 @@
 
 import { useSupabaseRealtime } from '@hof/realtime';
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
 
 type NotificationRow = {
   id: string;
@@ -25,7 +24,6 @@ export function useNotificationsRealtime({
   onNotification: (row: NotificationRow) => void;
   enabled?: boolean;
 }) {
-  const supabase = createClient();
   const onNotifRef = useRef(onNotification);
 
   useEffect(() => {
@@ -33,7 +31,6 @@ export function useNotificationsRealtime({
   }, [onNotification]);
 
   useSupabaseRealtime<NotificationRow>({
-    supabase,
     table: 'notifications',
     filter: userId ? `user_id=eq.${userId}` : undefined,
     eventTypes: ['INSERT'],

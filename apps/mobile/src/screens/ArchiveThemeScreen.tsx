@@ -1,11 +1,13 @@
 'use client';
 
 import { colors, layoutChrome } from '@hof/design-tokens';
-import { EmptyState, FeedSkeletonCard, useResponsive } from '@hof/ui';
+import { eventPhotoGridUrl, eventPhotoLightboxUrl } from '@hof/media';
+import { EmptyState, ErrorState, FeedSkeletonCard, ImageLightbox, useResponsive, VirtualPhotoGrid } from '@hof/ui';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useAppPageColumn } from '@/hooks/useAppPageColumn';
+import { useEventPhotoGallery } from '@/hooks/useEventPhotoGallery';
 import { photoSrc } from '../data/photos';
 
 interface ApiEvent {
@@ -13,13 +15,6 @@ interface ApiEvent {
   name: string;
   date: string;
   venue_name?: string;
-}
-
-interface ApiPhoto {
-  id: string;
-  public_url: string | null;
-  storage_path: string;
-  created_at: string;
 }
 
 function resolveArchiveEdition(pathname: string, searchParams: URLSearchParams): number | null {
@@ -34,19 +29,32 @@ export default function ArchiveThemeScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const edition = useMemo(
     () => resolveArchiveEdition(pathname, searchParams),
     [pathname, searchParams],
   );
-  const [event, setEvent] = useState<ApiEvent | null>(null);
-  const [photos, setPhotos] = useState<ApiPhoto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const handleBack = useCallback(() => router.push('/archive'), [router]);
-
   const { isWide } = useResponsive();
   const pageColumn = useAppPageColumn();
+  const columns = isWide ? 4 : 2;
+
+  const galleryPath = edition != null ? `/api/archive/${edition}/photos` : '';
+  const {
+    photos,
+    eventMeta,
+    totalCount,
+    hasMore,
+    loading,
+    loadingMore,
+    error,
+    refresh,
+    loadMore,
+  } = useEventPhotoGallery<ApiEvent>(galleryPath);
+
+  const event = eventMeta;
 
   useAppHeader({
     title: event ? `Theme ${event.edition_number}` : 'Theme',
@@ -54,23 +62,28 @@ export default function ArchiveThemeScreen() {
   });
 
   useEffect(() => {
-    if (edition == null) {
-      setLoading(false);
-      setError(true);
-      return;
-    }
+    if (edition == null) return;
+    void refresh();
+  }, [edition, refresh]);
 
-    setLoading(true);
-    setError(false);
-    fetch(`/api/archive/${edition}/photos`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed'))))
-      .then((d: { event?: ApiEvent; photos?: ApiPhoto[] }) => {
-        setEvent(d.event ?? null);
-        setPhotos(d.photos ?? []);
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [edition]);
+  const gridItems = useMemo(
+    () =>
+      photos.map((photo, index) => ({
+        id: photo.id,
+        src: eventPhotoGridUrl(photo) ?? photo.public_url ?? photoSrc(index),
+        label: String(index + 1).padStart(3, '0'),
+      })),
+    [photos],
+  );
+
+  const lightboxUrls = useMemo(
+    () =>
+      photos.map(
+        (photo, index) =>
+          eventPhotoLightboxUrl(photo) ?? photo.public_url ?? photoSrc(index),
+      ),
+    [photos],
+  );
 
   const formattedDate = event
     ? new Date(event.date).toLocaleDateString('en-US', {
@@ -79,6 +92,16 @@ export default function ArchiveThemeScreen() {
         year: 'numeric',
       })
     : '';
+
+  const photoCount = totalCount ?? photos.length;
+
+  if (edition == null) {
+    return (
+      <div style={{ padding: 24, background: colors.bg, height: '100%' }}>
+        <EmptyState title="Invalid theme" body="This archive link is not valid." />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -91,6 +114,7 @@ export default function ArchiveThemeScreen() {
       }}
     >
       <div
+        ref={scrollRef}
         className="hof-scroll hof-app-page-scroll"
         style={{
           position: 'absolute',
@@ -108,10 +132,7 @@ export default function ArchiveThemeScreen() {
               ))}
             </div>
           ) : error || !event ? (
-            <EmptyState
-              title="Could not load theme"
-              body="Check your connection and try again."
-            />
+            <ErrorState retry={() => void refresh()} />
           ) : (
             <>
               <div style={{ paddingBottom: 16 }}>
@@ -159,7 +180,7 @@ export default function ArchiveThemeScreen() {
                     marginTop: 10,
                   }}
                 >
-                  {photos.length} photo{photos.length === 1 ? '' : 's'}
+                  {photoCount.toLocaleString('en-US')} photo{photoCount === 1 ? '' : 's'}
                 </div>
               </div>
 
@@ -169,67 +190,30 @@ export default function ArchiveThemeScreen() {
                   body="Approved photos from this night will show up here."
                 />
               ) : (
-                <div
-                  style={{
-                    padding: '0 0 24px',
-                    display: 'grid',
-                    gridTemplateColumns: isWide ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
-                    gap: 8,
-                    alignItems: 'stretch',
-                  }}
-                >
-                  {photos.map((photo, i) => {
-                    const src = photo.public_url ?? photoSrc(i);
-                    return (
-                      <div
-                        key={photo.id}
-                        style={{
-                          position: 'relative',
-                          width: '100%',
-                          aspectRatio: '1',
-                          borderRadius: 10,
-                          overflow: 'hidden',
-                          background: colors.elevated,
-                          border: `1px solid ${colors.border}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <img
-                          src={src}
-                          alt=""
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            display: 'block',
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: 6,
-                            left: 8,
-                            fontFamily: 'JetBrains Mono',
-                            fontSize: 10,
-                            color: colors.text,
-                            background: 'rgba(10,10,8,0.6)',
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                          }}
-                        >
-                          {String(i + 1).padStart(3, '0')}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div style={{ padding: '0 0 24px' }}>
+                  <VirtualPhotoGrid
+                    items={gridItems}
+                    columns={columns}
+                    scrollRef={scrollRef}
+                    hasMore={hasMore}
+                    loadingMore={loadingMore}
+                    onLoadMore={() => void loadMore()}
+                    onItemClick={(_item, index) => setLightboxIndex(index)}
+                  />
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {lightboxIndex != null && lightboxUrls[lightboxIndex] ? (
+        <ImageLightbox
+          urls={lightboxUrls}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </div>
   );
 }

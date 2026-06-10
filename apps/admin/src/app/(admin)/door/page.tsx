@@ -1,9 +1,15 @@
 'use client';
 
-import { DoorQrScanner, DoorScanResult, type DoorScanResultData } from '@hof/ui';
+import {
+  DoorQrScanner,
+  DoorScanResult,
+  type CameraState,
+  type DoorScanResultData,
+} from '@hof/ui';
 import { writeRealtimeCache } from '@hof/realtime';
 import { useCallback, useEffect, useState } from 'react';
 import { DoorCheckInQueueBanner } from '@/components/DoorCheckInQueueBanner';
+import { DoorOfflineStatus } from '@/components/DoorOfflineStatus';
 import { DoorLiveGuests } from '@/components/DoorLiveGuests';
 import {
   DoorQueueBanner,
@@ -11,10 +17,11 @@ import {
   type DoorTierOption,
 } from '@/components/SellAtDoorModal';
 import { drainCheckInQueue } from '@/lib/doorCheckInQueue';
-import { prefetchGuestCache } from '@/lib/doorGuestCache';
+import { hydrateGuestCacheFromIdb, prefetchGuestCache } from '@/lib/doorGuestCache';
 import { drainDoorSaleQueue } from '@/lib/doorSaleQueue';
 import { processDoorScan } from '@/lib/doorScanFlow';
-import { useDoorRealtime, useDoorTierRealtime } from '@/hooks/useDoorRealtime';
+import { startDoorSyncService } from '@/lib/doorSyncService';
+import { useDoorRealtime } from '@/hooks/useDoorRealtime';
 import { formatDoorsTime } from '@/lib/formatters';
 
 const EVENT_STORAGE_KEY = 'hof-door-event-id';
@@ -88,6 +95,7 @@ type DoorEventOption = {
 export default function DoorPage() {
   const [scanResult, setScanResult] = useState<DoorScanResultData | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [cameraState, setCameraState] = useState<CameraState>('starting');
   const [modalOpen, setModalOpen] = useState(false);
   const [guestsRefreshKey, setGuestsRefreshKey] = useState(0);
   const [tiers, setTiers] = useState<DoorTierOption[]>([]);
@@ -239,17 +247,57 @@ export default function DoorPage() {
     eventId: selectedEventId,
     onTicketChange: applyStatsDelta,
     onCheckIn: bumpGuests,
+    onTicketInsert: (row) => {
+      if (!row.tier_id) return;
+      setTiers((prev) =>
+        prev.map((t) => {
+          if (t.id !== row.tier_id) return t;
+          const sold = t.sold + 1;
+          const remaining = Math.max(0, t.capacity - sold);
+          return {
+            ...t,
+            sold,
+            remaining,
+            purchasable: t.status === 'available' && remaining > 0,
+          };
+        }),
+      );
+    },
     onResync: loadStats,
   });
 
-  useDoorTierRealtime({
-    eventId: selectedEventId,
-    onTierUpdate: loadStats,
-  });
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const id = setInterval(() => void loadStats(), 15_000);
+    return () => clearInterval(id);
+  }, [selectedEventId, loadStats]);
 
   useEffect(() => {
     void Promise.all([drainDoorSaleQueue(), drainCheckInQueue()]).then(() => void loadStats());
   }, [loadStats]);
+
+  useEffect(() => {
+    if (!selectedEventId) return;
+    void hydrateGuestCacheFromIdb(selectedEventId).then((cache) => {
+      if (!cache) void prefetchGuestCache(selectedEventId);
+    });
+  }, [selectedEventId]);
+
+  useEffect(() => {
+    return startDoorSyncService('/api/admin/door/scan', {
+      onSynced: () => {
+        void loadStats();
+        bumpGuests();
+      },
+    });
+  }, [loadStats]);
+
+  const scannerPill =
+    cameraState === 'live'
+      ? { label: 'Scanner live', color: 'var(--hof-success)', bg: 'rgba(76,175,110,0.10)', border: 'rgba(76,175,110,0.3)' }
+      : cameraState === 'denied'
+        ? { label: 'Camera denied', color: 'var(--hof-warning)', bg: 'rgba(232,162,26,0.10)', border: 'rgba(232,162,26,0.3)' }
+        : { label: 'Scanner paused', color: 'var(--hof-text-sec)', bg: 'var(--hof-surface)', border: 'var(--hof-border)' };
 
   function onEventChange(eventId: string) {
     setSelectedEventId(eventId);
@@ -349,11 +397,11 @@ export default function DoorPage() {
               gap: 6,
               padding: '7px 12px',
               borderRadius: 6,
-              background: 'rgba(76,175,110,0.10)',
-              border: '1px solid rgba(76,175,110,0.3)',
+              background: scannerPill.bg,
+              border: `1px solid ${scannerPill.border}`,
               fontFamily: 'Inter, system-ui',
               fontSize: 11,
-              color: 'var(--hof-success)',
+              color: scannerPill.color,
               letterSpacing: '0.16em',
               textTransform: 'uppercase',
               fontWeight: 500,
@@ -364,18 +412,25 @@ export default function DoorPage() {
                 width: 6,
                 height: 6,
                 borderRadius: 3,
-                background: 'var(--hof-success)',
-                animation: 'hof-pulse 1.4s ease-in-out infinite',
+                background: scannerPill.color,
+                animation: cameraState === 'live' ? 'hof-pulse 1.4s ease-in-out infinite' : undefined,
                 flexShrink: 0,
               }}
             />
-            Scanner live
+            {scannerPill.label}
           </span>
         </div>
       </div>
 
       <DoorQueueBanner onSynced={() => void loadStats()} />
       <DoorCheckInQueueBanner onSynced={() => { void loadStats(); bumpGuests(); }} />
+
+      <div style={{ padding: '0 28px 12px' }}>
+        <DoorOfflineStatus
+          eventId={selectedEventId}
+          onRefreshed={() => void loadStats()}
+        />
+      </div>
 
       <div style={{ padding: '20px 28px 28px' }}>
         <div
@@ -387,7 +442,12 @@ export default function DoorPage() {
         >
           {/* Scanner side */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <DoorQrScanner height={420} onScan={handleScan} scanning={scanning} />
+            <DoorQrScanner
+              height={420}
+              onScan={handleScan}
+              scanning={scanning}
+              onCameraStateChange={setCameraState}
+            />
             <DoorScanResult
               result={scanResult}
               onDismiss={() => setScanResult(null)}
