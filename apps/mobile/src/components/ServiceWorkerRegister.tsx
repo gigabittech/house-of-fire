@@ -4,7 +4,10 @@ import { useEffect } from 'react';
 
 export default function ServiceWorkerRegister() {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
+    const shouldRegister =
+      'serviceWorker' in navigator &&
+      (process.env.NODE_ENV === 'production' || Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY));
+    if (shouldRegister) {
       navigator.serviceWorker.register('/sw.js').catch(console.error);
     }
   }, []);

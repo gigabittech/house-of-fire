@@ -70,10 +70,7 @@ function SidebarUserFooter({
 }) {
   return (
     <div className="hof-sidebar-footer" style={{ paddingTop: 12 }}>
-      <div
-        className="hof-sidebar-user-compact"
-        title={`${user.name} · ${user.email}`}
-      >
+      <div className="hof-sidebar-user-compact" title={`${user.name} · ${user.email}`}>
         <button
           type="button"
           className="hof-btn hof-press"
@@ -166,19 +163,22 @@ function HofSidebar({
   user,
   onSignOut,
   excludeNavIds = [],
+  hidden = false,
 }: {
   active?: NavId;
   onChange?: (id: NavId) => void;
   user?: HofAppHeaderUser | null;
   onSignOut?: () => void;
   excludeNavIds?: NavId[];
+  hidden?: boolean;
 }) {
   const navItems = filterMemberNavItems(excludeNavIds);
 
   return (
     <nav
       aria-label="Main navigation"
-      className="hof-app-sidebar"
+      className={hidden ? 'hof-app-sidebar hof-app-sidebar--hidden' : 'hof-app-sidebar'}
+      aria-hidden={hidden || undefined}
       style={{
         overflow: 'hidden',
       }}
@@ -275,6 +275,8 @@ export interface HofAppShellProps {
   onBack?: () => void;
   hideMobilePageHeader?: boolean;
   hideBottomNav?: boolean;
+  /** Hide tablet/desktop sidebar (e.g. full-screen overlays). */
+  hideSidebar?: boolean;
   /** Hide nav tabs (e.g. Community when feature is off). */
   excludeNavIds?: NavId[];
   children: ReactNode;
@@ -296,6 +298,7 @@ export function HofAppShell({
   onBack,
   hideMobilePageHeader = false,
   hideBottomNav = false,
+  hideSidebar = false,
   excludeNavIds = [],
   children,
 }: HofAppShellProps) {
@@ -309,6 +312,7 @@ export function HofAppShell({
         user={user}
         onSignOut={onSignOut}
         excludeNavIds={excludeNavIds}
+        hidden={hideSidebar}
       />
       <div className="hof-app-shell-main">
         <main style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -337,7 +341,12 @@ export function HofAppShell({
                     aria-label="Back"
                     style={hofChromeCircleBtn}
                   >
-                    <Icon name="chev" size={16} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+                    <Icon
+                      name="chev"
+                      size={16}
+                      color={colors.text}
+                      style={{ transform: 'rotate(180deg)' }}
+                    />
                   </button>
                 ) : null}
                 {headerActions}
@@ -347,7 +356,7 @@ export function HofAppShell({
           {children}
         </main>
         {!hideBottomNav ? (
-          <div className="hof-show-mobile-only">
+          <div className="hof-show-mobile-only hof-mobile-nav-slot">
             <HofBottomNav active={active} onChange={onNav} excludeNavIds={excludeNavIds} />
           </div>
         ) : null}

@@ -1,11 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { parsePhotoCursor, parsePhotoPageSize } from '@hof/media';
+import {
+  buildPhotoPageResponse,
+  countEventPhotosRpc,
+  listEventPhotosRpc,
+} from '../../../../../lib/eventPhotosApi.server';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';
 
 interface RouteContext {
   params: Promise<{ edition: string }>;
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   const { edition: editionRaw } = await context.params;
   const edition = Number(editionRaw);
 
@@ -14,6 +20,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 
   const supabase = await createServerSupabaseClient();
+  const { searchParams } = new URL(request.url);
+  const cursor = parsePhotoCursor(searchParams);
+  const pageSize = parsePhotoPageSize(searchParams, 48, 100);
 
   const { data: event, error: eventError } = await supabase
     .from('events')
@@ -25,25 +34,26 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 });
   }
 
-  const { data: photos, error: photosError } = await supabase
-    .from('event_photos')
-    .select('id, public_url, storage_path, created_at')
-    .eq('event_id', event.id)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false });
+  try {
+    const [{ photos, hasMore }, totalCount] = await Promise.all([
+      listEventPhotosRpc(supabase, event.id, cursor, pageSize),
+      cursor ? Promise.resolve(undefined) : countEventPhotosRpc(supabase, event.id),
+    ]);
 
-  if (photosError) {
-    return NextResponse.json({ error: photosError.message }, { status: 500 });
+    return NextResponse.json({
+      event: cursor
+        ? undefined
+        : {
+            edition_number: event.edition_number,
+            name: event.name,
+            date: event.date,
+            venue_name: event.venue_name,
+            status: event.status,
+          },
+      ...buildPhotoPageResponse(photos, hasMore, totalCount),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load photos';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({
-    event: {
-      edition_number: event.edition_number,
-      name: event.name,
-      date: event.date,
-      venue_name: event.venue_name,
-      status: event.status,
-    },
-    photos: photos ?? [],
-  });
 }

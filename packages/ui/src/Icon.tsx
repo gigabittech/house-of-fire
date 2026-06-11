@@ -36,7 +36,11 @@ export type IconName =
   | 'apple'
   | 'google'
   | 'fire'
-  | 'diamond';
+  | 'diamond'
+  | 'chart'
+  | 'flag'
+  | 'mail'
+  | 'tag';
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'color'> {
   name: IconName;
@@ -226,6 +230,28 @@ export function Icon({ name, size = 20, color = colors.textSec, ...rest }: IconP
       />
     ),
     diamond: <path {...p} d="M12 3 L21 12 L12 21 L3 12 Z" />,
+    chart: <polyline {...p} points="22 12 18 12 15 21 9 3 6 12 2 12" />,
+    flag: (
+      <>
+        <path {...p} d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+        <line {...p} x1="4" y1="22" x2="4" y2="15" />
+      </>
+    ),
+    mail: (
+      <>
+        <rect {...p} x="3" y="5" width="18" height="14" rx="2" />
+        <path {...p} d="M3 7 L12 13 L21 7" />
+      </>
+    ),
+    tag: (
+      <>
+        <path
+          {...p}
+          d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"
+        />
+        <line {...p} x1="7" y1="7" x2="7.01" y2="7" />
+      </>
+    ),
   };
 
   return (

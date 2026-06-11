@@ -128,7 +128,9 @@ export function DoorScanResult({ result, onDismiss }: DoorScanResultProps) {
           )}
 
           {(result.state === 'invalid' || result.state === 'offline_queued') && result.message && (
-            <div style={{ fontSize: 13, color: colors.textSec, marginTop: 4 }}>{result.message}</div>
+            <div style={{ fontSize: 13, color: colors.textSec, marginTop: 4 }}>
+              {result.message}
+            </div>
           )}
         </div>
 

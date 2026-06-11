@@ -8,7 +8,23 @@ export async function PATCH(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const settings = await request.json();
+  const patch = (await request.json()) as Record<string, unknown>;
+
+  const { data: current, error: readError } = await supabase
+    .from('profiles')
+    .select('settings')
+    .eq('id', user.id)
+    .single();
+
+  if (readError) {
+    return NextResponse.json({ error: readError.message }, { status: 500 });
+  }
+
+  const existing =
+    typeof current?.settings === 'object' && current.settings && !Array.isArray(current.settings)
+      ? (current.settings as Record<string, unknown>)
+      : {};
+  const settings = { ...existing, ...patch };
 
   const { data, error } = await supabase
     .from('profiles')

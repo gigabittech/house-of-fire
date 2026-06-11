@@ -10,84 +10,32 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminSupabaseClient();
 
-  const { data: tickets, error: ticketsError } = await supabase
-    .from('tickets')
-    .select('purchased_at, amount_cents, tier_id, source, stripe_charge_id, ticket_tiers(display_name, name, capacity)')
-    .eq('event_id', eventId)
-    .in('status', ['valid', 'used'])
-    .order('purchased_at', { ascending: true });
+  const { data, error } = await supabase.rpc('admin_dashboard_event_metrics', {
+    p_event_id: eventId,
+  });
 
-  if (ticketsError) {
-    return NextResponse.json({ error: ticketsError.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: tiers, error: tiersError } = await supabase
-    .from('ticket_tiers')
-    .select('id, display_name, name, capacity')
-    .eq('event_id', eventId);
+  const payload = data as {
+    salesData?: number[];
+    doorSalesByDay?: number[];
+    salesByChannel?: { online: number; door: number };
+    tierBars?: Array<{ label: string; sold: number; cap: number }>;
+    openRequests?: number;
+    eventStats?: { sold: number; scanned: number; gross_cents: number };
+  } | null;
 
-  if (tiersError) {
-    return NextResponse.json({ error: tiersError.message }, { status: 500 });
-  }
-
-  function isDoorSale(t: { source?: string | null; stripe_charge_id?: string | null }): boolean {
-    return t.source === 'door' || (t.stripe_charge_id ?? '').startsWith('door-');
-  }
-
-  let doorCount = 0;
-  let onlineCount = 0;
-  const doorByDay = new Map<string, number>();
-  const byDay = new Map<string, number>();
-
-  for (const t of tickets ?? []) {
-    const day = t.purchased_at.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + 1);
-    if (isDoorSale(t)) {
-      doorCount++;
-      doorByDay.set(day, (doorByDay.get(day) ?? 0) + 1);
-    } else {
-      onlineCount++;
-    }
-  }
-
-  const salesByDay = [...byDay.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, count]) => count);
-
-  const salesData =
-    salesByDay.length >= 14 ? salesByDay.slice(-14) : salesByDay.length > 0 ? salesByDay : [0];
-
-  const doorSalesByDayArr = [...doorByDay.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, count]) => count);
-  const doorSalesByDay =
-    doorSalesByDayArr.length >= 14
-      ? doorSalesByDayArr.slice(-14)
-      : doorSalesByDayArr.length > 0
-        ? doorSalesByDayArr
-        : [0];
-
-  const tierSold = new Map<string, number>();
-  for (const t of tickets ?? []) {
-    tierSold.set(t.tier_id, (tierSold.get(t.tier_id) ?? 0) + 1);
-  }
-
-  const tierBars = (tiers ?? []).map((tier) => ({
-    label: tier.display_name ?? tier.name,
-    sold: tierSold.get(tier.id) ?? 0,
-    cap: tier.capacity,
-  }));
-
-  const { count: openRequests } = await supabase
-    .from('refund_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending');
+  const salesData = Array.isArray(payload?.salesData) ? payload.salesData : [0];
+  const doorSalesByDay = Array.isArray(payload?.doorSalesByDay) ? payload.doorSalesByDay : [0];
 
   return NextResponse.json({
     salesData,
     doorSalesByDay,
-    salesByChannel: { online: onlineCount, door: doorCount },
-    tierBars,
-    openRequests: openRequests ?? 0,
+    salesByChannel: payload?.salesByChannel ?? { online: 0, door: 0 },
+    tierBars: payload?.tierBars ?? [],
+    openRequests: payload?.openRequests ?? 0,
+    eventStats: payload?.eventStats ?? { sold: 0, scanned: 0, gross_cents: 0 },
   });
 }

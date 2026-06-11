@@ -9,7 +9,9 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:5
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key';
 
 function metaRecord(meta: unknown): Record<string, unknown> {
-  return typeof meta === 'object' && meta && !Array.isArray(meta) ? (meta as Record<string, unknown>) : {};
+  return typeof meta === 'object' && meta && !Array.isArray(meta)
+    ? (meta as Record<string, unknown>)
+    : {};
 }
 
 async function retryAuthMagicLink(row: {
@@ -56,25 +58,31 @@ async function retryAuthMagicLink(row: {
   await updateEmailLog(row.id, { status: 'sent', sentAt: new Date(), errorMessage: null });
 }
 
-async function retryReceipt(row: { id: string; meta: unknown }): Promise<void> {
+async function retryReceipt(row: { id: string; meta: unknown }, actorId: string): Promise<void> {
   const orderId = metaRecord(row.meta).orderId;
   if (typeof orderId !== 'string' || !orderId.trim()) {
     throw new Error('Receipt retry missing orderId in log metadata.');
   }
 
-  const mobileUrl = process.env.MOBILE_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const mobileUrl =
+    process.env.MOBILE_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   }
 
-  const res = await fetch(`${mobileUrl}/api/admin/retry-receipt`, {
+  const res = await fetch(`${mobileUrl}/api/admin/resend-receipt`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({ orderId, logId: row.id }),
+    body: JSON.stringify({
+      orderId,
+      logId: row.id,
+      actorId,
+      source: 'admin_email_log_retry',
+    }),
   });
 
   if (!res.ok) {
@@ -90,11 +98,7 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
   const { id } = await ctx.params;
   const supabase = createAdminSupabaseClient();
 
-  const { data: row, error } = await supabase
-    .from('email_logs')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data: row, error } = await supabase.from('email_logs').select('*').eq('id', id).single();
 
   if (error || !row) {
     return NextResponse.json({ error: error?.message ?? 'Email log not found' }, { status: 404 });
@@ -111,7 +115,7 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
     }
 
     if (row.kind === 'receipt') {
-      await retryReceipt(row);
+      await retryReceipt(row, auth.userId);
       return NextResponse.json({ ok: true, id: row.id });
     }
 

@@ -1,9 +1,13 @@
 // @hof/ui — House of Fire component library, productionized from the prototype
 // (design/prototypes/hof-ui.jsx + posts-data.jsx). Consumes @hof/design-tokens.
 
-export type { DoorQrScannerProps } from './DoorQrScanner';
+export type { CameraState, DoorQrScannerProps } from './DoorQrScanner';
 export { DoorQrScanner } from './DoorQrScanner';
-export type { DoorScanResultData, DoorScanResultProps, DoorScanResultState } from './DoorScanResult';
+export type {
+  DoorScanResultData,
+  DoorScanResultProps,
+  DoorScanResultState,
+} from './DoorScanResult';
 export { DoorScanResult } from './DoorScanResult';
 export type { EmptyStateProps } from './EmptyState';
 export { EmptyState } from './EmptyState';
@@ -18,6 +22,10 @@ export type { ChannelTagProps } from './feed/ChannelTag';
 export { ChannelTag } from './feed/ChannelTag';
 export type { ImageLightboxProps } from './ImageLightbox';
 export { ImageLightbox } from './ImageLightbox';
+export type { LazyEventPhotoProps } from './LazyEventPhoto';
+export { LazyEventPhoto } from './LazyEventPhoto';
+export type { VirtualPhotoGridItem, VirtualPhotoGridProps } from './VirtualPhotoGrid';
+export { VirtualPhotoGrid } from './VirtualPhotoGrid';
 export type { FeedPostProps } from './feed/FeedPost';
 // Feed / community atoms
 export { FeedPost } from './feed/FeedPost';
@@ -45,6 +53,10 @@ export type { HofMobilePageHeaderProps } from './HofMobilePageHeader';
 export { HofMobilePageHeader } from './HofMobilePageHeader';
 export type { HofAppShellProps, HofContentProps } from './HofAppShell';
 export { HofAppShell, HofContent } from './HofAppShell';
+export type { AdminNavId, AdminNavItem } from './adminNav';
+export { ADMIN_NAV_ITEMS } from './adminNav';
+export type { HofAdminAppShellProps } from './HofAdminAppShell';
+export { HofAdminAppShell } from './HofAdminAppShell';
 export type { HofBottomNavProps, NavId } from './HofBottomNav';
 export { HofBottomNav } from './HofBottomNav';
 export type { ButtonSize, ButtonVariant, HofButtonProps } from './HofButton';
@@ -65,6 +77,8 @@ export type { HofSkeletonProps } from './HofSkeleton';
 export { HofSkeleton } from './HofSkeleton';
 export type { HofToastProps, ToastKind } from './HofToast';
 export { HofToast } from './HofToast';
+export type { ToastOptions, ToastPlacement } from './ToastProvider';
+export { ToastProvider, useToast } from './ToastProvider';
 export type { HofTopBarProps } from './HofTopBar';
 export { HofTopBar } from './HofTopBar';
 export type { HofWordmarkProps } from './HofWordmark';

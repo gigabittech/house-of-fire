@@ -54,7 +54,9 @@ if (allowList.length === 0) {
 const issues = [];
 const isLocalDev = expectedAppUrl?.includes('localhost') ?? false;
 if (!isLocalDev && siteUrl.includes('localhost')) {
-  issues.push('site_url still points at localhost — run pnpm configure:auth-urls with production NEXT_PUBLIC_APP_URL');
+  issues.push(
+    'site_url still points at localhost — run pnpm configure:auth-urls with production NEXT_PUBLIC_APP_URL',
+  );
 }
 if (expectedAppUrl && siteUrl !== expectedAppUrl) {
   issues.push(`site_url is "${siteUrl}" but NEXT_PUBLIC_APP_URL is "${expectedAppUrl}"`);

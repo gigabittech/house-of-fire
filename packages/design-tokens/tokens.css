@@ -553,6 +553,12 @@ button.hof-btn {
   .hof-app-shell-main .hof-app-page-scroll {
     padding-left: var(--hof-sidebar-w);
     box-sizing: border-box;
+    /* Let clicks pass through the scroll container to the sidebar underneath. */
+    pointer-events: none;
+  }
+
+  .hof-app-shell-main .hof-app-page-scroll > * {
+    pointer-events: auto;
   }
 
   /* Sticky bars sit beside the sidebar so the logo stays visible */
@@ -581,6 +587,19 @@ button.hof-btn {
   height: 100%;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile bottom nav slot — sits above page scroll layers. */
+.hof-mobile-nav-slot {
+  position: relative;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.hof-mobile-nav-slot > * {
+  pointer-events: auto;
 }
 
 .hof-show-mobile-only {
@@ -589,6 +608,59 @@ button.hof-btn {
 
 .hof-show-wide-only {
   display: none;
+}
+
+/* ── Toast viewport — fixed position, compact bottom-right by default ─────── */
+.hof-toast-viewport {
+  --hof-toast-bottom: calc(72px + max(10px, env(safe-area-inset-bottom, 0px)) + 16px);
+  position: fixed;
+  right: 16px;
+  bottom: var(--hof-toast-bottom);
+  z-index: 200;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.hof-toast-viewport > * {
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport {
+    --hof-toast-bottom: 28px;
+  }
+}
+
+.hof-toast-viewport--above-composer {
+  --hof-toast-bottom: 100px;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--above-composer {
+    --hof-toast-bottom: 88px;
+  }
+}
+
+.hof-toast-viewport--top {
+  --hof-toast-bottom: auto;
+  top: 100px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: none;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .hof-toast-viewport--top {
+    top: 100px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(calc(100% - 32px), 588px);
+  }
 }
 
 @media (min-width: 768px) {
@@ -623,7 +695,7 @@ button.hof-btn {
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 30;
+    z-index: 100;
     width: var(--hof-sidebar-w);
     pointer-events: auto;
   }
@@ -637,6 +709,11 @@ button.hof-btn {
   .hof-app-sidebar {
     padding: 14px 12px 16px;
   }
+}
+
+.hof-app-sidebar--hidden {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .hof-sidebar-logo-area {
@@ -675,6 +752,12 @@ button.hof-btn {
 .hof-sidebar-footer {
   flex-shrink: 0;
   margin-top: auto;
+}
+
+@media (min-width: 768px) {
+  .hof-sidebar-footer {
+    padding-top: 14px;
+  }
 }
 
 .hof-sidebar-logo-compact {

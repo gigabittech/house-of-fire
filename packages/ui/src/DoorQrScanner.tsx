@@ -20,9 +20,10 @@ export type DoorQrScannerProps = {
   disabled?: boolean;
   height?: number | string;
   showManualEntry?: boolean;
+  onCameraStateChange?: (state: CameraState) => void;
 };
 
-type CameraState = 'starting' | 'live' | 'unavailable' | 'denied';
+export type CameraState = 'starting' | 'live' | 'unavailable' | 'denied';
 
 export function DoorQrScanner({
   onScan,
@@ -30,6 +31,7 @@ export function DoorQrScanner({
   disabled = false,
   height = 360,
   showManualEntry = true,
+  onCameraStateChange,
 }: DoorQrScannerProps) {
   const videoId = useId().replace(/:/g, '');
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -39,25 +41,38 @@ export function DoorQrScanner({
   const onScanRef = useRef(onScan);
 
   const [cameraState, setCameraState] = useState<CameraState>('starting');
+  const onCameraStateRef = useRef(onCameraStateChange);
+
+  useEffect(() => {
+    onCameraStateRef.current = onCameraStateChange;
+  }, [onCameraStateChange]);
+
+  const setCamera = useCallback((state: CameraState) => {
+    setCameraState(state);
+    onCameraStateRef.current?.(state);
+  }, []);
   const [manualCode, setManualCode] = useState('');
   const [manualBusy, setManualBusy] = useState(false);
 
   onScanRef.current = onScan;
 
-  const tryEmitScan = useCallback((raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed || disabled || scanning) return false;
+  const tryEmitScan = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed || disabled || scanning) return false;
 
-    const now = Date.now();
-    const last = lastScannedRef.current;
-    if (last && last.code === trimmed && now - last.at < SCAN_COOLDOWN_MS) {
-      return false;
-    }
+      const now = Date.now();
+      const last = lastScannedRef.current;
+      if (last && last.code === trimmed && now - last.at < SCAN_COOLDOWN_MS) {
+        return false;
+      }
 
-    lastScannedRef.current = { code: trimmed, at: now };
-    void onScanRef.current(trimmed);
-    return true;
-  }, [disabled, scanning]);
+      lastScannedRef.current = { code: trimmed, at: now };
+      void onScanRef.current(trimmed);
+      return true;
+    },
+    [disabled, scanning],
+  );
 
   const stopCamera = useCallback(() => {
     controlsRef.current?.stop();
@@ -68,18 +83,18 @@ export function DoorQrScanner({
   const startCamera = useCallback(async () => {
     if (typeof window === 'undefined' || disabled) return;
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraState('unavailable');
+      setCamera('unavailable');
       return;
     }
 
     stopCamera();
-    setCameraState('starting');
+    setCamera('starting');
 
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
     const video = videoRef.current;
     if (!video) {
-      setCameraState('unavailable');
+      setCamera('unavailable');
       return;
     }
 
@@ -94,17 +109,17 @@ export function DoorQrScanner({
         },
       );
       controlsRef.current = controls;
-      setCameraState('live');
+      setCamera('live');
     } catch (err) {
       const name = err instanceof Error ? err.name : '';
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setCameraState('denied');
+        setCamera('denied');
       } else {
-        setCameraState('unavailable');
+        setCamera('unavailable');
       }
       stopCamera();
     }
-  }, [disabled, stopCamera, tryEmitScan]);
+  }, [disabled, setCamera, stopCamera, tryEmitScan]);
 
   useEffect(() => {
     if (disabled || scanning) {
@@ -286,6 +301,46 @@ export function DoorQrScanner({
           Hold a ticket QR up to scan
           {showManualEntry ? ' — or enter code below.' : '.'}
         </div>
+
+        {(cameraState === 'denied' || cameraState === 'unavailable') && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              padding: 24,
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 13, color: colors.textSec, maxWidth: 280 }}>
+              {cameraState === 'denied'
+                ? 'Camera access is required for QR scanning. Allow camera in browser settings, then retry.'
+                : 'Camera unavailable on this device. Use manual code entry below.'}
+            </div>
+            {cameraState === 'denied' && (
+              <button
+                type="button"
+                onClick={() => void startCamera()}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 8,
+                  background: colors.amber,
+                  border: 'none',
+                  color: colors.bg,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                Retry camera
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {showManualEntry && (
@@ -324,8 +379,7 @@ export function DoorQrScanner({
               background:
                 manualCode.trim() && !scanning && !disabled ? colors.amber : colors.elevated,
               border: 'none',
-              cursor:
-                manualCode.trim() && !scanning && !disabled ? 'pointer' : 'not-allowed',
+              cursor: manualCode.trim() && !scanning && !disabled ? 'pointer' : 'not-allowed',
               fontFamily: 'Inter, system-ui, sans-serif',
               fontSize: 13,
               fontWeight: 600,

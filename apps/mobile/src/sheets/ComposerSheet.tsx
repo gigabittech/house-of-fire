@@ -6,6 +6,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { CHANNELS } from '../data/posts';
 import { uploadPostMediaBatch } from '../lib/storageUpload';
+import { APP_OVERLAY_Z, appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
 interface ComposerSheetProps {
@@ -23,6 +24,74 @@ interface ComposerSheetProps {
 }
 
 const CHAR_LIMIT = 500;
+const PREVIEW_MAX_HEIGHT = 220;
+
+function previewLayout(count: number): CSSProperties {
+  if (count <= 1) {
+    return { display: 'block' };
+  }
+  if (count === 2) {
+    return { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 };
+  }
+  return { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 };
+}
+
+function ComposerImagePreview({ src, single }: { src: string; single: boolean }) {
+  if (single) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <img
+          src={src}
+          alt=""
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: PREVIEW_MAX_HEIGHT,
+            objectFit: 'contain',
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        aspectRatio: '1',
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+        }}
+      />
+    </div>
+  );
+}
 
 export default function ComposerSheet({
   open,
@@ -64,19 +133,19 @@ export default function ComposerSheet({
   const canPost = body.trim().length > 0;
 
   const scrim: CSSProperties = {
-    position: 'absolute',
+    ...appOverlayFixed(),
     inset: 0,
-    zIndex: 80,
     background: 'rgba(0,0,0,0.55)',
     opacity: shown ? 1 : 0,
     transition: 'opacity 200ms ease-out',
+    pointerEvents: shown ? 'auto' : 'none',
   };
   const sheet: CSSProperties = {
-    position: 'absolute',
+    position: 'fixed',
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 90,
+    zIndex: APP_OVERLAY_Z + 1,
     background: colors.surface,
     borderTop: `1px solid ${colors.border}`,
     borderTopLeftRadius: 22,
@@ -303,23 +372,9 @@ export default function ComposerSheet({
               </button>
             ) : (
               <div style={{ position: 'relative' }}>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 4,
-                    height: 120,
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                  }}
-                >
+                <div style={previewLayout(previewUrls.length)}>
                   {previewUrls.map((src) => (
-                    <img
-                      key={src}
-                      src={src}
-                      alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    <ComposerImagePreview key={src} src={src} single={previewUrls.length === 1} />
                   ))}
                 </div>
                 <button

@@ -23,6 +23,8 @@ export interface FeedPostProps {
   onReact?: (emoji: ReactionKey) => void;
   /** Scale-down tap feedback on the card shell (default on). */
   pressFeedback?: boolean;
+  /** Drop the top border — for detail views that already pad above the card. */
+  borderlessTop?: boolean;
 }
 
 const MODERATION_LABEL: Record<string, { label: string; tone: 'amber' | 'danger' | 'neutral' }> = {
@@ -40,6 +42,7 @@ export function FeedPost({
   interactiveReactions = false,
   onReact,
   pressFeedback = true,
+  borderlessTop = false,
 }: FeedPostProps) {
   const isRecap = post.kind === 'recap';
   const isQuick = post.kind === 'quick';
@@ -72,6 +75,7 @@ export function FeedPost({
           padding: 0,
           background: colors.surface,
           border: `1px solid ${colors.border}`,
+          borderTop: borderlessTop ? 'none' : undefined,
           borderRadius: 12,
           overflow: 'hidden',
           display: 'block',
@@ -224,20 +228,24 @@ export function FeedPost({
         )}
 
         {post.moderationStatus === 'rejected' && post.moderationNote && (
-          <div
-            style={{
-              margin: '0 14px 10px',
-              padding: '8px 10px',
-              background: 'rgba(232,74,26,0.08)',
-              border: '1px solid rgba(232,74,26,0.2)',
-              borderRadius: 8,
-              fontFamily: fontFamilies.body,
-              fontSize: 12,
-              color: colors.textSec,
-              lineHeight: 1.4,
-            }}
-          >
-            {post.moderationNote}
+          <div style={{ padding: compact ? '0 12px 10px' : '0 14px 10px' }}>
+            <div
+              style={{
+                width: 'fit-content',
+                maxWidth: '100%',
+                padding: '6px 10px',
+                background: 'rgba(232,74,26,0.08)',
+                border: '1px solid rgba(232,74,26,0.2)',
+                borderRadius: 6,
+                fontFamily: fontFamilies.body,
+                fontSize: 12,
+                color: colors.textSec,
+                lineHeight: 1.4,
+              }}
+            >
+              <span style={{ color: colors.text, fontWeight: 500 }}>Reason:</span>{' '}
+              {post.moderationNote}
+            </div>
           </div>
         )}
 
@@ -351,6 +359,7 @@ export function FeedPost({
           {pickerOpen && interactiveReactions && onReact && (
             <ReactionPicker
               myReactions={myReactions}
+              counts={post.reactions}
               compact={compact}
               onToggle={(key) => {
                 onReact(key);

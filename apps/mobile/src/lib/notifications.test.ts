@@ -30,4 +30,20 @@ describe('apiNotifToItem', () => {
     expect(item.kind).toBe('reply');
     expect(item.name).toBe('Jordan');
   });
+
+  it('maps react notifications', () => {
+    const item = apiNotifToItem({
+      id: '3',
+      type: 'react',
+      title: 'Alex',
+      body: '🔥 · Great set last night',
+      read: false,
+      created_at: new Date().toISOString(),
+      link: '/community/550e8400-e29b-41d4-a716-446655440000',
+    });
+    expect(item.kind).toBe('react');
+    expect(item.action).toBe('reacted to');
+    expect(item.name).toBe('Alex');
+    expect(item.target).toContain('Great set');
+  });
 });

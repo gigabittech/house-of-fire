@@ -1,14 +1,15 @@
 'use client';
 
 import { colors } from '@hof/design-tokens';
-import type { ToastKind } from '@hof/ui';
-import { EmptyState, FakeQR, HofToast, Icon } from '@hof/ui';
+import { EmptyState, FakeQR, Icon, useToast, type ToastKind } from '@hof/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useSupabaseUserId } from '@/hooks/useSupabaseUserId';
+import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { formatDoorsRange, normalizeEventTime } from '@/lib/eventDisplay';
 import { QR_RENDER_OPTIONS } from '@/lib/qrRenderOptions';
 import RefundSheet from '../sheets/RefundSheet';
@@ -190,6 +191,7 @@ function TicketDetailField({
 
 export default function TicketScreen() {
   const router = useRouter();
+  const userId = useSupabaseUserId();
   const searchParams = useSearchParams();
   const purchasedFromUrl = searchParams.get('purchased') === '1';
   const paymentIntentFromRedirect = searchParams.get('payment_intent');
@@ -198,11 +200,7 @@ export default function TicketScreen() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [toast, setToast] = useState<{ shown: boolean; kind: ToastKind; message: string }>({
-    shown: false,
-    kind: 'success',
-    message: '',
-  });
+  const { showToast } = useToast();
   const [tickets, setTickets] = useState<TicketData[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [qrByTicketId, setQrByTicketId] = useState<Record<string, string>>({});
@@ -211,14 +209,11 @@ export default function TicketScreen() {
   const [ticketError, setTicketError] = useState(false);
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const headerActions = useMemo(
     () => (
-      <AppHeaderIconButton
-        icon="share"
-        label="Share ticket"
-        onClick={() => setShareOpen(true)}
-      />
+      <AppHeaderIconButton icon="share" label="Share ticket" onClick={() => setShareOpen(true)} />
     ),
     [],
   );
@@ -241,6 +236,28 @@ export default function TicketScreen() {
     ticket?.metadata?.holder_email?.trim() ||
     tickets[0]?.metadata?.holder_email?.trim() ||
     null;
+  const receiptOrderId = ticket?.order_id ?? tickets[0]?.order_id ?? null;
+
+  async function resendReceipt() {
+    if (!receiptOrderId) return;
+    setResendLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${receiptOrderId}/resend-receipt`, { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; recipient?: string };
+      if (!res.ok) {
+        notify('error', data.error ?? 'Could not resend receipt.');
+        return;
+      }
+      notify(
+        'success',
+        data.recipient ? `Receipt resent to ${data.recipient}.` : 'Receipt resent to your email.',
+      );
+    } catch {
+      notify('error', 'Network error — try again.');
+    } finally {
+      setResendLoading(false);
+    }
+  }
 
   const reloadTickets = useCallback(async () => {
     const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
@@ -248,6 +265,14 @@ export default function TicketScreen() {
     setActiveIndex((i) => Math.min(i, Math.max(0, list.length - 1)));
     return list;
   }, [paymentIntentFromRedirect]);
+
+  useTicketRealtime({
+    userId,
+    enabled: !loading && Boolean(userId),
+    onTicketUpdate: () => {
+      void reloadTickets();
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -348,9 +373,8 @@ export default function TicketScreen() {
     setTouchStartX(null);
   }
 
-  function showToast(kind: ToastKind, message: string) {
-    setToast({ shown: true, kind, message });
-    setTimeout(() => setToast((t) => ({ ...t, shown: false })), 3500);
+  function notify(kind: ToastKind, message: string) {
+    showToast(message, { kind, placement: 'top', duration: 3500 });
   }
 
   function handleSavePdf() {
@@ -386,7 +410,10 @@ export default function TicketScreen() {
         {showEmptyOrError ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
             {ticketError ? (
-              <EmptyState title="Could not load ticket" body="Check your connection and try again." />
+              <EmptyState
+                title="Could not load ticket"
+                body="Check your connection and try again."
+              />
             ) : (
               <EmptyState
                 title="No ticket"
@@ -493,7 +520,8 @@ export default function TicketScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                See you at the door. The QR below is your ticket — keep brightness up when you arrive.
+                See you at the door. The QR below is your ticket — keep brightness up when you
+                arrive.
               </div>
               {justPurchased ? (
                 <div
@@ -544,16 +572,40 @@ export default function TicketScreen() {
                     >
                       {receiptEmail ? (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to your email.
-                          Check your inbox — and spam if you don&apos;t see it within a few minutes.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to your
+                          email. Check your inbox — and spam if you don&apos;t see it within a few
+                          minutes.
                         </>
                       ) : (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to the email
-                          you used at checkout. Check your inbox — and spam if needed.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to the
+                          email you used at checkout. Check your inbox — and spam if needed.
                         </>
                       )}
                     </div>
+                    {receiptOrderId ? (
+                      <button
+                        type="button"
+                        className="hof-btn hof-press"
+                        disabled={resendLoading}
+                        onClick={() => {
+                          void resendReceipt();
+                        }}
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${colors.border}`,
+                          background: colors.elevated,
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: colors.amber,
+                        }}
+                      >
+                        {resendLoading ? 'Sending…' : 'Resend receipt email'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -618,7 +670,11 @@ export default function TicketScreen() {
                         }}
                       />
                       {ticketFieldsLoading ? (
-                        <TicketSkeletonBar width="100%" height={16} style={{ marginTop: 6, maxWidth: 200 }} />
+                        <TicketSkeletonBar
+                          width="100%"
+                          height={16}
+                          style={{ marginTop: 6, maxWidth: 200 }}
+                        />
                       ) : (
                         <div
                           style={{
@@ -1020,15 +1076,6 @@ export default function TicketScreen() {
         ) : null}
       </div>
 
-      {/* Toast */}
-      {toast.shown && (
-        <div className="hof-no-print hof-ticket-toast">
-          <HofToast kind={toast.kind} onDismiss={() => setToast((t) => ({ ...t, shown: false }))}>
-            {toast.message}
-          </HofToast>
-        </div>
-      )}
-
       <TransferSheet
         open={transferOpen}
         onClose={() => setTransferOpen(false)}
@@ -1039,7 +1086,7 @@ export default function TicketScreen() {
             : undefined
         }
         onTransferred={() => {
-          showToast('success', 'Ticket transferred — they have 24h to accept.');
+          notify('success', 'Ticket transferred — they have 24h to accept.');
           void reloadTickets();
         }}
       />

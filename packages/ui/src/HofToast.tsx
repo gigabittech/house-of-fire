@@ -51,33 +51,24 @@ export function HofToast({ kind = 'success', children, onDismiss }: HofToastProp
   return (
     <div
       style={{
+        position: 'relative',
         borderRadius: 10,
-        padding: '12px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
+        padding: onDismiss !== undefined ? '12px 32px 12px 14px' : '12px 14px',
+        width: 'fit-content',
+        maxWidth: 360,
         background: config.bg,
         border: `1px solid ${config.border}`,
       }}
     >
-      <Icon name={config.icon} size={16} color={config.color} />
-      <span
-        style={{
-          flex: 1,
-          fontFamily: fontFamilies.body,
-          fontSize: 13,
-          color: colors.text,
-          lineHeight: 1.4,
-        }}
-      >
-        {children}
-      </span>
       {onDismiss !== undefined && (
         <button
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
           style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
             fontFamily: fontFamilies.body,
             fontSize: 16,
             color: colors.textSec,
@@ -91,6 +82,24 @@ export function HofToast({ kind = 'success', children, onDismiss }: HofToastProp
           ×
         </button>
       )}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <Icon
+          name={config.icon}
+          size={16}
+          color={config.color}
+          style={{ flexShrink: 0, marginTop: 1 }}
+        />
+        <span
+          style={{
+            fontFamily: fontFamilies.body,
+            fontSize: 13,
+            color: colors.text,
+            lineHeight: 1.4,
+          }}
+        >
+          {children}
+        </span>
+      </div>
     </div>
   );
 }

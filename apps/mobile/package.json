@@ -15,6 +15,10 @@
   },
   "dependencies": {
     "@hof/design-tokens": "workspace:*",
+    "@hof/door-checkin": "workspace:*",
+    "@hof/media": "workspace:*",
+    "@hof/push": "workspace:*",
+    "@hof/realtime": "workspace:*",
     "@hof/ui": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
     "@stripe/react-stripe-js": "^6.6.0",

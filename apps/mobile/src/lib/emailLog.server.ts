@@ -79,4 +79,3 @@ export async function updateEmailLog(
     throw new Error(error.message);
   }
 }
-

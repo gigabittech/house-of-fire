@@ -324,7 +324,10 @@ export function LandingExperienceView() {
           </div>
         </LandingSection>
 
-        <LandingSection className={pageColumnClassName} style={{ paddingTop: 32, paddingBottom: 16 }}>
+        <LandingSection
+          className={pageColumnClassName}
+          style={{ paddingTop: 32, paddingBottom: 16 }}
+        >
           <div
             className="hof-landing-surface-card hof-landing-promo-card"
             style={{
@@ -332,7 +335,15 @@ export function LandingExperienceView() {
               background: `linear-gradient(135deg, rgba(232,101,26,0.15) 0%, ${colors.surface} 60%)`,
             }}
           >
-            <div style={{ ...sectionLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                ...sectionLabel,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
               <span>{upcoming ? 'Next theme' : 'House of Fire'}</span>
               {upcoming ? (
                 <HofPill

@@ -3,10 +3,6 @@ import { NextResponse } from 'next/server';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '@/lib/liveEvent.server';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
-function isWalkup(t: { source?: string | null; stripe_charge_id?: string | null }): boolean {
-  return t.source === 'door' || (t.stripe_charge_id ?? '').startsWith('door-');
-}
-
 export async function GET(request: NextRequest) {
   const eventId = request.nextUrl.searchParams.get('eventId');
   const supabase = createAdminSupabaseClient();
@@ -26,7 +22,9 @@ export async function GET(request: NextRequest) {
   if (eventId) {
     const { data, error: eventError } = await supabase
       .from('events')
-      .select('id, edition_number, name, venue_name, doors_open, doors_close, date, capacity, status')
+      .select(
+        'id, edition_number, name, venue_name, doors_open, doors_close, date, capacity, status',
+      )
       .eq('id', eventId)
       .maybeSingle();
     if (eventError) {
@@ -48,57 +46,58 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: NO_EVENTS_MESSAGE }, { status: 404 });
   }
 
-  const { data: tickets, error: ticketsError } = await supabase
-    .from('tickets')
-    .select('id, status, stripe_charge_id, amount_cents, source, tier_id')
-    .eq('event_id', event.id)
-    .in('status', ['valid', 'used']);
-
-  if (ticketsError) {
-    return NextResponse.json({ error: ticketsError.message }, { status: 500 });
-  }
-
-  const { data: tiers, error: tiersError } = await supabase
-    .from('ticket_tiers')
-    .select('id, name, display_name, description, price_cents, fee_cents, capacity, status, sort_order')
-    .eq('event_id', event.id)
-    .neq('status', 'hidden')
-    .order('sort_order', { ascending: true });
-
-  if (tiersError) {
-    return NextResponse.json({ error: tiersError.message }, { status: 500 });
-  }
-
-  const list = tickets ?? [];
-  const sold = list.length;
-  const scanned = list.filter((t) => t.status === 'used').length;
-  const walkups = list.filter(isWalkup);
-  const walkupCents = walkups.reduce((s, t) => s + t.amount_cents, 0);
-  const remaining = Math.max(0, event.capacity - sold);
-
-  const soldByTier: Record<string, number> = {};
-  for (const t of list) {
-    soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
-  }
-
-  const tierOptions = (tiers ?? []).map((t) => {
-    const tierSold = soldByTier[t.id] ?? 0;
-    const tierRemaining = Math.max(0, t.capacity - tierSold);
-    const purchasable =
-      t.status === 'available' && tierRemaining > 0 && remaining > 0;
-    return {
-      id: t.id,
-      name: t.name,
-      display_name: t.display_name ?? t.name,
-      description: t.description ?? null,
-      price_cents: t.price_cents,
-      fee_cents: t.fee_cents ?? 0,
-      status: t.status,
-      sold: tierSold,
-      remaining: tierRemaining,
-      purchasable,
-    };
+  const { data: statsPayload, error: statsError } = await supabase.rpc('admin_event_ticket_stats', {
+    p_event_id: event.id,
   });
+
+  if (statsError) {
+    return NextResponse.json({ error: statsError.message }, { status: 500 });
+  }
+
+  const payload = statsPayload as {
+    stats?: {
+      sold: number;
+      scanned: number;
+      walkupCount: number;
+      walkupGrossCents: number;
+      remaining: number;
+      capacity: number;
+    };
+    tiers?: Array<{
+      id: string;
+      name: string;
+      display_name: string;
+      description: string | null;
+      price_cents: number;
+      fee_cents: number;
+      status: string;
+      sold: number;
+      remaining: number;
+      purchasable: boolean;
+    }>;
+  } | null;
+
+  const stats = payload?.stats ?? {
+    sold: 0,
+    scanned: 0,
+    walkupCount: 0,
+    walkupGrossCents: 0,
+    remaining: event.capacity,
+    capacity: event.capacity,
+  };
+
+  const tierOptions = (payload?.tiers ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    display_name: t.display_name ?? t.name,
+    description: t.description ?? null,
+    price_cents: t.price_cents,
+    fee_cents: t.fee_cents ?? 0,
+    status: t.status,
+    sold: t.sold,
+    remaining: t.remaining,
+    purchasable: t.purchasable,
+  }));
 
   return NextResponse.json({
     event: {
@@ -112,12 +111,12 @@ export async function GET(request: NextRequest) {
       status: event.status,
     },
     stats: {
-      sold,
-      scanned,
-      walkupCount: walkups.length,
-      walkupGrossCents: walkupCents,
-      remaining,
-      capacity: event.capacity,
+      sold: stats.sold,
+      scanned: stats.scanned,
+      walkupCount: stats.walkupCount,
+      walkupGrossCents: stats.walkupGrossCents,
+      remaining: stats.remaining,
+      capacity: stats.capacity,
     },
     tiers: tierOptions,
   });

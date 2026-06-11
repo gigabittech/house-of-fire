@@ -3,6 +3,7 @@
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
 import type { CSSProperties, ReactNode } from 'react';
+import { APP_OVERLAY_Z, appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
 interface SheetShellProps {
@@ -18,19 +19,19 @@ export default function SheetShell({ open, onClose, title, sub, children }: Shee
   if (!mounted) return null;
 
   const scrim: CSSProperties = {
-    position: 'absolute',
+    ...appOverlayFixed(),
     inset: 0,
-    zIndex: 80,
     background: 'rgba(0,0,0,0.55)',
     opacity: shown ? 1 : 0,
     transition: 'opacity 200ms ease-out',
+    pointerEvents: shown ? 'auto' : 'none',
   };
   const sheet: CSSProperties = {
-    position: 'absolute',
+    position: 'fixed',
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 90,
+    zIndex: APP_OVERLAY_Z + 1,
     background: colors.surface,
     borderTop: `1px solid ${colors.border}`,
     borderTopLeftRadius: 22,

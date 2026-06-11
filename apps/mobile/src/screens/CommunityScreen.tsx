@@ -7,12 +7,15 @@ import {
   ErrorState,
   FeedPost,
   FeedSkeletonCard,
-  HofToast,
   Icon,
   useResponsive,
+  useToast,
 } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCommunityFeed } from '@/hooks/useCommunityFeed';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useAppPageColumn } from '@/hooks/useAppPageColumn';
@@ -26,18 +29,37 @@ type FeedView = 'channel' | 'mine';
 
 export default function CommunityScreen() {
   const router = useRouter();
-  const [apiPosts, setApiPosts] = useState<ApiPost[]>([]);
-  const [myReactionsByPost, setMyReactionsByPost] = useState<Record<string, string[]>>({});
   const [activeChannel, setActiveChannel] = useState('general');
   const [feedView, setFeedView] = useState<FeedView>('channel');
-  const [loadingPosts, setLoadingPosts] = useState(true);
-  const [postsError, setPostsError] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [liveEventId, setLiveEventId] = useState<string | undefined>();
-  const [pendingToast, setPendingToast] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
   const { isWide } = useResponsive();
   const pageColumn = useAppPageColumn();
+
+  const feedMode = useMemo(
+    (): { kind: 'channel'; channel: string } | { kind: 'mine' } =>
+      feedView === 'mine' ? { kind: 'mine' } : { kind: 'channel', channel: activeChannel },
+    [feedView, activeChannel],
+  );
+
+  const {
+    posts: apiPosts,
+    myReactionsByPost,
+    setMyReactionsByPost,
+    hasMore,
+    loading: loadingPosts,
+    loadingMore,
+    error: postsError,
+    refresh,
+    loadMore,
+    prependPost,
+    patchPost,
+    removePost,
+    prependMinePost,
+  } = useCommunityFeed(feedMode);
 
   const scrollTopPad = isWide
     ? layoutChrome.wideActionsInset +
@@ -56,37 +78,49 @@ export default function CommunityScreen() {
       .catch(console.error);
   }, []);
 
-  const loadPosts = useCallback(() => {
-    setLoadingPosts(true);
-    setPostsError(false);
-
-    if (feedView === 'mine') {
-      fetch('/api/profile/posts')
-        .then((r) => r.json())
-        .then((d: { posts?: ApiPost[] }) => {
-          setApiPosts(d.posts ?? []);
-          setMyReactionsByPost({});
-        })
-        .catch(() => setPostsError(true))
-        .finally(() => setLoadingPosts(false));
-      return;
-    }
-
-    fetch(`/api/posts?channel=${activeChannel}&includeMyReactions=1`)
-      .then((r) => r.json())
-      .then(
-        (d: { posts?: ApiPost[]; myReactionsByPost?: Record<string, string[]> }) => {
-          setApiPosts(d.posts ?? []);
-          setMyReactionsByPost(d.myReactionsByPost ?? {});
-        },
-      )
-      .catch(() => setPostsError(true))
-      .finally(() => setLoadingPosts(false));
-  }, [activeChannel, feedView]);
-
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    void refresh();
+  }, [feedView, activeChannel, refresh]);
+
+  const prependPostFromRealtime = useCallback(
+    async (row: { id: string }) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post || d.post.moderation_status !== 'approved') return;
+        prependPost(d.post);
+      } catch {
+        /* keep list */
+      }
+    },
+    [prependPost],
+  );
+
+  useCommunityRealtime({
+    channel: feedView === 'channel' ? activeChannel : undefined,
+    eventId: liveEventId,
+    onPostInsert: (row) => void prependPostFromRealtime(row),
+    onPostUpdate: (row) =>
+      patchPost({
+        id: row.id,
+        reaction_counts: row.reaction_counts,
+        reply_count: row.reply_count,
+        moderation_status: row.moderation_status as ApiPost['moderation_status'],
+      }),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) removePost(oldRow.id);
+    },
+    onResync: () => void refresh(),
+    enabled: feedView === 'channel',
+  });
+
+  const loadMoreSentinelRef = useInfiniteScroll({
+    onLoadMore: () => void loadMore(),
+    hasMore,
+    loading: loadingPosts || loadingMore,
+    rootRef: scrollRef,
+  });
 
   const channelPosts = apiPosts.map((p) =>
     apiPostToUi(p, { myReactions: myReactionsByPost[p.id] }),
@@ -94,23 +128,29 @@ export default function CommunityScreen() {
 
   const handleReact = useCallback(
     async (postId: string, emoji: ReactionKey) => {
-      const prevReactions = myReactionsByPost[postId] ?? [];
-      const had = prevReactions.includes(emoji);
-      const nextReactions = had
-        ? prevReactions.filter((k) => k !== emoji)
-        : [...prevReactions, emoji];
+      const prevReaction = myReactionsByPost[postId]?.[0] ?? null;
+      const removing = prevReaction === emoji;
+      const nextReaction = removing ? null : emoji;
+      const post = apiPosts.find((row) => row.id === postId);
+      const prevCounts = post ? { ...post.reaction_counts } : undefined;
 
-      setMyReactionsByPost((prev) => ({ ...prev, [postId]: nextReactions }));
-      setApiPosts((prev) =>
-        prev.map((p) => {
-          if (p.id !== postId) return p;
-          const counts = { ...p.reaction_counts };
-          const current = counts[emoji] ?? 0;
-          counts[emoji] = Math.max(0, current + (had ? -1 : 1));
-          if (counts[emoji] === 0) delete counts[emoji];
-          return { ...p, reaction_counts: counts };
-        }),
-      );
+      setMyReactionsByPost((prev) => ({
+        ...prev,
+        [postId]: nextReaction ? [nextReaction] : [],
+      }));
+      if (post) {
+        const counts = { ...post.reaction_counts };
+        if (prevReaction) {
+          const prevCount = counts[prevReaction] ?? 0;
+          const nextCount = Math.max(0, prevCount - 1);
+          if (nextCount === 0) delete counts[prevReaction];
+          else counts[prevReaction] = nextCount;
+        }
+        if (nextReaction) {
+          counts[nextReaction] = (counts[nextReaction] ?? 0) + 1;
+        }
+        patchPost({ id: postId, reaction_counts: counts });
+      }
 
       try {
         const r = await fetch(`/api/posts/${postId}/reactions`, {
@@ -119,22 +159,30 @@ export default function CommunityScreen() {
           body: JSON.stringify({ emoji }),
         });
         const d = (await r.json()) as {
-          toggled?: boolean;
+          myReaction?: ReactionKey | null;
           reactionCounts?: Record<string, number>;
         };
         if (d.reactionCounts) {
-          setApiPosts((prev) =>
-            prev.map((p) =>
-              p.id === postId ? { ...p, reaction_counts: d.reactionCounts! } : p,
-            ),
-          );
+          patchPost({ id: postId, reaction_counts: d.reactionCounts });
+        }
+        if (d.myReaction !== undefined) {
+          setMyReactionsByPost((prev) => ({
+            ...prev,
+            [postId]: d.myReaction ? [d.myReaction] : [],
+          }));
         }
       } catch {
-        setMyReactionsByPost((prev) => ({ ...prev, [postId]: prevReactions }));
-        loadPosts();
+        setMyReactionsByPost((prev) => ({
+          ...prev,
+          [postId]: prevReaction ? [prevReaction] : [],
+        }));
+        if (prevCounts) {
+          patchPost({ id: postId, reaction_counts: prevCounts });
+        }
+        showToast('Could not save reaction');
       }
     },
-    [myReactionsByPost, loadPosts],
+    [apiPosts, myReactionsByPost, patchPost, setMyReactionsByPost, showToast],
   );
 
   const headerActions = useMemo(
@@ -184,85 +232,85 @@ export default function CommunityScreen() {
           background: 'rgba(10,10,8,0.85)',
           backdropFilter: 'blur(20px) saturate(150%)',
           WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-          // borderBottom: `1px solid ${colors.border}`,
           paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
         }}
       >
         <div style={pageColumn}>
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            marginTop: isWide ? 0 : 4,
-            paddingBottom: 8,
-          }}
-        >
-          {(['channel', 'mine'] as const).map((view) => (
-            <button
-              key={view}
-              type="button"
-              className="hof-btn hof-press"
-              onClick={() => setFeedView(view)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                background: feedView === view ? colors.elevated : 'transparent',
-                border: `1px solid ${feedView === view ? colors.border : 'transparent'}`,
-                fontFamily: 'Inter',
-                fontSize: 12,
-                fontWeight: 500,
-                color: feedView === view ? colors.text : colors.textSec,
-              }}
-            >
-              {view === 'channel' ? 'Board' : 'My posts'}
-            </button>
-          ))}
-        </div>
-
-        {feedView === 'channel' && (
           <div
-            className="hof-scroll"
             style={{
               display: 'flex',
               gap: 6,
-              overflowX: 'auto',
-              paddingBottom: 12,
+              marginTop: isWide ? 0 : 4,
+              paddingBottom: 8,
             }}
           >
-            {CHANNELS.map((ch) => {
-              const isActive = activeChannel === ch.id;
-              return (
-                <button
-                  key={ch.id}
-                  className="hof-btn hof-press"
-                  disabled={ch.locked === true}
-                  onClick={() => {
-                    if (!ch.locked) setActiveChannel(ch.id);
-                  }}
-                  style={{
-                    flexShrink: 0,
-                    padding: '7px 12px',
-                    background: isActive ? colors.amber : colors.elevated,
-                    border: `1px solid ${isActive ? colors.amber : colors.border}`,
-                    borderRadius: 6,
-                    fontFamily: 'JetBrains Mono',
-                    fontSize: 12,
-                    color: ch.locked ? colors.textDis : isActive ? colors.bg : colors.text,
-                    fontWeight: 500,
-                    opacity: ch.locked ? 0.5 : 1,
-                  }}
-                >
-                  #{ch.name}
-                  {ch.locked === true && <span style={{ marginLeft: 4, fontSize: 10 }}>🔒</span>}
-                </button>
-              );
-            })}
+            {(['channel', 'mine'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                className="hof-btn hof-press"
+                onClick={() => setFeedView(view)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  background: feedView === view ? colors.elevated : 'transparent',
+                  border: `1px solid ${feedView === view ? colors.border : 'transparent'}`,
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: feedView === view ? colors.text : colors.textSec,
+                }}
+              >
+                {view === 'channel' ? 'Board' : 'My posts'}
+              </button>
+            ))}
           </div>
-        )}
+
+          {feedView === 'channel' && (
+            <div
+              className="hof-scroll"
+              style={{
+                display: 'flex',
+                gap: 6,
+                overflowX: 'auto',
+                paddingBottom: 12,
+              }}
+            >
+              {CHANNELS.map((ch) => {
+                const isActive = activeChannel === ch.id;
+                return (
+                  <button
+                    key={ch.id}
+                    className="hof-btn hof-press"
+                    disabled={ch.locked === true}
+                    onClick={() => {
+                      if (!ch.locked) setActiveChannel(ch.id);
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '7px 12px',
+                      background: isActive ? colors.amber : colors.elevated,
+                      border: `1px solid ${isActive ? colors.amber : colors.border}`,
+                      borderRadius: 6,
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 12,
+                      color: ch.locked ? colors.textDis : isActive ? colors.bg : colors.text,
+                      fontWeight: 500,
+                      opacity: ch.locked ? 0.5 : 1,
+                    }}
+                  >
+                    #{ch.name}
+                    {ch.locked === true && <span style={{ marginLeft: 4, fontSize: 10 }}>🔒</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       <div
+        ref={scrollRef}
         className="hof-scroll hof-app-page-scroll"
         style={{
           position: 'absolute',
@@ -273,60 +321,71 @@ export default function CommunityScreen() {
         }}
       >
         <div style={pageColumn}>
-        {loadingPosts ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <FeedSkeletonCard key={i} />
-            ))}
-          </div>
-        ) : postsError ? (
-          <ErrorState retry={loadPosts} />
-        ) : channelPosts.length === 0 ? (
-          <EmptyState
-            icon="users"
-            title={feedView === 'mine' ? 'No posts yet' : 'Nothing yet'}
-            body={
-              feedView === 'mine'
-                ? 'Posts you submit will appear here with their review status.'
-                : 'Be the first to post.'
-            }
-            action={
-              <button
-                className="hof-btn hof-press"
-                onClick={() => setComposeOpen(true)}
-                style={{
-                  padding: '10px 20px',
-                  background: colors.amber,
-                  border: `1px solid ${colors.amber}`,
-                  borderRadius: 8,
-                  fontFamily: 'Inter',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: colors.bg,
-                }}
-              >
-                Start a thread
-              </button>
-            }
-          />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {channelPosts.map((post) => (
-              <FeedPost
-                key={post.id}
-                post={post}
-                showChannel={activeChannel === 'general' && feedView === 'channel'}
-                resolvePhoto={photoSrc}
-                interactiveReactions={feedView === 'channel' && post.moderationStatus === 'approved'}
-                onReact={(emoji) => void handleReact(post.id, emoji)}
-                onOpen={() => router.push(`/community/${post.id}`)}
-                pressFeedback={false}
-              />
-            ))}
-          </div>
-        )}
+          {loadingPosts ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <FeedSkeletonCard key={i} />
+              ))}
+            </div>
+          ) : postsError ? (
+            <ErrorState retry={() => void refresh()} />
+          ) : channelPosts.length === 0 ? (
+            <EmptyState
+              icon="users"
+              title={feedView === 'mine' ? 'No posts yet' : 'Nothing yet'}
+              body={
+                feedView === 'mine'
+                  ? 'Posts you submit will appear here with their review status.'
+                  : 'Be the first to post.'
+              }
+              action={
+                <button
+                  className="hof-btn hof-press"
+                  onClick={() => setComposeOpen(true)}
+                  style={{
+                    padding: '10px 20px',
+                    background: colors.amber,
+                    border: `1px solid ${colors.amber}`,
+                    borderRadius: 8,
+                    fontFamily: 'Inter',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    color: colors.bg,
+                  }}
+                >
+                  Start a thread
+                </button>
+              }
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {channelPosts.map((post) => (
+                <FeedPost
+                  key={post.id}
+                  post={post}
+                  showChannel={activeChannel === 'general' && feedView === 'channel'}
+                  resolvePhoto={photoSrc}
+                  interactiveReactions={
+                    feedView === 'channel' && post.moderationStatus === 'approved'
+                  }
+                  onReact={(emoji) => void handleReact(post.id, emoji)}
+                  onOpen={() => router.push(`/community/${post.id}`)}
+                  pressFeedback={false}
+                />
+              ))}
+              {hasMore && (
+                <div ref={loadMoreSentinelRef} style={{ padding: '12px 0', textAlign: 'center' }}>
+                  {loadingMore ? (
+                    <span style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
+                      Loading more…
+                    </span>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
 
-        <div style={{ height: 40 }} />
+          <div style={{ height: 40 }} />
         </div>
       </div>
 
@@ -374,8 +433,11 @@ export default function CommunityScreen() {
             const err = (await r.json()) as { error?: string };
             throw new Error(err.error ?? 'Failed to post');
           }
-          setPendingToast(true);
-          if (feedView === 'mine') loadPosts();
+          const d = (await r.json()) as { post?: ApiPost };
+          showToast('Submitted — pending review');
+          if (feedView === 'mine' && d.post) {
+            prependMinePost(d.post);
+          }
         }}
       />
       <NotificationsSheet
@@ -386,21 +448,6 @@ export default function CommunityScreen() {
           router.push(`/community/${id}`);
         }}
       />
-      {pendingToast && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: isWide ? 28 : 110,
-            zIndex: 30,
-          }}
-        >
-          <HofToast kind="success" onDismiss={() => setPendingToast(false)}>
-            Submitted — pending review
-          </HofToast>
-        </div>
-      )}
     </div>
   );
 }

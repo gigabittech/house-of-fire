@@ -42,3 +42,31 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { endpoint?: string };
+  const endpoint = body.endpoint?.trim();
+
+  let query = supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+  if (endpoint) {
+    query = query.eq('endpoint', endpoint);
+  }
+
+  const { error } = await query;
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
