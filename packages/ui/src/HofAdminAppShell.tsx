@@ -1,6 +1,6 @@
 'use client';
 
-import { colors, fontFamilies } from '@hof/design-tokens';
+import { colors, fontFamilies, layoutChrome } from '@hof/design-tokens';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ADMIN_NAV_ITEMS, type AdminNavId } from './adminNav';
 import { Avatar } from './feed/Avatar';
@@ -129,12 +129,13 @@ function AdminSidebar({
       className={inDrawer ? undefined : 'hof-app-sidebar hof-admin-sidebar'}
       style={{
         overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
         height: '100%',
         boxSizing: 'border-box',
         ...(inDrawer
-          ? {}
+          ? {
+              display: 'flex',
+              flexDirection: 'column',
+            }
           : {
               background: colors.surface,
               borderRight: `1px solid ${colors.border}`,
@@ -354,7 +355,7 @@ export function HofAdminAppShell({
           </div>
 
           <div
-            className="hof-scroll hof-app-page-scroll"
+            className="hof-scroll hof-app-page-scroll hof-admin-page-scroll"
             style={{
               position: 'absolute',
               inset: 0,
@@ -367,6 +368,16 @@ export function HofAdminAppShell({
       </div>
 
       <style>{`
+        @media (max-width: 767px) {
+          .hof-admin-sidebar.hof-app-sidebar {
+            display: none !important;
+          }
+          .hof-admin-page-scroll {
+            padding-top: ${layoutChrome.mobilePageHeaderInset};
+            padding-left: 0;
+            pointer-events: auto;
+          }
+        }
         .hof-admin-sidebar .hof-admin-logo-compact {
           display: none;
         }

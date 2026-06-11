@@ -1,7 +1,7 @@
 'use client';
 
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { HofPill } from '../HofPill';
 import { HofPhoto } from '../HofPhoto';
 import { Icon } from '../Icon';
@@ -21,7 +21,7 @@ export interface FeedPostProps {
   resolvePhoto?: (seed: number) => string;
   interactiveReactions?: boolean;
   onReact?: (emoji: ReactionKey) => void;
-  /** Scale-down tap feedback on the card shell (default on). */
+  /** Scale-down tap feedback on the card shell (off by default — avoids layout jump). */
   pressFeedback?: boolean;
   /** Drop the top border — for detail views that already pad above the card. */
   borderlessTop?: boolean;
@@ -41,7 +41,7 @@ export function FeedPost({
   resolvePhoto,
   interactiveReactions = false,
   onReact,
-  pressFeedback = true,
+  pressFeedback = false,
   borderlessTop = false,
 }: FeedPostProps) {
   const isRecap = post.kind === 'recap';
@@ -65,10 +65,26 @@ export function FeedPost({
 
   const myReactions = post.myReactions ?? (post.myReaction ? [post.myReaction] : []);
 
+  const openPost = () => {
+    onOpen?.();
+  };
+
+  const handleCardKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (!onOpen) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPost();
+    }
+  };
+
   return (
     <>
       <article
         className={pressFeedback ? 'hof-press' : undefined}
+        role={onOpen ? 'button' : undefined}
+        tabIndex={onOpen ? 0 : undefined}
+        onClick={onOpen ? openPost : undefined}
+        onKeyDown={onOpen ? handleCardKeyDown : undefined}
         style={{
           width: '100%',
           textAlign: 'left',
@@ -79,31 +95,17 @@ export function FeedPost({
           borderRadius: 12,
           overflow: 'hidden',
           display: 'block',
+          cursor: onOpen ? 'pointer' : 'default',
         }}
       >
-        {/* Author row — clickable */}
-        <button
-          type="button"
-          className="hof-btn"
-          onClick={onOpen}
+        <div
           style={{
-            width: '100%',
-            textAlign: 'left',
-            padding: 0,
-            background: 'transparent',
-            border: 'none',
-            display: 'block',
-            cursor: onOpen ? 'pointer' : 'default',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: compact ? '10px 12px 6px' : '12px 14px 8px',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: compact ? '10px 12px 6px' : '12px 14px 8px',
-            }}
-          >
             <Avatar
               initials={post.author.initials}
               userRole={post.author.role}
@@ -177,25 +179,10 @@ export function FeedPost({
                 <Icon name="pin" size={12} color={colors.amber} />
               </div>
             )}
-          </div>
-        </button>
+        </div>
 
-        {/* Body — clickable */}
         {(post.title || post.body) && (
-          <button
-            type="button"
-            className="hof-btn"
-            onClick={onOpen}
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              padding: 0,
-              background: 'transparent',
-              border: 'none',
-              display: 'block',
-              cursor: onOpen ? 'pointer' : 'default',
-            }}
-          >
+          <>
             {post.title && (
               <div
                 style={{
@@ -224,7 +211,7 @@ export function FeedPost({
                 {post.body}
               </div>
             )}
-          </button>
+          </>
         )}
 
         {post.moderationStatus === 'rejected' && post.moderationNote && (
@@ -349,41 +336,44 @@ export function FeedPost({
             flexWrap: 'wrap',
           }}
         >
-          <ReactionStrip
-            post={post}
-            compact={compact}
-            interactive={interactiveReactions}
-            myReactions={myReactions}
-            onOpenPicker={() => setPickerOpen((v) => !v)}
-          />
-          {pickerOpen && interactiveReactions && onReact && (
-            <ReactionPicker
-              myReactions={myReactions}
-              counts={post.reactions}
+          <div
+            onClick={(e) => {
+              if (interactiveReactions) e.stopPropagation();
+            }}
+            onKeyDown={(e) => {
+              if (interactiveReactions) e.stopPropagation();
+            }}
+          >
+            <ReactionStrip
+              post={post}
               compact={compact}
-              onToggle={(key) => {
-                onReact(key);
-              }}
+              interactive={interactiveReactions}
+              myReactions={myReactions}
+              onOpenPicker={() => setPickerOpen((v) => !v)}
             />
-          )}
+            {pickerOpen && interactiveReactions && onReact && (
+              <ReactionPicker
+                myReactions={myReactions}
+                counts={post.reactions}
+                compact={compact}
+                onToggle={(key) => {
+                  onReact(key);
+                }}
+              />
+            )}
+          </div>
           <div style={{ flex: 1 }} />
-          <button
-            type="button"
-            className="hof-btn"
-            onClick={onOpen}
+          <span
             style={{
               fontFamily: fontFamilies.mono,
               fontSize: 11,
               color: colors.textSec,
               letterSpacing: '0.04em',
-              background: 'transparent',
-              border: 'none',
-              cursor: onOpen ? 'pointer' : 'default',
               padding: 0,
             }}
           >
             {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
-          </button>
+          </span>
         </div>
       </article>
 
