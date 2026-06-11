@@ -32,6 +32,13 @@ describe('FeedPost', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it('fires onOpen when the reply count is tapped', () => {
+    const onOpen = vi.fn();
+    render(<FeedPost post={announcement} onOpen={onOpen} />);
+    fireEvent.click(screen.getByText('7 replies'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   it('resolves recap photos through the provided resolver', () => {
     const recap: Post = { ...announcement, kind: 'recap', photoSeeds: [0, 1, 2, 3] };
     const resolvePhoto = (seed: number) => `/assets/photos/p${seed + 1}.jpg`;
