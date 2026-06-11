@@ -4,13 +4,14 @@ import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
 import type { Post as UiPost } from '@hof/ui';
 import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
 import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
+import { preventFocusScroll } from '@/lib/preventFocusScroll';
 import {
   formatCapacityMeta,
   formatDoorsRange,
@@ -125,16 +126,24 @@ function TierCard({
   const isSold = tier.remaining === 0;
   return (
     <button
+      type="button"
       className="hof-btn hof-press"
+      onMouseDown={preventFocusScroll}
       onClick={onSelect}
       style={{
         textAlign: 'left',
         position: 'relative',
         padding: 16,
         background: selected ? colors.elevated : colors.surface,
-        border: selected
-          ? `2px solid ${isVip ? colors.gold : colors.amber}`
-          : `1px solid ${isVip ? 'rgba(201,148,42,0.4)' : colors.border}`,
+        border: `2px solid ${
+          selected
+            ? isVip
+              ? colors.gold
+              : colors.amber
+            : isVip
+              ? 'rgba(201,148,42,0.4)'
+              : colors.border
+        }`,
         borderRadius: 12,
         opacity: isSold ? 0.5 : 1,
         cursor: isSold ? 'not-allowed' : 'pointer',
@@ -266,22 +275,22 @@ function TierCard({
             Available
           </span>
         )}
-        {selected && !isSold && (
-          <span
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 12,
-              color: colors.amber,
-              fontWeight: 500,
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Icon name="check" size={14} color={colors.amber} /> Selected
-          </span>
-        )}
+        <span
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: colors.amber,
+            fontWeight: 500,
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            visibility: selected && !isSold ? 'visible' : 'hidden',
+          }}
+          aria-hidden={!selected || isSold}
+        >
+          <Icon name="check" size={14} color={colors.amber} /> Selected
+        </span>
       </div>
     </button>
   );
@@ -300,8 +309,17 @@ type LineupEntry = {
   sort_order: number;
 };
 
+function preserveScrollPosition(el: HTMLDivElement | null, update: () => void) {
+  const scrollTop = el?.scrollTop ?? 0;
+  update();
+  requestAnimationFrame(() => {
+    if (el) el.scrollTop = scrollTop;
+  });
+}
+
 export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: string) => void }) {
   const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedTier, setSelectedTier] = useState<string>('');
   const [openFaq, setOpenFaq] = useState(0);
   const [calOpen, setCalOpen] = useState(false);
@@ -410,32 +428,50 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const heroBadgeTone = eventHeroBadgeTone(eventData ?? { status: 'upcoming' }, rawTiers);
   const heroBadgeColors = eventHeroBadgeColors(heroBadgeTone);
 
-  const tiers: Tier[] = rawTiers
-    .filter((t) => t.status !== 'hidden')
-    .map((t) => {
-      const effective = (t as { effective_status?: string }).effective_status ?? t.status;
-      const remaining =
-        effective === 'sold_out' ? 0 : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
-      const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
-      const allInCents = t.price_cents + feeCents;
-      return {
-        id: t.id,
-        name: t.display_name ?? t.name,
-        price: allInCents / 100,
-        sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
-        remaining,
-        tone: (effective === 'sold_out' || remaining <= 0
-          ? 'soldout'
-          : t.name === 'vip'
-            ? 'gold'
-            : 'normal') as Tier['tone'],
-      };
+  const tiers = useMemo<Tier[]>(
+    () =>
+      rawTiers
+        .filter((t) => t.status !== 'hidden')
+        .map((t) => {
+          const effective = (t as { effective_status?: string }).effective_status ?? t.status;
+          const remaining =
+            effective === 'sold_out'
+              ? 0
+              : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
+          const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
+          const allInCents = t.price_cents + feeCents;
+          return {
+            id: t.id,
+            name: t.display_name ?? t.name,
+            price: allInCents / 100,
+            sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
+            remaining,
+            tone: (effective === 'sold_out' || remaining <= 0
+              ? 'soldout'
+              : t.name === 'vip'
+                ? 'gold'
+                : 'normal') as Tier['tone'],
+          };
+        }),
+    [rawTiers],
+  );
+
+  const selectTier = useCallback((tierId: string) => {
+    preserveScrollPosition(scrollRef.current, () => setSelectedTier(tierId));
+  }, []);
+
+  const toggleFaq = useCallback((index: number) => {
+    preserveScrollPosition(scrollRef.current, () => {
+      setOpenFaq((prev) => (prev === index ? -1 : index));
     });
+  }, []);
 
   useEffect(() => {
     if (tiers.length > 0 && selectedTier === '') {
       const first = tiers.find((t) => t.remaining > 0);
-      if (first) setSelectedTier(first.id);
+      if (first) {
+        preserveScrollPosition(scrollRef.current, () => setSelectedTier(first.id));
+      }
     }
   }, [tiers, selectedTier]);
 
@@ -594,11 +630,13 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     >
       {/* Scrollable content — hero full bleed; body in centered column */}
       <div
+        ref={scrollRef}
         className="hof-scroll hof-app-page-scroll"
         style={{
           position: 'absolute',
           inset: 0,
           overflowY: 'auto',
+          overflowAnchor: 'auto',
           paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
@@ -752,7 +790,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 key={t.id}
                 tier={t}
                 selected={selectedTier === t.id}
-                onSelect={() => t.remaining > 0 && setSelectedTier(t.id)}
+                onSelect={() => t.remaining > 0 && selectTier(t.id)}
               />
             ))}
           </div>
@@ -1308,60 +1346,76 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           {/* FAQ */}
           <SectionLabel>FAQ</SectionLabel>
           <div>
-            {faqs.map((f, i) => (
-              <button
-                key={i}
-                className="hof-btn"
-                onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '14px 0',
-                  borderBottom: i < faqs.length - 1 ? `1px solid ${colors.border}` : 'none',
-                }}
-              >
-                <div
+            {faqs.map((f, i) => {
+              const isOpen = openFaq === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className="hof-btn"
+                  onMouseDown={preventFocusScroll}
+                  onClick={() => toggleFaq(i)}
+                  aria-expanded={isOpen}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '14px 0',
+                    borderBottom: i < faqs.length - 1 ? `1px solid ${colors.border}` : 'none',
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: 'Inter',
-                      fontWeight: 500,
-                      fontSize: 14,
-                      color: colors.text,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
                     }}
                   >
-                    {f.q}
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: colors.text,
+                      }}
+                    >
+                      {f.q}
+                    </div>
+                    <Icon
+                      name="chevDn"
+                      size={16}
+                      color={colors.textSec}
+                      style={{
+                        transform: isOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 180ms ease',
+                        flexShrink: 0,
+                      }}
+                    />
                   </div>
-                  <Icon
-                    name="chevDn"
-                    size={16}
-                    color={colors.textSec}
-                    style={{
-                      transform: openFaq === i ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 150ms',
-                    }}
-                  />
-                </div>
-                {openFaq === i && (
                   <div
                     style={{
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: colors.textSec,
-                      lineHeight: 1.6,
-                      marginTop: 8,
+                      display: 'grid',
+                      gridTemplateRows: isOpen ? '1fr' : '0fr',
+                      transition: 'grid-template-rows 220ms ease',
                     }}
                   >
-                    {f.a}
+                    <div style={{ overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: colors.textSec,
+                          lineHeight: 1.6,
+                          paddingTop: isOpen ? 8 : 0,
+                        }}
+                      >
+                        {f.a}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Past edition footer */}
