@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Kpi } from '@/components/Kpi';
 import { PaneHeader } from '@/components/PaneHeader';
+import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
+import type { ApiPagination } from '@/lib/pagination';
 
 interface FinancialRow {
   event_id: string;
@@ -31,33 +33,55 @@ interface RefundRow {
 
 export default function FinancialsPage() {
   const [financials, setFinancials] = useState<FinancialRow[]>([]);
+  const [totals, setTotals] = useState({ gross_cents: 0, ticket_count: 0 });
+  const [pagination, setPagination] = useState<ApiPagination>({
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+    totalCount: 0,
+    totalPages: 1,
+  });
+  const [page, setPage] = useState(1);
   const [pendingRefunds, setPendingRefunds] = useState<RefundRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [finRes, refRes] = await Promise.all([
-          fetch('/api/admin/financials'),
-          fetch('/api/admin/refunds'),
-        ]);
-        const data = (await finRes.json()) as { financials?: FinancialRow[]; error?: string };
-        const refData = (await refRes.json()) as { pending?: RefundRow[]; error?: string };
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setFinancials(data.financials ?? []);
-        }
-        setPendingRefunds(refData.pending ?? []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load financials');
-      } finally {
-        setLoading(false);
+  const loadFinancials = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('pageSize', String(DEFAULT_PAGE_SIZE));
+
+      const [finRes, refRes] = await Promise.all([
+        fetch(`/api/admin/financials?${params}`),
+        fetch('/api/admin/refunds'),
+      ]);
+      const data = (await finRes.json()) as {
+        financials?: FinancialRow[];
+        totals?: { gross_cents: number; ticket_count: number };
+        pagination?: ApiPagination;
+        error?: string;
+      };
+      const refData = (await refRes.json()) as { pending?: RefundRow[]; error?: string };
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setFinancials(data.financials ?? []);
+        setTotals(data.totals ?? { gross_cents: 0, ticket_count: 0 });
+        if (data.pagination) setPagination(data.pagination);
+        setError(null);
       }
+      setPendingRefunds(refData.pending ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load financials');
+    } finally {
+      setLoading(false);
     }
-    void load();
-  }, []);
+  }, [page]);
+
+  useEffect(() => {
+    void loadFinancials();
+  }, [loadFinancials]);
 
   async function handleRefundAction(id: string, status: 'approved' | 'rejected') {
     await fetch('/api/admin/refunds', {
@@ -84,9 +108,7 @@ export default function FinancialsPage() {
   const maxGross =
     editionBars.length > 0 ? Math.max(...editionBars.map((b) => b.gross), 1000) : 8000;
 
-  // Total revenue across all themes
-  const totalGrossCents = financials.reduce((sum, f) => sum + f.gross_cents, 0);
-  const totalGross = `$${(totalGrossCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const totalGross = `$${(totals.gross_cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const activeGrossCents = activeEdition?.gross_cents ?? 0;
   const activeGross = `$${(activeGrossCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -420,6 +442,13 @@ export default function FinancialsPage() {
               {loading ? '…' : totalGross}
             </span>
           </div>
+
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.totalCount}
+            onPageChange={setPage}
+          />
         </div>
       </div>
 

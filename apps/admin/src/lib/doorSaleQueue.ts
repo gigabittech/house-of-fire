@@ -65,7 +65,9 @@ export type DoorSellResponse = {
 
 export async function postDoorSale(
   payload: QueuedDoorSale,
-): Promise<{ ok: true; data: DoorSellResponse } | { ok: false; error: string; retryable: boolean }> {
+): Promise<
+  { ok: true; data: DoorSellResponse } | { ok: false; error: string; retryable: boolean }
+> {
   try {
     const res = await fetch('/api/admin/door/sell', {
       method: 'POST',

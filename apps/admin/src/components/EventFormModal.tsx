@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { EventFaq, EventFormPayload, EventStatus } from '@/lib/eventPayload';
+import type { EventFaq, EventFormPayload, EventStatus, EventVisibility } from '@/lib/eventPayload';
 import { DEFAULT_EVENT_FORM } from '@/lib/eventPayload';
 import type { TierFormRow } from '@/lib/tierPayload';
 import { uploadEventHero } from '@/lib/storageUpload';
@@ -26,6 +26,11 @@ const STATUSES: Array<{ value: EventStatus; label: string }> = [
   { value: 'live', label: 'Live' },
   { value: 'past', label: 'Past' },
   { value: 'cancelled', label: 'Cancelled' },
+];
+
+const VISIBILITIES: Array<{ value: EventVisibility; label: string }> = [
+  { value: 'public', label: 'Public' },
+  { value: 'hidden', label: 'Hidden' },
 ];
 
 function parseFaqsFromJson(raw: unknown): EventFaq[] {
@@ -74,7 +79,8 @@ export function EventFormModal({
       ...DEFAULT_EVENT_FORM,
       ...initial,
       faqs: initial?.faqs ?? [],
-      max_tickets_per_user: initial?.max_tickets_per_user ?? DEFAULT_EVENT_FORM.max_tickets_per_user,
+      max_tickets_per_user:
+        initial?.max_tickets_per_user ?? DEFAULT_EVENT_FORM.max_tickets_per_user,
     });
     setTiers(initialTiers.map((t) => ({ ...t })));
   }, [open, initial, initialTiers]);
@@ -88,8 +94,7 @@ export function EventFormModal({
 
   if (!open) return null;
 
-  const liveBlocked =
-    liveEventId != null && (mode === 'create' || eventId !== liveEventId);
+  const liveBlocked = liveEventId != null && (mode === 'create' || eventId !== liveEventId);
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -155,8 +160,7 @@ export function EventFormModal({
         faqs: form.faqs.filter((f) => f.q.trim() || f.a.trim()),
       };
 
-      const url =
-        mode === 'edit' && eventId ? `/api/admin/events/${eventId}` : '/api/admin/events';
+      const url = mode === 'edit' && eventId ? `/api/admin/events/${eventId}` : '/api/admin/events';
       const method = mode === 'edit' ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -404,9 +408,7 @@ export function EventFormModal({
                 max={20}
                 style={inputStyle}
                 value={form.max_tickets_per_user}
-                onChange={(e) =>
-                  setField('max_tickets_per_user', Number(e.target.value) || 4)
-                }
+                onChange={(e) => setField('max_tickets_per_user', Number(e.target.value) || 4)}
               />
             </div>
           </div>
@@ -449,7 +451,17 @@ export function EventFormModal({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={labelStyle}>Dress code</label>
+            <textarea
+              style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
+              value={form.dress_code ?? ''}
+              onChange={(e) => setField('dress_code', e.target.value || null)}
+              placeholder="e.g. No dress code — wear what makes you move."
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Status</label>
               <select
@@ -480,6 +492,31 @@ export function EventFormModal({
                   Another theme is already live. Change its status first.
                 </p>
               )}
+            </div>
+            <div>
+              <label style={labelStyle}>Visibility</label>
+              <select
+                style={inputStyle}
+                value={form.visibility}
+                onChange={(e) => setField('visibility', e.target.value as EventVisibility)}
+              >
+                {VISIBILITIES.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 11,
+                  color: 'var(--hof-text-sec)',
+                  lineHeight: 1.4,
+                }}
+              >
+                Hidden themes are excluded from the public app.
+              </p>
             </div>
             <div>
               <label style={labelStyle}>Hero image</label>

@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid flow' }, { status: 400 });
   }
 
-  const origin = request.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const origin =
+    request.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const redirectTo =
-    body.redirectTo?.trim() ||
-    `${origin}/auth/callback/client?next=${encodeURIComponent('/')}`;
+    body.redirectTo?.trim() || `${origin}/auth/callback/client?next=${encodeURIComponent('/')}`;
 
   let logId: string | undefined;
   try {

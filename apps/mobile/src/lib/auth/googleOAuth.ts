@@ -38,7 +38,9 @@ export function displayNameFromGoogleMetadata(
   const given = metadata.given_name;
   const family = metadata.family_name;
   if (typeof given === 'string' && given.trim()) {
-    const full = [given.trim(), typeof family === 'string' ? family.trim() : ''].filter(Boolean).join(' ');
+    const full = [given.trim(), typeof family === 'string' ? family.trim() : '']
+      .filter(Boolean)
+      .join(' ');
     if (full) return full;
   }
   return email?.split('@')[0] ?? 'Member';

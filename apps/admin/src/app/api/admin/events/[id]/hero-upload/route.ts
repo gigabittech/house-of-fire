@@ -6,10 +6,7 @@ import { validateImageFile } from '@/lib/storageUpload';
 
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 

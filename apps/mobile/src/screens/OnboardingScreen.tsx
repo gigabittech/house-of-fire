@@ -65,11 +65,7 @@ function StepSignup({
       </div>
 
       <div style={{ marginTop: 22 }}>
-        <GoogleSignInButton
-          flow="sign_up"
-          next="/onboarding?oauth=complete"
-          disabled={loading}
-        />
+        <GoogleSignInButton flow="sign_up" next="/onboarding?oauth=complete" disabled={loading} />
       </div>
 
       <AuthDivider />

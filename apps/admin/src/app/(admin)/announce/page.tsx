@@ -115,7 +115,7 @@ export default function AnnouncePage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [postTo, setPostTo] = useState({ feed: true, email: false, sms: false });
+  const [postTo, setPostTo] = useState({ feed: true, email: false, sms: false, push: false });
   const [status, setStatus] = useState<PostStatus>('idle');
   const [statusMsg, setStatusMsg] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -415,6 +415,12 @@ export default function AnnouncePage() {
               onChange={(v) => setPostTo((p) => ({ ...p, email: v }))}
               title="Email subscribers"
               sub="1,247 people on The Smoke Signal."
+            />
+            <ChannelToggle
+              on={postTo.push}
+              onChange={(v) => setPostTo((p) => ({ ...p, push: v }))}
+              title="Push notification"
+              sub="Lock-screen alert for members who opted in on the app."
             />
             <div
               style={{

@@ -49,11 +49,7 @@ function parseRedirectUrls(appUrl) {
     .map((u) => u.trim())
     .filter(Boolean);
 
-  const urls = [
-    `${appUrl}/auth/callback/client`,
-    `${appUrl}/auth/callback`,
-    ...fromEnv,
-  ];
+  const urls = [`${appUrl}/auth/callback/client`, `${appUrl}/auth/callback`, ...fromEnv];
   return [...new Set(urls)];
 }
 

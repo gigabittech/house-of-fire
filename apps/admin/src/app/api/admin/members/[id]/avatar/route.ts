@@ -19,10 +19,7 @@ function extFromFile(file: File): string {
   return 'jpg';
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 

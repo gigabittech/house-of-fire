@@ -43,9 +43,7 @@ export async function POST(request: NextRequest) {
 
   let ticketsQuery = supabase
     .from('tickets')
-    .select(
-      '*, events(*), ticket_tiers(*), profiles!tickets_holder_id_fkey(display_name, handle)',
-    )
+    .select('*, events(*), ticket_tiers(*), profiles!tickets_holder_id_fkey(display_name, handle)')
     .order('code', { ascending: true });
 
   if (result.orderId && result.orderId !== paymentIntentId) {

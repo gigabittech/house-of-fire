@@ -25,9 +25,7 @@ function isSellBody(v: unknown): v is SellRequestBody {
     typeof obj['email'] === 'string' &&
     (obj['phone'] === undefined || typeof obj['phone'] === 'string') &&
     typeof obj['qty'] === 'number' &&
-    (obj['pay_method'] === 'cash' ||
-      obj['pay_method'] === 'card' ||
-      obj['pay_method'] === 'tap')
+    (obj['pay_method'] === 'cash' || obj['pay_method'] === 'card' || obj['pay_method'] === 'tap')
   );
 }
 
@@ -42,8 +40,7 @@ export async function POST(request: NextRequest) {
   if (!isSellBody(body)) {
     return NextResponse.json(
       {
-        error:
-          'Missing required fields: tier_id, first_name, last_name, email, qty, pay_method',
+        error: 'Missing required fields: tier_id, first_name, last_name, email, qty, pay_method',
       },
       { status: 400 },
     );
@@ -70,10 +67,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.ok) {
-    return NextResponse.json(
-      { error: result.error, code: result.code },
-      { status: result.status },
-    );
+    return NextResponse.json({ error: result.error, code: result.code }, { status: result.status });
   }
 
   return NextResponse.json({

@@ -27,36 +27,36 @@ export async function GET(request: NextRequest) {
     dateFrom?.length > 0
       ? new Date(`${dateFrom}T00:00:00.000Z`)
       : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const to =
-    dateTo?.length > 0 ? new Date(`${dateTo}T23:59:59.999Z`) : new Date(now.getTime());
+  const to = dateTo?.length > 0 ? new Date(`${dateTo}T23:59:59.999Z`) : new Date(now.getTime());
 
-  function baseQuery() {
-    let q = supabase.from('email_logs').select('id', { count: 'exact', head: true });
-    q = q.gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
-    if (status) q = q.eq('status', status);
-    if (app) q = q.eq('app', app);
-    if (kind) q = q.eq('kind', kind);
-    if (projectId) q = q.eq('project_id', projectId);
-    return q;
+  const { data: stats, error: statsError } = await supabase.rpc('admin_email_log_stats', {
+    p_date_from: from.toISOString(),
+    p_date_to: to.toISOString(),
+    p_status: status || null,
+    p_app: app || null,
+    p_kind: kind || null,
+    p_project_id: projectId || null,
+  });
+
+  if (statsError) {
+    return NextResponse.json({ error: statsError.message }, { status: 500 });
   }
 
-  const [{ count: total }, { count: sent }, { count: failed }, { count: queued }] = await Promise.all(
-    [
-      baseQuery(),
-      baseQuery().eq('status', 'sent'),
-      baseQuery().eq('status', 'failed'),
-      baseQuery().eq('status', 'queued'),
-    ],
-  );
+  const payload = (stats ?? { total: 0, sent: 0, failed: 0, queued: 0 }) as {
+    total?: number;
+    sent?: number;
+    failed?: number;
+    queued?: number;
+  };
 
-  const sentN = sent ?? 0;
-  const failedN = failed ?? 0;
-  const queuedN = queued ?? 0;
+  const sentN = payload.sent ?? 0;
+  const failedN = payload.failed ?? 0;
+  const queuedN = payload.queued ?? 0;
   const denom = sentN + failedN;
   const deliveryPct = denom > 0 ? Math.round((sentN / denom) * 100) : 0;
 
   return NextResponse.json({
-    total: total ?? 0,
+    total: payload.total ?? 0,
     sent30d: sentN,
     failed: failedN,
     inQueue: queuedN,
@@ -65,4 +65,3 @@ export async function GET(request: NextRequest) {
     dateTo: to.toISOString(),
   });
 }
-

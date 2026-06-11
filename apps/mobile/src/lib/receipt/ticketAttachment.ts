@@ -120,7 +120,9 @@ async function buildTicketSvg(ticket: TicketAttachmentData): Promise<string> {
 }
 
 /** Full ticket card as PNG (base64, no data-URL prefix). */
-export async function buildTicketAttachmentPngBase64(ticket: TicketAttachmentData): Promise<string> {
+export async function buildTicketAttachmentPngBase64(
+  ticket: TicketAttachmentData,
+): Promise<string> {
   const svg = await buildTicketSvg(ticket);
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   return png.toString('base64');

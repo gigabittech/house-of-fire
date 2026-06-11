@@ -1,5 +1,5 @@
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { REACTION_EMOJI, totalReactions } from './reactions';
+import { activeReactionEntries, REACTION_EMOJI } from './reactions';
 import type { Post, ReactionKey } from './types';
 
 export interface ReactionStripProps {
@@ -11,6 +11,11 @@ export interface ReactionStripProps {
   onOpenPicker?: () => void;
 }
 
+function resolveMyReaction(myReactions: ReactionKey[] | undefined, post: Post): ReactionKey | null {
+  const fromProp = myReactions?.[0] ?? post.myReaction ?? null;
+  return fromProp;
+}
+
 export function ReactionStrip({
   post,
   compact = false,
@@ -19,11 +24,11 @@ export function ReactionStrip({
   onToggle,
   onOpenPicker,
 }: ReactionStripProps) {
-  const activeReactions = myReactions ?? post.myReactions ?? (post.myReaction ? [post.myReaction] : []);
-  const keys = Object.keys(post.reactions ?? {}) as ReactionKey[];
-  const hasMine = activeReactions.length > 0;
+  const myReaction = resolveMyReaction(myReactions, post);
+  const entries = activeReactionEntries(post.reactions);
+  const hasMine = myReaction !== null;
 
-  if (keys.length === 0 && !interactive) {
+  if (entries.length === 0 && !interactive) {
     return (
       <span style={{ fontFamily: fontFamilies.body, fontSize: 11, color: colors.textSec }}>
         Be the first to react
@@ -31,58 +36,71 @@ export function ReactionStrip({
     );
   }
 
-  const total = totalReactions(post);
+  const chipStyle = (key: ReactionKey) => {
+    const isMine = myReaction === key;
+    return {
+      display: 'inline-flex' as const,
+      alignItems: 'center' as const,
+      gap: 4,
+      padding: compact ? '3px 7px' : '4px 8px',
+      borderRadius: 14,
+      background: isMine ? 'rgba(232,101,26,0.14)' : colors.elevated,
+      border: `1px solid ${isMine ? 'rgba(232,101,26,0.45)' : colors.border}`,
+      fontFamily: fontFamilies.mono,
+      fontSize: 11,
+      fontWeight: 500,
+      fontVariantNumeric: 'tabular-nums' as const,
+      color: colors.text,
+      lineHeight: 1,
+    };
+  };
 
-  const inner = (
-    <>
-      <span style={{ display: 'inline-flex' }}>
-        {(keys.length > 0 ? keys : activeReactions).slice(0, 3).map((k, i) => (
-          <span
-            key={k}
-            style={{ fontSize: compact ? 11 : 12, lineHeight: 1, marginLeft: i ? -4 : 0 }}
-          >
-            {REACTION_EMOJI[k]}
-          </span>
-        ))}
-        {keys.length === 0 && interactive && (
-          <span style={{ fontSize: compact ? 11 : 12, lineHeight: 1 }}>+</span>
-        )}
-      </span>
-      <span
-        style={{
-          fontFamily: fontFamilies.mono,
-          fontSize: 11,
-          color: colors.text,
-          fontVariantNumeric: 'tabular-nums',
-          fontWeight: 500,
-        }}
-      >
-        {total > 0 ? total : interactive ? 'React' : 0}
-      </span>
-    </>
+  const chips = (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+      {entries.map(({ key, count }) => (
+        <span
+          key={key}
+          style={chipStyle(key)}
+          title={myReaction === key ? 'Your reaction' : undefined}
+        >
+          <span style={{ fontSize: compact ? 11 : 12, lineHeight: 1 }}>{REACTION_EMOJI[key]}</span>
+          <span>{count}</span>
+        </span>
+      ))}
+      {entries.length === 0 && interactive && (
+        <span style={{ fontFamily: fontFamilies.body, fontSize: 11, color: colors.textSec }}>
+          React
+        </span>
+      )}
+    </span>
   );
 
   const stripStyle = {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: 6,
-    padding: '5px 10px',
+    padding: entries.length > 0 ? '4px 6px' : '5px 10px',
     borderRadius: 16,
-    background: hasMine ? 'rgba(232,101,26,0.12)' : colors.elevated,
-    border: `1px solid ${hasMine ? 'rgba(232,101,26,0.35)' : colors.border}`,
+    background: hasMine && entries.length === 0 ? 'rgba(232,101,26,0.12)' : 'transparent',
+    border:
+      hasMine && entries.length === 0
+        ? `1px solid rgba(232,101,26,0.35)`
+        : entries.length > 0
+          ? 'none'
+          : `1px solid ${colors.border}`,
     cursor: interactive ? 'pointer' : undefined,
     transition: 'transform 120ms ease',
   };
 
   if (!interactive) {
-    if (keys.length === 0) {
+    if (entries.length === 0) {
       return (
         <span style={{ fontFamily: fontFamilies.body, fontSize: 11, color: colors.textSec }}>
           Be the first to react
         </span>
       );
     }
-    return <span style={stripStyle}>{inner}</span>;
+    return <span style={stripStyle}>{chips}</span>;
   }
 
   return (
@@ -93,8 +111,8 @@ export function ReactionStrip({
         e.stopPropagation();
         if (onOpenPicker) {
           onOpenPicker();
-        } else if (onToggle && keys.length > 0) {
-          onToggle(keys[0]!);
+        } else if (onToggle && entries.length > 0) {
+          onToggle(entries[0]!.key);
         }
       }}
       style={{
@@ -104,7 +122,7 @@ export function ReactionStrip({
         color: colors.textSec,
       }}
     >
-      {inner}
+      {chips}
     </button>
   );
 }

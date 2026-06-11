@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
 
   const storagePath = `announce/${auth.userId}/${Date.now()}.${ext}`;
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.storage.from('event-photos').createSignedUploadUrl(storagePath);
+  const { data, error } = await admin.storage
+    .from('event-photos')
+    .createSignedUploadUrl(storagePath);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

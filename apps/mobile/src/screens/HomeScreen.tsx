@@ -5,7 +5,9 @@ import type { Post as UiPost } from '@hof/ui';
 import { EmptyState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -24,7 +26,7 @@ import {
 } from '@/lib/eventDisplay';
 import { archiveThemePath } from '@/lib/resolveEventSlug';
 import { photoSrc } from '../data/photos';
-import { apiPostToUi } from '../lib/postUi';
+import { apiPostToUi, type ApiPost } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
 import NotificationsSheet from '../sheets/NotificationsSheet';
 
@@ -135,7 +137,7 @@ export default function HomeScreen() {
   const [topPostsLoading, setTopPostsLoading] = useState(true);
   const [lastNight, setLastNight] = useState<{
     event: { edition_number: number; name: string; date: string };
-    photos: Array<{ id: string; public_url: string | null }>;
+    photos: Array<{ id: string; public_url: string | null; thumb_url?: string | null }>;
   } | null>(null);
   const [lastNightLoading, setLastNightLoading] = useState(true);
 
@@ -154,25 +156,14 @@ export default function HomeScreen() {
       .finally(() => setEventLoaded(true));
   }, []);
 
-  useEffect(() => {
-    setLastNightLoading(true);
-    fetch('/api/events/last-night')
-      .then((r) => r.json())
-      .then((d: {
-        event?: { edition_number: number; name: string; date: string } | null;
-        photos?: Array<{ id: string; public_url: string | null }>;
-      }) => {
-        if (d.event) {
-          setLastNight({ event: d.event, photos: d.photos ?? [] });
-        } else {
-          setLastNight(null);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLastNightLoading(false));
-  }, []);
+  useEventInventory({
+    event: upcomingEvent,
+    onEventChange: setUpcomingEvent,
+    enabled: eventLoaded,
+    pollIntervalMs: INVENTORY_POLL_MS.home,
+  });
 
-  useEffect(() => {
+  const loadTopPosts = useCallback(() => {
     setTopPostsLoading(true);
     fetch('/api/posts?channel=general&limit=3')
       .then((r) => r.json())
@@ -182,6 +173,71 @@ export default function HomeScreen() {
       .catch(console.error)
       .finally(() => setTopPostsLoading(false));
   }, []);
+
+  const patchTopPost = useCallback(
+    (row: { id: string; reaction_counts?: Record<string, number>; reply_count?: number }) => {
+      setTopPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reactions: row.reaction_counts ?? p.reactions,
+                replyCount: row.reply_count ?? p.replyCount,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  useCommunityRealtime({
+    channel: 'general',
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        setTopPosts((prev) => {
+          const next = [apiPostToUi(d.post!), ...prev.filter((p) => p.id !== d.post!.id)];
+          return next.slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: (row) => patchTopPost(row),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) setTopPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadTopPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED,
+  });
+
+  useEffect(() => {
+    setLastNightLoading(true);
+    fetch('/api/events/last-night')
+      .then((r) => r.json())
+      .then(
+        (d: {
+          event?: { edition_number: number; name: string; date: string } | null;
+          photos?: Array<{ id: string; public_url: string | null; thumb_url?: string | null }>;
+        }) => {
+          if (d.event) {
+            setLastNight({ event: d.event, photos: d.photos ?? [] });
+          } else {
+            setLastNight(null);
+          }
+        },
+      )
+      .catch(console.error)
+      .finally(() => setLastNightLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadTopPosts();
+  }, [loadTopPosts]);
 
   const inventoryBadgeLabel = eventInventoryBadgeLabel(
     upcomingEvent ?? { status: 'upcoming' },
@@ -200,7 +256,9 @@ export default function HomeScreen() {
   const { isWide, isDesktop, isMobile } = useResponsive();
 
   const heroSrc = resolveEventHeroImage(upcomingEvent?.hero_image_url);
-  const sectionPad = isMobile ? `${spacing[5]}px 0 ${spacing[1]}px` : `${spacing[6]}px 0 ${spacing[2]}px`;
+  const sectionPad = isMobile
+    ? `${spacing[5]}px 0 ${spacing[1]}px`
+    : `${spacing[6]}px 0 ${spacing[2]}px`;
 
   const headerActions = useMemo(
     () => (
@@ -279,100 +337,100 @@ export default function HomeScreen() {
   }, [isWide, isDesktop]);
 
   return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: colors.bg,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Scrollable content — hero full bleed; body in centered column */}
       <div
+        className="hof-scroll hof-app-page-scroll"
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          background: colors.bg,
-          overflow: 'hidden',
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
-        {/* Scrollable content — hero full bleed; body in centered column */}
-        <div
-          className="hof-scroll hof-app-page-scroll"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          }}
-        >
-          <EventHeroBackground src={heroSrc}>
-              <div style={{ ...pageColumn, paddingBottom: spacing[3] }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: spacing[3],
-                }}
-              >
-                <Pill tone={inventoryBadgeTone}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: 5,
-                      height: 5,
-                      borderRadius: 5,
-                      background: inventoryBadgeTone === 'success' ? colors.success : colors.bg,
-                      marginRight: 4,
-                      verticalAlign: 'middle',
-                      animation:
-                        inventoryBadgeTone === 'neutral'
-                          ? undefined
-                          : 'hof-pulse 1.4s ease-in-out infinite',
-                    }}
-                  />
-                  {inventoryBadgeLabel}
-                </Pill>
-                <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 600,
-                  fontSize: 26,
-                  color: colors.text,
-                  marginTop: 4,
-                  letterSpacing: '-0.01em',
-                  lineHeight: 1.1,
-                  textTransform: 'uppercase',
-                }}
-              >
-                {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next theme')}
-                {upcomingEvent?.tagline ? (
-                  <span
-                    style={{
-                      display: 'block',
-                      marginTop: spacing[2],
-                      color: colors.glow,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {upcomingEvent.tagline}
-                  </span>
-                ) : null}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: colors.textSec,
-                  marginTop: spacing[3],
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {upcomingEvent
-                  ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
-                  : eventLoaded
-                    ? ''
-                    : 'Loading next theme…'}
-              </div>
-              </div>
-          </EventHeroBackground>
+        <EventHeroBackground src={heroSrc}>
+          <div style={{ ...pageColumn, paddingBottom: spacing[3] }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: spacing[3],
+              }}
+            >
+              <Pill tone={inventoryBadgeTone}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 5,
+                    height: 5,
+                    borderRadius: 5,
+                    background: inventoryBadgeTone === 'success' ? colors.success : colors.bg,
+                    marginRight: 4,
+                    verticalAlign: 'middle',
+                    animation:
+                      inventoryBadgeTone === 'neutral'
+                        ? undefined
+                        : 'hof-pulse 1.4s ease-in-out infinite',
+                  }}
+                />
+                {inventoryBadgeLabel}
+              </Pill>
+              <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
+            </div>
+            <div
+              style={{
+                fontFamily: 'Clash Display',
+                fontWeight: 600,
+                fontSize: 26,
+                color: colors.text,
+                marginTop: 4,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next theme')}
+              {upcomingEvent?.tagline ? (
+                <span
+                  style={{
+                    display: 'block',
+                    marginTop: spacing[2],
+                    color: colors.glow,
+                    fontWeight: 500,
+                  }}
+                >
+                  {upcomingEvent.tagline}
+                </span>
+              ) : null}
+            </div>
+            <div
+              style={{
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: colors.textSec,
+                marginTop: spacing[3],
+                letterSpacing: '0.04em',
+              }}
+            >
+              {upcomingEvent
+                ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
+                : eventLoaded
+                  ? ''
+                  : 'Loading next theme…'}
+            </div>
+          </div>
+        </EventHeroBackground>
 
-          <div style={pageColumn}>
+        <div style={pageColumn}>
           {/* Countdown */}
           <div style={{ padding: sectionPad }}>
             <div
@@ -537,216 +595,216 @@ export default function HomeScreen() {
 
           {/* From the house — COMMUNITY_FEATURE */}
           {COMMUNITY_FEATURE_ENABLED ? (
-          <div style={{ padding: sectionPad }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                marginBottom: spacing[3],
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    color: colors.amber,
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  From the house
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'Clash Display',
-                    fontWeight: 600,
-                    fontSize: 20,
-                    color: colors.text,
-                    marginTop: 4,
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  What we&apos;re saying
-                </div>
-              </div>
-              <button
-                className="hof-btn"
-                onClick={() => router.push('/community')}
+            <div style={{ padding: sectionPad }}>
+              <div
                 style={{
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: colors.amber,
-                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  marginBottom: spacing[3],
                 }}
               >
-                Open board →
-              </button>
-            </div>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 10,
+                      color: colors.amber,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    From the house
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Clash Display',
+                      fontWeight: 600,
+                      fontSize: 20,
+                      color: colors.text,
+                      marginTop: 4,
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    What we&apos;re saying
+                  </div>
+                </div>
+                <button
+                  className="hof-btn"
+                  onClick={() => router.push('/community')}
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.amber,
+                    fontWeight: 500,
+                  }}
+                >
+                  Open board →
+                </button>
+              </div>
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              {topPostsLoading ? (
-                [0, 1, 2].map((i) => <FeedSkeletonCard key={i} />)
-              ) : topPosts.length === 0 ? (
-                <EmptyState
-                  title="Be the first to post"
-                  body="The board is quiet."
-                  action={
-                    <button
-                      className="hof-btn hof-press"
-                      onClick={() => router.push('/community')}
-                      style={{
-                        padding: '10px 20px',
-                        background: colors.amber,
-                        border: `1px solid ${colors.amber}`,
-                        borderRadius: 8,
-                        fontFamily: 'Inter',
-                        fontWeight: 600,
-                        fontSize: 14,
-                        color: colors.bg,
-                      }}
-                    >
-                      Open board
-                    </button>
-                  }
-                />
-              ) : (
-                topPosts.map((p) => (
-                  <FeedPost
-                    key={p.id}
-                    post={p}
-                    onOpen={() => router.push('/community/' + p.id)}
-                    resolvePhoto={photoSrc}
-                    pressFeedback={false}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                {topPostsLoading ? (
+                  [0, 1, 2].map((i) => <FeedSkeletonCard key={i} />)
+                ) : topPosts.length === 0 ? (
+                  <EmptyState
+                    title="Be the first to post"
+                    body="The board is quiet."
+                    action={
+                      <button
+                        className="hof-btn hof-press"
+                        onClick={() => router.push('/community')}
+                        style={{
+                          padding: '10px 20px',
+                          background: colors.amber,
+                          border: `1px solid ${colors.amber}`,
+                          borderRadius: 8,
+                          fontFamily: 'Inter',
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: colors.bg,
+                        }}
+                      >
+                        Open board
+                      </button>
+                    }
                   />
-                ))
-              )}
+                ) : (
+                  topPosts.map((p) => (
+                    <FeedPost
+                      key={p.id}
+                      post={p}
+                      onOpen={() => router.push('/community/' + p.id)}
+                      resolvePhoto={photoSrc}
+                      pressFeedback={false}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-          </div>
           ) : null}
 
           {/* Photo strip — from the last night */}
           {!lastNightLoading && lastNight ? (
-          <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                marginBottom: spacing[3],
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    color: colors.textSec,
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  From the last night
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'Clash Display',
-                    fontWeight: 600,
-                    fontSize: 20,
-                    color: colors.text,
-                    marginTop: 4,
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  Theme {lastNight.event.edition_number} ·{' '}
-                  {formatEventDateShort(lastNight.event.date)}
-                </div>
-              </div>
-              <span
-                onClick={() => router.push('/archive')}
+            <div style={{ padding: `${spacing[5]}px 0 ${spacing[4]}px` }}>
+              <div
                 style={{
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: colors.amber,
-                  fontWeight: 500,
-                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  marginBottom: spacing[3],
                 }}
               >
-                See all →
-              </span>
-            </div>
-            <div
-              className="hof-scroll"
-              style={{
-                display: 'flex',
-                gap: 8,
-                overflowX: 'auto',
-              }}
-            >
-              {(lastNight.photos.length > 0
-                ? lastNight.photos.map((photo, idx) => ({
-                    key: photo.id,
-                    src: photo.public_url ?? photoSrc(idx),
-                    idx,
-                  }))
-                : [0, 1, 2, 3].map((seed, idx) => ({
-                    key: `placeholder-${seed}-${idx}`,
-                    src: photoSrc(seed),
-                    idx,
-                  }))
-              ).map(({ key, src, idx }) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="hof-btn hof-press"
-                  onClick={() => router.push(archiveThemePath(lastNight.event.edition_number))}
-                  style={{
-                    flex: '0 0 auto',
-                    width: 150,
-                    height: 200,
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    background: colors.elevated,
-                    border: `1px solid ${colors.border}`,
-                    position: 'relative',
-                    padding: 0,
-                  }}
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    unoptimized={src.startsWith('http')}
-                    style={{
-                      objectFit: 'cover',
-                    }}
-                  />
+                <div>
                   <div
                     style={{
-                      position: 'absolute',
-                      bottom: 6,
-                      left: 8,
-                      fontFamily: 'JetBrains Mono',
+                      fontFamily: 'Inter',
                       fontSize: 10,
-                      color: colors.text,
-                      background: 'rgba(10,10,8,0.6)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
+                      color: colors.textSec,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
                     }}
                   >
-                    {lastNight.event.edition_number} · {String(idx + 1).padStart(3, '0')}
+                    From the last night
                   </div>
-                </button>
-              ))}
+                  <div
+                    style={{
+                      fontFamily: 'Clash Display',
+                      fontWeight: 600,
+                      fontSize: 20,
+                      color: colors.text,
+                      marginTop: 4,
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    Theme {lastNight.event.edition_number} ·{' '}
+                    {formatEventDateShort(lastNight.event.date)}
+                  </div>
+                </div>
+                <span
+                  onClick={() => router.push('/archive')}
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.amber,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  See all →
+                </span>
+              </div>
+              <div
+                className="hof-scroll"
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                }}
+              >
+                {(lastNight.photos.length > 0
+                  ? lastNight.photos.map((photo, idx) => ({
+                      key: photo.id,
+                      src: photo.thumb_url ?? photo.public_url ?? photoSrc(idx),
+                      idx,
+                    }))
+                  : [0, 1, 2, 3].map((seed, idx) => ({
+                      key: `placeholder-${seed}-${idx}`,
+                      src: photoSrc(seed),
+                      idx,
+                    }))
+                ).map(({ key, src, idx }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="hof-btn hof-press"
+                    onClick={() => router.push(archiveThemePath(lastNight.event.edition_number))}
+                    style={{
+                      flex: '0 0 auto',
+                      width: 150,
+                      height: 200,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      background: colors.elevated,
+                      border: `1px solid ${colors.border}`,
+                      position: 'relative',
+                      padding: 0,
+                    }}
+                  >
+                    <Image
+                      src={src}
+                      alt=""
+                      fill
+                      unoptimized={src.startsWith('http')}
+                      style={{
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 6,
+                        left: 8,
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 10,
+                        color: colors.text,
+                        background: 'rgba(10,10,8,0.6)',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                      }}
+                    >
+                      {lastNight.event.edition_number} · {String(idx + 1).padStart(3, '0')}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
           ) : null}
 
           {/* Newsletter */}
@@ -853,26 +911,26 @@ export default function HomeScreen() {
           </div>
 
           <div style={{ height: spacing[2] }} />
-          </div>
         </div>
-
-        <CalendarSheet
-          open={calOpen}
-          onClose={() => setCalOpen(false)}
-          event={upcomingEvent ?? undefined}
-        />
-        <NotificationsSheet
-          open={notifsOpen}
-          onClose={() => setNotifsOpen(false)}
-          onOpenPost={
-            COMMUNITY_FEATURE_ENABLED
-              ? (id) => {
-                  setNotifsOpen(false);
-                  router.push('/community/' + id);
-                }
-              : undefined
-          }
-        />
       </div>
+
+      <CalendarSheet
+        open={calOpen}
+        onClose={() => setCalOpen(false)}
+        event={upcomingEvent ?? undefined}
+      />
+      <NotificationsSheet
+        open={notifsOpen}
+        onClose={() => setNotifsOpen(false)}
+        onOpenPost={
+          COMMUNITY_FEATURE_ENABLED
+            ? (id) => {
+                setNotifsOpen(false);
+                router.push('/community/' + id);
+              }
+            : undefined
+        }
+      />
+    </div>
   );
 }

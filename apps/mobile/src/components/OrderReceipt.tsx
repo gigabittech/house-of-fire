@@ -156,7 +156,10 @@ export function OrderReceipt({ data, printTarget = false }: OrderReceiptProps) {
           </thead>
           <tbody>
             {data.lineItems.map((item) => (
-              <tr key={`${item.description}-${item.subline ?? ''}`} style={{ borderTop: '1px solid #eee' }}>
+              <tr
+                key={`${item.description}-${item.subline ?? ''}`}
+                style={{ borderTop: '1px solid #eee' }}
+              >
                 <td style={{ padding: '12px 0', verticalAlign: 'top' }}>
                   <div style={{ fontWeight: 500 }}>{item.description}</div>
                   {item.subline ? (
@@ -208,7 +211,9 @@ export function OrderReceipt({ data, printTarget = false }: OrderReceiptProps) {
             }}
           >
             <span>Subtotal</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatReceiptCents(footerSubtotal)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {formatReceiptCents(footerSubtotal)}
+            </span>
           </div>
           <div
             style={{
@@ -220,7 +225,9 @@ export function OrderReceipt({ data, printTarget = false }: OrderReceiptProps) {
             }}
           >
             <span>Tax</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatReceiptCents(data.taxCents)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {formatReceiptCents(data.taxCents)}
+            </span>
           </div>
           <div
             style={{

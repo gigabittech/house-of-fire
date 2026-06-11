@@ -110,12 +110,7 @@ export default function TransferSheet({
   }
 
   return (
-    <SheetShell
-      open={open}
-      onClose={onClose}
-      title="Transfer your ticket"
-      sub={ticketSummary}
-    >
+    <SheetShell open={open} onClose={onClose} title="Transfer your ticket" sub={ticketSummary}>
       {stage === 'form' && (
         <>
           <Label>Who's it going to?</Label>

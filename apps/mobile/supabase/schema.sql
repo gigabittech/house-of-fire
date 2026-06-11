@@ -320,6 +320,7 @@ create table public.notifications (
 alter table public.notifications enable row level security;
 create policy "Users can read own notifications" on public.notifications for select using (user_id = auth.uid());
 create policy "Users can mark own notifications read" on public.notifications for update using (user_id = auth.uid());
+create policy "Users can delete own notifications" on public.notifications for delete using (user_id = auth.uid());
 create policy "Service role can create notifications" on public.notifications for insert with check (true);
 
 -- ─── Newsletter Subscribers ──────────────────────────────────────────────────

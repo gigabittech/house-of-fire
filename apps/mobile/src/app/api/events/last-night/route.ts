@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CUSTOMER_VISIBLE_PHOTO_STATUS } from '../../../../lib/eventPhotos.server';
+import { eventPhotoGridUrl } from '@hof/media';
+import { listEventPhotosRpc } from '../../../../lib/eventPhotosApi.server';
 import { createServerSupabaseClient } from '../../../../lib/supabase.server';
 
 const STRIP_PHOTO_LIMIT = 8;
@@ -23,24 +24,24 @@ export async function GET() {
     return NextResponse.json({ event: null, photos: [] });
   }
 
-  const { data: photos, error: photosError } = await supabase
-    .from('event_photos')
-    .select('id, public_url')
-    .eq('event_id', event.id)
-    .eq('status', CUSTOMER_VISIBLE_PHOTO_STATUS)
-    .order('created_at', { ascending: false })
-    .limit(STRIP_PHOTO_LIMIT);
+  try {
+    const { photos } = await listEventPhotosRpc(supabase, event.id, null, STRIP_PHOTO_LIMIT);
 
-  if (photosError) {
-    return NextResponse.json({ error: photosError.message }, { status: 500 });
+    return NextResponse.json({
+      event: {
+        edition_number: event.edition_number,
+        name: event.name,
+        date: event.date,
+      },
+      photos: photos.map((photo) => ({
+        id: photo.id,
+        public_url: photo.public_url,
+        storage_path: photo.storage_path,
+        thumb_url: eventPhotoGridUrl(photo),
+      })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load photos';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({
-    event: {
-      edition_number: event.edition_number,
-      name: event.name,
-      date: event.date,
-    },
-    photos: photos ?? [],
-  });
 }

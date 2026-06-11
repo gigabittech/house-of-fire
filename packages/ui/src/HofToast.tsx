@@ -83,7 +83,12 @@ export function HofToast({ kind = 'success', children, onDismiss }: HofToastProp
         </button>
       )}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <Icon name={config.icon} size={16} color={config.color} style={{ flexShrink: 0, marginTop: 1 }} />
+        <Icon
+          name={config.icon}
+          size={16}
+          color={config.color}
+          style={{ flexShrink: 0, marginTop: 1 }}
+        />
         <span
           style={{
             fontFamily: fontFamilies.body,

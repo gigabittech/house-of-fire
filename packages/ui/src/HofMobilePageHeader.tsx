@@ -66,7 +66,12 @@ export function HofMobilePageHeader({
           pointerEvents: 'auto',
         }}
       >
-        <a href={homeHref} aria-label="Home" className="hof-btn hof-press" style={hofChromeCircleBtn}>
+        <a
+          href={homeHref}
+          aria-label="Home"
+          className="hof-btn hof-press"
+          style={hofChromeCircleBtn}
+        >
           <img
             src={homeIconSrc}
             alt=""
@@ -84,7 +89,12 @@ export function HofMobilePageHeader({
                 aria-label="Back"
                 style={hofChromeCircleBtn}
               >
-                <Icon name="chev" size={16} color={colors.text} style={{ transform: 'rotate(180deg)' }} />
+                <Icon
+                  name="chev"
+                  size={16}
+                  color={colors.text}
+                  style={{ transform: 'rotate(180deg)' }}
+                />
               </button>
             ) : null}
             {actions}

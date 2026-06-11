@@ -4,11 +4,14 @@ import { colors, layoutChrome, layoutWidth } from '@hof/design-tokens';
 import type { Post as UiPost } from '@hof/ui';
 import { EmptyState, ErrorState, FeedPost, FeedSkeletonCard, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
+import { preventFocusScroll } from '@/lib/preventFocusScroll';
 import {
   formatCapacityMeta,
   formatDoorsRange,
@@ -24,7 +27,7 @@ import {
   type UpcomingEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
-import { apiPostToUi } from '../lib/postUi';
+import { apiPostToUi, type ApiPost } from '../lib/postUi';
 import CalendarSheet from '../sheets/CalendarSheet';
 import { MapSheet } from '../sheets/MapSheet';
 import { ShareSheet } from '../sheets/ShareSheet';
@@ -123,16 +126,24 @@ function TierCard({
   const isSold = tier.remaining === 0;
   return (
     <button
+      type="button"
       className="hof-btn hof-press"
+      onMouseDown={preventFocusScroll}
       onClick={onSelect}
       style={{
         textAlign: 'left',
         position: 'relative',
         padding: 16,
         background: selected ? colors.elevated : colors.surface,
-        border: selected
-          ? `2px solid ${isVip ? colors.gold : colors.amber}`
-          : `1px solid ${isVip ? 'rgba(201,148,42,0.4)' : colors.border}`,
+        border: `2px solid ${
+          selected
+            ? isVip
+              ? colors.gold
+              : colors.amber
+            : isVip
+              ? 'rgba(201,148,42,0.4)'
+              : colors.border
+        }`,
         borderRadius: 12,
         opacity: isSold ? 0.5 : 1,
         cursor: isSold ? 'not-allowed' : 'pointer',
@@ -264,22 +275,22 @@ function TierCard({
             Available
           </span>
         )}
-        {selected && !isSold && (
-          <span
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 12,
-              color: colors.amber,
-              fontWeight: 500,
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Icon name="check" size={14} color={colors.amber} /> Selected
-          </span>
-        )}
+        <span
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: colors.amber,
+            fontWeight: 500,
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            visibility: selected && !isSold ? 'visible' : 'hidden',
+          }}
+          aria-hidden={!selected || isSold}
+        >
+          <Icon name="check" size={14} color={colors.amber} /> Selected
+        </span>
       </div>
     </button>
   );
@@ -298,8 +309,17 @@ type LineupEntry = {
   sort_order: number;
 };
 
+function preserveScrollPosition(el: HTMLDivElement | null, update: () => void) {
+  const scrollTop = el?.scrollTop ?? 0;
+  update();
+  requestAnimationFrame(() => {
+    if (el) el.scrollTop = scrollTop;
+  });
+}
+
 export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: string) => void }) {
   const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedTier, setSelectedTier] = useState<string>('');
   const [openFaq, setOpenFaq] = useState(0);
   const [calOpen, setCalOpen] = useState(false);
@@ -326,19 +346,71 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .finally(() => setEventLoading(false));
   }, []);
 
-  useEffect(() => {
+  useEventInventory({
+    event: eventData,
+    onEventChange: setEventData,
+    enabled: !eventLoading,
+    pollIntervalMs: INVENTORY_POLL_MS.event,
+  });
+
+  const loadEventPosts = useCallback(() => {
     if (!eventData?.id) return;
     setPostsLoading(true);
     setPostsError(false);
     fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
       .then((r) => r.json())
       .then((d: { posts?: ApiPost[] }) => {
-        if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+        if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
         else setEventPosts([]);
       })
       .catch(() => setPostsError(true))
       .finally(() => setPostsLoading(false));
   }, [eventData?.id]);
+
+  const patchEventPost = useCallback(
+    (row: { id: string; reaction_counts?: Record<string, number>; reply_count?: number }) => {
+      setEventPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reactions: row.reaction_counts ?? p.reactions,
+                replyCount: row.reply_count ?? p.replyCount,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  useCommunityRealtime({
+    eventId: eventData?.id,
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        setEventPosts((prev) => {
+          const next = [apiPostToUi(d.post!), ...prev.filter((p) => p.id !== d.post!.id)];
+          return next.slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: (row) => patchEventPost(row),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) setEventPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadEventPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED && !!eventData?.id,
+  });
+
+  useEffect(() => {
+    loadEventPosts();
+  }, [loadEventPosts]);
 
   useEffect(() => {
     if (!eventData?.id) return;
@@ -356,35 +428,50 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const heroBadgeTone = eventHeroBadgeTone(eventData ?? { status: 'upcoming' }, rawTiers);
   const heroBadgeColors = eventHeroBadgeColors(heroBadgeTone);
 
-  const tiers: Tier[] = rawTiers
-    .filter((t) => t.status !== 'hidden')
-    .map((t) => {
-      const effective =
-        (t as { effective_status?: string }).effective_status ?? t.status;
-      const remaining =
-        effective === 'sold_out'
-          ? 0
-          : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
-      const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
-      const allInCents = t.price_cents + feeCents;
-      return {
-        id: t.id,
-        name: t.display_name ?? t.name,
-        price: allInCents / 100,
-        sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
-        remaining,
-        tone: (effective === 'sold_out' || remaining <= 0
-          ? 'soldout'
-          : t.name === 'vip'
-            ? 'gold'
-            : 'normal') as Tier['tone'],
-      };
+  const tiers = useMemo<Tier[]>(
+    () =>
+      rawTiers
+        .filter((t) => t.status !== 'hidden')
+        .map((t) => {
+          const effective = (t as { effective_status?: string }).effective_status ?? t.status;
+          const remaining =
+            effective === 'sold_out'
+              ? 0
+              : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
+          const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
+          const allInCents = t.price_cents + feeCents;
+          return {
+            id: t.id,
+            name: t.display_name ?? t.name,
+            price: allInCents / 100,
+            sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
+            remaining,
+            tone: (effective === 'sold_out' || remaining <= 0
+              ? 'soldout'
+              : t.name === 'vip'
+                ? 'gold'
+                : 'normal') as Tier['tone'],
+          };
+        }),
+    [rawTiers],
+  );
+
+  const selectTier = useCallback((tierId: string) => {
+    preserveScrollPosition(scrollRef.current, () => setSelectedTier(tierId));
+  }, []);
+
+  const toggleFaq = useCallback((index: number) => {
+    preserveScrollPosition(scrollRef.current, () => {
+      setOpenFaq((prev) => (prev === index ? -1 : index));
     });
+  }, []);
 
   useEffect(() => {
     if (tiers.length > 0 && selectedTier === '') {
       const first = tiers.find((t) => t.remaining > 0);
-      if (first) setSelectedTier(first.id);
+      if (first) {
+        preserveScrollPosition(scrollRef.current, () => setSelectedTier(first.id));
+      }
     }
   }, [tiers, selectedTier]);
 
@@ -395,7 +482,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     { t: '1:00', name: 'After', note: 'DJ residents close' },
   ];
 
-  const apiFaqs = parseEventFaqs(eventData?.faqs);
+  const dressCodeText = eventData?.dress_code?.trim() || '';
+  const apiFaqs = parseEventFaqs(eventData?.faqs).filter(
+    (f) => !dressCodeText || !/^dress code/i.test(f.q.trim()),
+  );
   const faqs =
     apiFaqs.length > 0
       ? apiFaqs
@@ -404,10 +494,14 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             q: 'Where do I get in?',
             a: 'The side entrance on 23rd Street. Look for the orange light. We do not use the main door.',
           },
-          {
-            q: 'Dress code?',
-            a: 'No code. People show up looking like themselves. Wear what makes you move.',
-          },
+          ...(dressCodeText
+            ? []
+            : [
+                {
+                  q: 'Dress code?',
+                  a: 'No code. People show up looking like themselves. Wear what makes you move.',
+                },
+              ]),
           {
             q: 'Is there a coat check?',
             a: 'Yes — $3. Cash or in-app. The line moves fastest before 10:30.',
@@ -455,11 +549,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             </span>
           }
         />
-        <AppHeaderIconButton
-          icon="share"
-          label="Share event"
-          onClick={() => setShareOpen(true)}
-        />
+        <AppHeaderIconButton icon="share" label="Share event" onClick={() => setShareOpen(true)} />
       </>
     ),
     [],
@@ -491,108 +581,110 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   if (!eventLoading && !eventData) {
     return (
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            background: colors.bg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <EmptyState
-            icon="calendar"
-            title={NO_EVENTS_MESSAGE}
-            action={
-              <button
-                className="hof-btn hof-press"
-                onClick={() => router.push('/')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  background: colors.amber,
-                  border: `1px solid ${colors.amber}`,
-                  fontFamily: 'Inter',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: colors.bg,
-                }}
-              >
-                Back to home
-              </button>
-            }
-          />
-        </div>
-    );
-  }
-
-  return (
       <div
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
           background: colors.bg,
-          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {/* Scrollable content — hero full bleed; body in centered column */}
-        <div
-          className="hof-scroll hof-app-page-scroll"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          }}
-        >
-          <EventHeroBackground src={heroSrc}>
-              <div style={pageColumn}>
-              <span
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  background: heroBadgeColors.background,
-                  border: `1px solid ${heroBadgeColors.border}`,
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: heroBadgeColors.color,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {eventHeroBadgeLabel(
-                  eventData ?? { edition_number: 0, status: 'upcoming' },
-                  rawTiers,
-                )}
-              </span>
-              <div
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 700,
-                  fontSize: 38,
-                  lineHeight: 1,
-                  color: colors.text,
-                  marginTop: 10,
-                  letterSpacing: '-0.02em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {eventData?.name ?? 'Next theme'}
-                {eventData?.tagline ? (
-                  <>
-                    <br />
-                    <span style={{ color: colors.amber }}>{eventData.tagline}</span>
-                  </>
-                ) : null}
-              </div>
-              </div>
-          </EventHeroBackground>
+        <EmptyState
+          icon="calendar"
+          title={NO_EVENTS_MESSAGE}
+          action={
+            <button
+              className="hof-btn hof-press"
+              onClick={() => router.push('/')}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: colors.amber,
+                border: `1px solid ${colors.amber}`,
+                fontFamily: 'Inter',
+                fontWeight: 600,
+                fontSize: 14,
+                color: colors.bg,
+              }}
+            >
+              Back to home
+            </button>
+          }
+        />
+      </div>
+    );
+  }
 
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: colors.bg,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Scrollable content — hero full bleed; body in centered column */}
+      <div
+        ref={scrollRef}
+        className="hof-scroll hof-app-page-scroll"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          overflowAnchor: 'auto',
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
+        }}
+      >
+        <EventHeroBackground src={heroSrc}>
           <div style={pageColumn}>
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 20,
+                background: heroBadgeColors.background,
+                border: `1px solid ${heroBadgeColors.border}`,
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: 600,
+                color: heroBadgeColors.color,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {eventHeroBadgeLabel(
+                eventData ?? { edition_number: 0, status: 'upcoming' },
+                rawTiers,
+              )}
+            </span>
+            <div
+              style={{
+                fontFamily: 'Clash Display',
+                fontWeight: 700,
+                fontSize: 38,
+                lineHeight: 1,
+                color: colors.text,
+                marginTop: 10,
+                letterSpacing: '-0.02em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {eventData?.name ?? 'Next theme'}
+              {eventData?.tagline ? (
+                <>
+                  <br />
+                  <span style={{ color: colors.amber }}>{eventData.tagline}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </EventHeroBackground>
+
+        <div style={pageColumn}>
           {/* Meta */}
           <div
             style={{
@@ -619,6 +711,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               label="Capacity"
               value={formatCapacityMeta(eventCapacity, ticketsSold)}
             />
+            {dressCodeText ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <MetaItem icon="star" label="Dress code" value={dressCodeText} />
+              </div>
+            ) : null}
           </div>
 
           {/* Add to Calendar */}
@@ -693,7 +790,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
                 key={t.id}
                 tier={t}
                 selected={selectedTier === t.id}
-                onSelect={() => t.remaining > 0 && setSelectedTier(t.id)}
+                onSelect={() => t.remaining > 0 && selectTier(t.id)}
               />
             ))}
           </div>
@@ -1171,138 +1268,154 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* Talking about this — COMMUNITY_FEATURE */}
           {COMMUNITY_FEATURE_ENABLED ? (
-          <>
-          <SectionLabel>Talking about this</SectionLabel>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {postsLoading && (
-              <>
-                <FeedSkeletonCard />
-                <FeedSkeletonCard />
-              </>
-            )}
-            {!postsLoading && postsError && (
-              <ErrorState
-                retry={() => {
-                  if (!eventData?.id) return;
-                  setPostsLoading(true);
-                  setPostsError(false);
-                  fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
-                    .then((r) => r.json())
-                    .then((d: { posts?: ApiPost[] }) => {
-                      if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
-                      else setEventPosts([]);
-                    })
-                    .catch(() => setPostsError(true))
-                    .finally(() => setPostsLoading(false));
-                }}
-              />
-            )}
-            {!postsLoading &&
-              !postsError &&
-              eventPosts.map((p) => (
-                <FeedPost
-                  key={p.id}
-                  post={p}
-                  compact
-                  onOpen={() => router.push('/community/' + p.id)}
-                  resolvePhoto={photoSrc}
-                />
-              ))}
-            <button
-              className="hof-btn hof-press"
-              onClick={() => router.push('/community')}
-              style={{
-                padding: '12px 14px',
-                background: colors.surface,
-                border: `1px dashed ${colors.border}`,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontFamily: 'Inter',
-                fontSize: 13,
-                color: colors.text,
-              }}
-            >
-              <span
+            <>
+              <SectionLabel>Talking about this</SectionLabel>
+              <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
+                  flexDirection: 'column',
+                  gap: 8,
                 }}
               >
-                <Icon name="chat" size={16} color={colors.amber} />
-                Open the Theme 24 thread
-              </span>
-              <Icon name="chev" size={14} color={colors.textSec} />
-            </button>
-          </div>
-          </>
+                {postsLoading && (
+                  <>
+                    <FeedSkeletonCard />
+                    <FeedSkeletonCard />
+                  </>
+                )}
+                {!postsLoading && postsError && (
+                  <ErrorState
+                    retry={() => {
+                      if (!eventData?.id) return;
+                      setPostsLoading(true);
+                      setPostsError(false);
+                      fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
+                        .then((r) => r.json())
+                        .then((d: { posts?: ApiPost[] }) => {
+                          if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
+                          else setEventPosts([]);
+                        })
+                        .catch(() => setPostsError(true))
+                        .finally(() => setPostsLoading(false));
+                    }}
+                  />
+                )}
+                {!postsLoading &&
+                  !postsError &&
+                  eventPosts.map((p) => (
+                    <FeedPost
+                      key={p.id}
+                      post={p}
+                      compact
+                      onOpen={() => router.push('/community/' + p.id)}
+                      resolvePhoto={photoSrc}
+                    />
+                  ))}
+                <button
+                  className="hof-btn hof-press"
+                  onClick={() => router.push('/community')}
+                  style={{
+                    padding: '12px 14px',
+                    background: colors.surface,
+                    border: `1px dashed ${colors.border}`,
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <Icon name="chat" size={16} color={colors.amber} />
+                    Open the Theme 24 thread
+                  </span>
+                  <Icon name="chev" size={14} color={colors.textSec} />
+                </button>
+              </div>
+            </>
           ) : null}
 
           {/* FAQ */}
           <SectionLabel>FAQ</SectionLabel>
           <div>
-            {faqs.map((f, i) => (
-              <button
-                key={i}
-                className="hof-btn"
-                onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '14px 0',
-                  borderBottom: i < faqs.length - 1 ? `1px solid ${colors.border}` : 'none',
-                }}
-              >
-                <div
+            {faqs.map((f, i) => {
+              const isOpen = openFaq === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className="hof-btn"
+                  onMouseDown={preventFocusScroll}
+                  onClick={() => toggleFaq(i)}
+                  aria-expanded={isOpen}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '14px 0',
+                    borderBottom: i < faqs.length - 1 ? `1px solid ${colors.border}` : 'none',
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: 'Inter',
-                      fontWeight: 500,
-                      fontSize: 14,
-                      color: colors.text,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
                     }}
                   >
-                    {f.q}
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: colors.text,
+                      }}
+                    >
+                      {f.q}
+                    </div>
+                    <Icon
+                      name="chevDn"
+                      size={16}
+                      color={colors.textSec}
+                      style={{
+                        transform: isOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 180ms ease',
+                        flexShrink: 0,
+                      }}
+                    />
                   </div>
-                  <Icon
-                    name="chevDn"
-                    size={16}
-                    color={colors.textSec}
-                    style={{
-                      transform: openFaq === i ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 150ms',
-                    }}
-                  />
-                </div>
-                {openFaq === i && (
                   <div
                     style={{
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: colors.textSec,
-                      lineHeight: 1.6,
-                      marginTop: 8,
+                      display: 'grid',
+                      gridTemplateRows: isOpen ? '1fr' : '0fr',
+                      transition: 'grid-template-rows 220ms ease',
                     }}
                   >
-                    {f.a}
+                    <div style={{ overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: colors.textSec,
+                          lineHeight: 1.6,
+                          paddingTop: isOpen ? 8 : 0,
+                        }}
+                      >
+                        {f.a}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Past edition footer */}
@@ -1333,16 +1446,16 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           </div>
 
           <div style={{ height: 24 }} />
-          </div>
         </div>
-
-        <CalendarSheet
-          open={calOpen}
-          onClose={() => setCalOpen(false)}
-          event={eventData ?? undefined}
-        />
-        <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
-        <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>
+
+      <CalendarSheet
+        open={calOpen}
+        onClose={() => setCalOpen(false)}
+        event={eventData ?? undefined}
+      />
+      <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
+      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
+    </div>
   );
 }

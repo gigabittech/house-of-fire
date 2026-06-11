@@ -42,7 +42,13 @@ export function AuthInput(props: AuthInputProps) {
   );
 }
 
-export function AuthPhoneRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function AuthPhoneRow({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div
       style={{

@@ -1,5 +1,11 @@
 const MAX_BYTES = 50 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
 
 export function validateImageFile(file: File): string | null {
   if (!ALLOWED_TYPES.has(file.type) && !file.type.startsWith('image/')) {

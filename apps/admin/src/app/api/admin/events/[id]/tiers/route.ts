@@ -6,10 +6,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 const ACTIVE_TICKET = ['valid', 'used'] as const;
 
-export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: eventId } = await context.params;
   const supabase = createAdminSupabaseClient();
 
@@ -33,19 +30,8 @@ export async function GET(
     return NextResponse.json({ error: tiersError.message }, { status: 500 });
   }
 
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('tier_id')
-    .eq('event_id', eventId)
-    .in('status', [...ACTIVE_TICKET]);
-
-  const soldByTier: Record<string, number> = {};
-  for (const t of tickets ?? []) {
-    soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
-  }
-
   const withStats = (tiers ?? []).map((tier) => {
-    const sold = soldByTier[tier.id] ?? 0;
+    const sold = Math.max(0, (tier as { sold_count?: number }).sold_count ?? 0);
     return {
       ...tier,
       sold,
@@ -56,10 +42,7 @@ export async function GET(
   return NextResponse.json({ tiers: withStats });
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 

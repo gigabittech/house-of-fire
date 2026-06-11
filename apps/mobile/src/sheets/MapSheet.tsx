@@ -3,6 +3,7 @@
 import { colors } from '@hof/design-tokens';
 import { HofButton, Icon } from '@hof/ui';
 import type { CSSProperties } from 'react';
+import { appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
 interface MapSheetProps {
@@ -110,14 +111,14 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
   if (!mounted) return null;
 
   const outer: CSSProperties = {
-    position: 'absolute',
+    ...appOverlayFixed(),
     inset: 0,
-    zIndex: 100,
     background: colors.bg,
     transform: shown ? 'translateY(0)' : 'translateY(100%)',
     transition: 'transform 260ms cubic-bezier(0.22, 0.84, 0.36, 1)',
     display: 'flex',
     flexDirection: 'column',
+    pointerEvents: shown ? 'auto' : 'none',
   };
 
   return (

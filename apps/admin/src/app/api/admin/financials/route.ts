@@ -1,51 +1,52 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { normalizePagination, parsePagination, parseSort } from '@/lib/pagination';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
-export async function GET() {
+const FINANCIAL_SORT_FIELDS = [
+  'edition_number',
+  'name',
+  'date',
+  'gross_cents',
+  'ticket_count',
+] as const;
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
+  const { searchParams } = new URL(request.url);
+  const { page, pageSize } = parsePagination(searchParams);
+  const { sort, sortDir } = parseSort(searchParams, FINANCIAL_SORT_FIELDS, 'edition_number');
+  const search = searchParams.get('search')?.trim() ?? '';
+
   const supabase = createAdminSupabaseClient();
 
-  // Fetch all events ordered by edition
-  const { data: events, error: eventsError } = await supabase
-    .from('events')
-    .select('id, edition_number, name, date, status')
-    .order('edition_number', { ascending: false });
-
-  if (eventsError) {
-    return NextResponse.json({ error: eventsError.message }, { status: 500 });
-  }
-
-  // Fetch tickets to aggregate revenue per event
-  const { data: tickets, error: ticketsError } = await supabase
-    .from('tickets')
-    .select('event_id, amount_cents, fee_cents, status')
-    .in('status', ['valid', 'used']);
-
-  if (ticketsError) {
-    return NextResponse.json({ error: ticketsError.message }, { status: 500 });
-  }
-
-  // Aggregate revenue by event_id
-  const revenueByEvent: Record<string, { gross_cents: number; ticket_count: number }> = {};
-  for (const ticket of tickets ?? []) {
-    const existing = revenueByEvent[ticket.event_id] ?? { gross_cents: 0, ticket_count: 0 };
-    revenueByEvent[ticket.event_id] = {
-      gross_cents: existing.gross_cents + ticket.amount_cents,
-      ticket_count: existing.ticket_count + 1,
-    };
-  }
-
-  const summary = (events ?? []).map((ev) => {
-    const revenue = revenueByEvent[ev.id] ?? { gross_cents: 0, ticket_count: 0 };
-    return {
-      event_id: ev.id,
-      edition_number: ev.edition_number,
-      name: ev.name,
-      date: ev.date,
-      status: ev.status,
-      gross_cents: revenue.gross_cents,
-      ticket_count: revenue.ticket_count,
-    };
+  const { data, error } = await supabase.rpc('admin_financials_list', {
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: search || null,
+    p_sort: sort,
+    p_sort_dir: sortDir,
   });
 
-  return NextResponse.json({ financials: summary });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const payload = data as {
+    financials?: unknown[];
+    totals?: { gross_cents?: number; ticket_count?: number };
+    pagination?: { page?: number; pageSize?: number; totalCount?: number; totalPages?: number };
+  } | null;
+
+  const financials = payload?.financials ?? [];
+  const totalCount = payload?.pagination?.totalCount ?? financials.length;
+
+  return NextResponse.json({
+    financials,
+    totals: payload?.totals ?? { gross_cents: 0, ticket_count: 0 },
+    pagination: normalizePagination(payload?.pagination, page, pageSize, totalCount),
+  });
 }

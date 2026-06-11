@@ -14,7 +14,12 @@
   },
   "dependencies": {
     "@hof/design-tokens": "workspace:*",
+    "@hof/door-checkin": "workspace:*",
+    "@hof/media": "workspace:*",
+    "@hof/push": "workspace:*",
+    "@hof/realtime": "workspace:*",
     "@hof/ui": "workspace:*",
+    "@tanstack/react-virtual": "^3.13.12",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "html-to-image": "^1.11.13",

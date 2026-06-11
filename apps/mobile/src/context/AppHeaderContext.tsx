@@ -10,9 +10,16 @@ export interface AppHeaderConfig {
   hideMobileHeader?: boolean;
 }
 
+export interface ChromeOverlayState {
+  hideSidebar?: boolean;
+  hideBottomNav?: boolean;
+}
+
 interface AppHeaderContextValue {
   config: AppHeaderConfig;
   setConfig: (config: AppHeaderConfig) => void;
+  chromeOverlay: ChromeOverlayState;
+  setChromeOverlay: (overlay: ChromeOverlayState) => void;
 }
 
 const AppHeaderContext = createContext<AppHeaderContextValue | null>(null);
@@ -25,6 +32,7 @@ export function AppHeaderProvider({
   defaultTitle: string;
 }) {
   const [override, setOverride] = useState<AppHeaderConfig>({});
+  const [chromeOverlay, setChromeOverlay] = useState<ChromeOverlayState>({});
 
   const value = useMemo(
     () => ({
@@ -35,8 +43,17 @@ export function AppHeaderProvider({
         hideMobileHeader: override.hideMobileHeader,
       },
       setConfig: setOverride,
+      chromeOverlay,
+      setChromeOverlay,
     }),
-    [defaultTitle, override.title, override.actions, override.onBack, override.hideMobileHeader],
+    [
+      defaultTitle,
+      override.title,
+      override.actions,
+      override.onBack,
+      override.hideMobileHeader,
+      chromeOverlay,
+    ],
   );
 
   return <AppHeaderContext.Provider value={value}>{children}</AppHeaderContext.Provider>;

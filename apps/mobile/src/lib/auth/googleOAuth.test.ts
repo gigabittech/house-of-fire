@@ -27,9 +27,7 @@ describe('buildAuthCallbackUrl', () => {
       next: '/',
       flow: 'sign_in',
     });
-    expect(url).toBe(
-      'http://localhost:3000/auth/callback/client?next=%2F&flow=sign_in',
-    );
+    expect(url).toBe('http://localhost:3000/auth/callback/client?next=%2F&flow=sign_in');
   });
 
   it('encodes onboarding return path', () => {
@@ -45,9 +43,9 @@ describe('buildAuthCallbackUrl', () => {
 
 describe('displayNameFromGoogleMetadata', () => {
   it('prefers full_name from Google metadata', () => {
-    expect(
-      displayNameFromGoogleMetadata({ full_name: 'Alex Rivera' }, 'alex@example.com'),
-    ).toBe('Alex Rivera');
+    expect(displayNameFromGoogleMetadata({ full_name: 'Alex Rivera' }, 'alex@example.com')).toBe(
+      'Alex Rivera',
+    );
   });
 
   it('falls back to email prefix', () => {
@@ -55,9 +53,9 @@ describe('displayNameFromGoogleMetadata', () => {
   });
 
   it('combines given and family names', () => {
-    expect(
-      displayNameFromGoogleMetadata({ given_name: 'Alex', family_name: 'Rivera' }, null),
-    ).toBe('Alex Rivera');
+    expect(displayNameFromGoogleMetadata({ given_name: 'Alex', family_name: 'Rivera' }, null)).toBe(
+      'Alex Rivera',
+    );
   });
 });
 
