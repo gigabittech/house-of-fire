@@ -61,20 +61,31 @@ export function subscribeChannel(opts: SubscribeOpts): () => void {
     }
 
     ch.subscribe((status) => {
-      opts.onStatus?.(status);
+      const current = channels.get(key);
+      if (!current) return;
+      for (const listener of current.statusListeners) {
+        listener(status);
+      }
     });
 
-    entry = { channel: ch, refCount: 0, listeners: new Set() };
+    entry = { channel: ch, refCount: 0, listeners: new Set(), statusListeners: new Set() };
     channels.set(key, entry);
   }
 
   entry.refCount += 1;
   entry.listeners.add(opts.onPayload);
+  const onStatus = opts.onStatus;
+  if (onStatus) {
+    entry.statusListeners.add(onStatus);
+  }
 
   return () => {
     const current = channels.get(key);
     if (!current) return;
     current.listeners.delete(opts.onPayload);
+    if (onStatus) {
+      current.statusListeners.delete(onStatus);
+    }
     current.refCount -= 1;
     if (current.refCount <= 0 && current.listeners.size === 0) {
       void current.channel.unsubscribe();

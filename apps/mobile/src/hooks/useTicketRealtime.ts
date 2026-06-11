@@ -2,7 +2,6 @@
 
 import { useSupabaseRealtime } from '@hof/realtime';
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
 
 type TicketRow = {
   id: string;
@@ -15,26 +14,29 @@ type TicketRow = {
 export function useTicketRealtime({
   userId,
   onTicketUpdate,
+  onTicketDelete,
   enabled = true,
 }: {
   userId: string | null | undefined;
   onTicketUpdate: (row: TicketRow) => void;
+  onTicketDelete?: (oldRow: Partial<TicketRow>) => void;
   enabled?: boolean;
 }) {
-  const supabase = createClient();
   const onUpdateRef = useRef(onTicketUpdate);
+  const onDeleteRef = useRef(onTicketDelete);
 
   useEffect(() => {
     onUpdateRef.current = onTicketUpdate;
-  }, [onTicketUpdate]);
+    onDeleteRef.current = onTicketDelete;
+  }, [onTicketUpdate, onTicketDelete]);
 
   useSupabaseRealtime<TicketRow>({
-    supabase,
     table: 'tickets',
     filter: userId ? `holder_id=eq.${userId}` : undefined,
-    eventTypes: ['INSERT', 'UPDATE'],
+    eventTypes: ['INSERT', 'UPDATE', 'DELETE'],
     enabled: enabled && !!userId,
     onInsert: (row) => onUpdateRef.current(row),
     onUpdate: (row) => onUpdateRef.current(row),
+    onDelete: (oldRow) => onDeleteRef.current?.(oldRow),
   });
 }

@@ -71,7 +71,9 @@ export function MediaUploadModal({
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

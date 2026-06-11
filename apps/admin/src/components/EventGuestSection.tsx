@@ -14,7 +14,9 @@ import {
   type AdminGuestTicket,
 } from '@/lib/guestTicket';
 
-function statusTone(status: AdminGuestTicket['status']): 'success' | 'danger' | 'neutral' | 'warning' {
+function statusTone(
+  status: AdminGuestTicket['status'],
+): 'success' | 'danger' | 'neutral' | 'warning' {
   if (status === 'used' || status === 'valid') return 'success';
   if (status === 'refunded' || status === 'cancelled') return 'danger';
   if (status === 'transferred') return 'warning';
@@ -190,12 +192,7 @@ export function EventGuestSection({
                   {t.code}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Avatar
-                    initials={initials}
-                    src={guestAvatarUrl(t)}
-                    alt={name}
-                    size={28}
-                  />
+                  <Avatar initials={initials} src={guestAvatarUrl(t)} alt={name} size={28} />
                   <span style={{ fontWeight: 500 }}>{name}</span>
                 </div>
                 <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{guestEmail(t)}</div>

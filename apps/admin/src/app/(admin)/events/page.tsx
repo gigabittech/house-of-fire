@@ -39,6 +39,8 @@ function eventToForm(ev: {
   capacity: number;
   max_tickets_per_user?: number;
   status: EventFormPayload['status'];
+  visibility?: EventFormPayload['visibility'];
+  dress_code?: string | null;
   hero_image_url: string | null;
   faqs: unknown;
 }): EventFormPayload {
@@ -56,6 +58,8 @@ function eventToForm(ev: {
     capacity: ev.capacity,
     max_tickets_per_user: ev.max_tickets_per_user ?? 4,
     status: ev.status,
+    visibility: ev.visibility ?? 'public',
+    dress_code: ev.dress_code ?? null,
     hero_image_url: ev.hero_image_url,
     faqs: parseFaqsFromJson(ev.faqs),
   };
@@ -113,11 +117,6 @@ export default function EventsPage() {
             : e,
         ),
       );
-    },
-    onTierUpdate: (row) => {
-      if (typeof row.sold_count === 'number') {
-        setSoldByTierId((prev) => ({ ...prev, [row.id]: row.sold_count ?? 0 }));
-      }
     },
   });
 
@@ -248,16 +247,18 @@ export default function EventsPage() {
     }
   }
 
-  async function updateEventStatus(eventId: string, nextStatus: EventStatus, previousStatus: EventStatus) {
+  async function updateEventStatus(
+    eventId: string,
+    nextStatus: EventStatus,
+    previousStatus: EventStatus,
+  ) {
     if (nextStatus === previousStatus) return;
 
     setStatusUpdating(eventId);
     setStatusMessage(null);
     setEvents((prev) =>
       prev.map((e) =>
-        e.id === eventId
-          ? { ...e, rawStatus: nextStatus, status: mapEventStatus(nextStatus) }
-          : e,
+        e.id === eventId ? { ...e, rawStatus: nextStatus, status: mapEventStatus(nextStatus) } : e,
       ),
     );
 
@@ -271,7 +272,9 @@ export default function EventsPage() {
       if (!res.ok) {
         setEvents((prev) =>
           prev.map((e) =>
-            e.id === eventId ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) } : e,
+            e.id === eventId
+              ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) }
+              : e,
           ),
         );
         setStatusMessage(data.error ?? 'Failed to update status');
@@ -281,7 +284,9 @@ export default function EventsPage() {
     } catch {
       setEvents((prev) =>
         prev.map((e) =>
-          e.id === eventId ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) } : e,
+          e.id === eventId
+            ? { ...e, rawStatus: previousStatus, status: mapEventStatus(previousStatus) }
+            : e,
         ),
       );
       setStatusMessage('Failed to update status');
@@ -478,7 +483,10 @@ export default function EventsPage() {
                 >
                   {e.date}
                 </div>
-                <div onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
+                <div
+                  onClick={(ev) => ev.stopPropagation()}
+                  onKeyDown={(ev) => ev.stopPropagation()}
+                >
                   <select
                     value={e.rawStatus}
                     disabled={statusUpdating === e.id}

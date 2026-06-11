@@ -131,7 +131,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   if (Object.keys(profileUpdates).length > 0) {
-    const { error: updateError } = await supabase.from('profiles').update(profileUpdates).eq('id', id);
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('id', id);
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }

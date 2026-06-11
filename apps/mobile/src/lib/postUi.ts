@@ -33,7 +33,9 @@ export function timeAgo(isoStr: string): string {
 
 const VALID_REACTIONS = new Set<string>(['fire', 'heart', 'pray', 'music', 'eyes']);
 
-export function parseReactions(counts: Record<string, number>): Partial<Record<ReactionKey, number>> {
+export function parseReactions(
+  counts: Record<string, number>,
+): Partial<Record<ReactionKey, number>> {
   const reactions: Partial<Record<ReactionKey, number>> = {};
   for (const [k, v] of Object.entries(counts)) {
     if (VALID_REACTIONS.has(k)) {

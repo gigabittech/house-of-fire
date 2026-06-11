@@ -1,4 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import {
+  buildFeedResponse,
+  fetchMyReactionsByPost,
+  listCommunityPostsRpc,
+} from '../../../lib/communityApi.server';
+import { parseFeedCursor, parsePageSize } from '../../../lib/cursorPagination';
 import { getActiveEvent } from '../../../lib/liveEvent.server';
 import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
@@ -15,59 +21,49 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const channel = searchParams.get('channel');
   const eventId = searchParams.get('eventId');
-  const limitParam = searchParams.get('limit');
   const includeMyReactions = searchParams.get('includeMyReactions') === '1';
-  const limit = limitParam ? Math.min(Math.max(Number.parseInt(limitParam, 10) || 50, 1), 50) : 50;
+  const cursor = parseFeedCursor(searchParams);
+  const pageSize = parsePageSize(searchParams, 20, 50);
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let query = supabase
-    .from('posts')
-    .select('*, profiles!author_id(handle, display_name, role, avatar_url)')
-    .eq('moderation_status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  if (!channel && !eventId) {
+    return NextResponse.json({ error: 'channel or eventId required' }, { status: 400 });
+  }
 
-  if (channel)
-    query = query.eq('channel', channel as 'general' | 'lineup' | 'recap' | 'help' | 'crew');
-
-  if (eventId) {
-    query = query.eq('event_id', eventId);
-  } else {
+  let activeEventId: string | null = null;
+  if (!eventId) {
     const { data: activeEvent } = await getActiveEvent(supabase, 'id');
-    if (activeEvent) {
-      query = query.or(`event_id.is.null,event_id.eq.${activeEvent.id}`);
-    } else {
-      query = query.is('event_id', null);
+    activeEventId = activeEvent?.id ?? null;
+  }
+
+  try {
+    const { posts, hasMore } = await listCommunityPostsRpc(supabase, {
+      channel: channel ?? null,
+      eventId,
+      activeEventId,
+      cursor,
+      pageSize,
+    });
+
+    let myReactionsByPost: Record<string, string[]> | undefined;
+    if (includeMyReactions && user && posts.length > 0) {
+      myReactionsByPost = await fetchMyReactionsByPost(
+        supabase,
+        user.id,
+        posts.map((post) => post.id),
+      );
     }
+
+    return NextResponse.json(
+      buildFeedResponse(posts, hasMore, includeMyReactions ? myReactionsByPost : undefined),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load posts';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const posts = data ?? [];
-  let myReactionsByPost: Record<string, string[]> = {};
-
-  if (includeMyReactions && user && posts.length > 0) {
-    const postIds = posts.map((p) => p.id);
-    const { data: reactions } = await supabase
-      .from('post_reactions')
-      .select('post_id, emoji')
-      .eq('user_id', user.id)
-      .in('post_id', postIds);
-
-    myReactionsByPost = (reactions ?? []).reduce<Record<string, string[]>>((acc, r) => {
-      acc[r.post_id] = [r.emoji];
-      return acc;
-    }, {});
-  }
-
-  return NextResponse.json({
-    posts,
-    myReactionsByPost: includeMyReactions ? myReactionsByPost : undefined,
-  });
 }
 
 export async function POST(request: NextRequest) {

@@ -116,7 +116,8 @@ export function SellAtDoorModal({
   const [saleMeta, setSaleMeta] = useState<DoorSellResponse | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const selectedTier = tiers.find((t) => t.id === tierId) ?? tiers.find((t) => t.purchasable) ?? tiers[0];
+  const selectedTier =
+    tiers.find((t) => t.id === tierId) ?? tiers.find((t) => t.purchasable) ?? tiers[0];
   const effectiveTierId = tierId || selectedTier?.id || '';
   const subtotalCents = selectedTier?.price_cents ?? 0;
   const feeCents = selectedTier?.fee_cents ?? 0;
@@ -463,9 +464,7 @@ export function SellAtDoorModal({
                       padding: '6px 12px',
                       borderRadius: 8,
                       border:
-                        activeTicketIdx === i
-                          ? '2px solid var(--hof-amber)'
-                          : '1px solid #2e2e2e',
+                        activeTicketIdx === i ? '2px solid var(--hof-amber)' : '1px solid #2e2e2e',
                       background: activeTicketIdx === i ? 'rgba(232,101,26,0.12)' : '#161616',
                       color: '#f5f0e8',
                       fontFamily: 'JetBrains Mono, monospace',
@@ -584,9 +583,7 @@ export function SellAtDoorModal({
                       cursor: disabled ? 'not-allowed' : 'pointer',
                       opacity: disabled ? 0.45 : 1,
                       background: '#161616',
-                      border: selected
-                        ? '1px solid var(--hof-amber)'
-                        : '1px solid #2e2e2e',
+                      border: selected ? '1px solid var(--hof-amber)' : '1px solid #2e2e2e',
                       borderRadius: 12,
                       width: '100%',
                     }}
@@ -705,8 +702,7 @@ export function SellAtDoorModal({
                     fontFamily: 'Inter, system-ui',
                     fontSize: 13,
                     fontWeight: 600,
-                    color:
-                      promoLoading || promoInput.trim().length === 0 ? '#6b6560' : '#0c0c0c',
+                    color: promoLoading || promoInput.trim().length === 0 ? '#6b6560' : '#0c0c0c',
                   }}
                 >
                   {promoLoading ? '…' : 'Apply'}
@@ -743,9 +739,7 @@ export function SellAtDoorModal({
                       style={{
                         height: 48,
                         background: selected ? 'rgba(232,101,26,0.12)' : '#161616',
-                        border: selected
-                          ? '2px solid var(--hof-amber)'
-                          : '1px solid #2e2e2e',
+                        border: selected ? '2px solid var(--hof-amber)' : '1px solid #2e2e2e',
                         borderRadius: 10,
                         fontWeight: 600,
                         fontSize: 14,
@@ -890,11 +884,7 @@ export function SellAtDoorModal({
   );
 }
 
-export function DoorQueueBanner({
-  onSynced,
-}: {
-  onSynced: () => void;
-}) {
+export function DoorQueueBanner({ onSynced }: { onSynced: () => void }) {
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
@@ -904,10 +894,11 @@ export function DoorQueueBanner({
 
   useEffect(() => {
     refresh();
-    const onOnline = () => void drainDoorSaleQueue().then(() => {
-      refresh();
-      onSynced();
-    });
+    const onOnline = () =>
+      void drainDoorSaleQueue().then(() => {
+        refresh();
+        onSynced();
+      });
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
   }, [onSynced]);

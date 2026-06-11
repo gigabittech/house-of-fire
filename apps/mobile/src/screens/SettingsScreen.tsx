@@ -1,10 +1,11 @@
 'use client';
 
-import { colors } from '@hof/design-tokens';
+import { colors, layoutChrome } from '@hof/design-tokens';
 import { HofConfirm, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
+import { useAppPageColumn } from '@/hooks/useAppPageColumn';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import { createClient } from '../lib/supabase';
 
@@ -108,7 +109,7 @@ function Section({ title, children }: SectionProps) {
     <div style={{ marginBottom: 24 }}>
       <div
         style={{
-          padding: '0 16px 8px',
+          padding: '0 0 8px',
           fontFamily: 'Inter',
           fontSize: 10,
           color: colors.textSec,
@@ -124,7 +125,6 @@ function Section({ title, children }: SectionProps) {
           border: `1px solid ${colors.border}`,
           borderRadius: 12,
           overflow: 'hidden',
-          margin: '0 16px',
         }}
       >
         {children}
@@ -136,6 +136,7 @@ function Section({ title, children }: SectionProps) {
 // ─── Sub-view: Notifications ─────────────────────────────────────────────────
 function SettingsNotifs() {
   const [push, setPush] = useState(true);
+  const [pushError, setPushError] = useState<string | null>(null);
   const [email, setEmail] = useState(true);
   const [sms, setSms] = useState(false);
   const [lineupAlerts, setLineupAlerts] = useState(true);
@@ -179,7 +180,17 @@ function SettingsNotifs() {
               on={push}
               onChange={(v) => {
                 setPush(v);
+                setPushError(null);
                 persist('push_notifications', v);
+                void import('@/lib/push/client').then(({ syncPushSubscription }) =>
+                  syncPushSubscription(v).then((err) => {
+                    if (err) {
+                      setPushError(err);
+                      setPush(false);
+                      persist('push_notifications', false);
+                    }
+                  }),
+                );
               }}
             />
           }
@@ -211,6 +222,19 @@ function SettingsNotifs() {
             />
           }
         />
+        {pushError ? (
+          <div
+            style={{
+              padding: '10px 14px 0',
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: '#f87171',
+              lineHeight: 1.45,
+            }}
+          >
+            {pushError}
+          </div>
+        ) : null}
       </Section>
       <Section title="Topics">
         <ActionRow
@@ -326,33 +350,33 @@ function SettingsPrivacy() {
   return (
     <>
       {COMMUNITY_FEATURE_ENABLED ? (
-      <Section title="Community">
-        <ActionRow
-          label="Post anonymously by default"
-          right={
-            <Toggle
-              on={anon}
-              onChange={(v) => {
-                setAnon(v);
-                persist('post_anonymously', v);
-              }}
-            />
-          }
-        />
-        <ActionRow
-          label="Share attendance activity"
-          last
-          right={
-            <Toggle
-              on={shareActivity}
-              onChange={(v) => {
-                setShareActivity(v);
-                persist('share_activity', v);
-              }}
-            />
-          }
-        />
-      </Section>
+        <Section title="Community">
+          <ActionRow
+            label="Post anonymously by default"
+            right={
+              <Toggle
+                on={anon}
+                onChange={(v) => {
+                  setAnon(v);
+                  persist('post_anonymously', v);
+                }}
+              />
+            }
+          />
+          <ActionRow
+            label="Share attendance activity"
+            last
+            right={
+              <Toggle
+                on={shareActivity}
+                onChange={(v) => {
+                  setShareActivity(v);
+                  persist('share_activity', v);
+                }}
+              />
+            }
+          />
+        </Section>
       ) : null}
       <Section title="Data">
         <ActionRow
@@ -419,6 +443,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [view, setView] = useState<View>('list');
   const { isWide } = useResponsive();
+  const pageColumn = useAppPageColumn();
 
   const viewTitles: Record<View, string> = {
     list: 'Settings',
@@ -450,21 +475,16 @@ export default function SettingsScreen() {
     >
       {/* Scrollable content — centered column on tablet/desktop */}
       <div
-        className="hof-scroll"
+        className="hof-scroll hof-app-page-scroll"
         style={{
           position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: isWide ? '50%' : 0,
-          right: isWide ? 'auto' : 0,
-          transform: isWide ? 'translateX(-50%)' : undefined,
-          width: isWide ? 'min(100%, 760px)' : 'auto',
+          inset: 0,
           overflowY: 'auto',
-          paddingBottom: 40,
+          paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
-        <div style={{ height: isWide ? 8 : 12 }} />
-
+        <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
         {view === 'list' && (
           <>
             <Section title="Account">
@@ -501,6 +521,7 @@ export default function SettingsScreen() {
         {view === 'payment' && <SettingsPayment />}
         {view === 'privacy' && <SettingsPrivacy />}
         {view === 'help' && <SettingsHelp />}
+        </div>
       </div>
     </div>
   );

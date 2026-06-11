@@ -13,8 +13,11 @@ export type PostgresChangePayload<T extends Record<string, unknown> = Record<str
   commit_timestamp?: string;
 };
 
-export type UseSupabaseRealtimeOptions<T extends Record<string, unknown> = Record<string, unknown>> = {
-  supabase: SupabaseClient;
+export type UseSupabaseRealtimeOptions<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  /** Optional when RealtimeProvider supplies a singleton client. */
+  supabase?: SupabaseClient;
   table: string;
   schema?: string;
   filter?: string;
@@ -31,4 +34,5 @@ export type ChannelEntry = {
   channel: RealtimeChannel;
   refCount: number;
   listeners: Set<(payload: PostgresChangePayload) => void>;
+  statusListeners: Set<(status: string) => void>;
 };

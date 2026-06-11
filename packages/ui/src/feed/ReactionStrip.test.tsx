@@ -21,9 +21,7 @@ describe('ReactionStrip', () => {
 
   it('highlights the viewer reaction', () => {
     render(
-      <ReactionStrip
-        post={{ ...base, reactions: { fire: 3, heart: 2 }, myReaction: 'heart' }}
-      />,
+      <ReactionStrip post={{ ...base, reactions: { fire: 3, heart: 2 }, myReaction: 'heart' }} />,
     );
     expect(screen.getByTitle('Your reaction')).toBeInTheDocument();
   });

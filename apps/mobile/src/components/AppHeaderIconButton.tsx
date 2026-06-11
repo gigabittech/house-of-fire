@@ -4,7 +4,13 @@ import { colors } from '@hof/design-tokens';
 import { hofChromeCircleBtn, Icon, type IconName } from '@hof/ui';
 import type { ReactNode } from 'react';
 
-export function AppHeaderBackButton({ onClick, label = 'Back' }: { onClick: () => void; label?: string }) {
+export function AppHeaderBackButton({
+  onClick,
+  label = 'Back',
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <button
       type="button"

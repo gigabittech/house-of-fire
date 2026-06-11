@@ -13,11 +13,7 @@ export type CheckoutValidationResult =
   | { ok: true; quantity: number }
   | { ok: false; error: string; status: number };
 
-function tierIsPurchasable(tier: {
-  status: string;
-  capacity: number;
-  available: number;
-}): boolean {
+function tierIsPurchasable(tier: { status: string; capacity: number; available: number }): boolean {
   if (tier.status === 'hidden' || tier.status === 'sold_out') return false;
   if (tier.available <= 0) return false;
   return true;
@@ -70,8 +66,7 @@ export async function validateCheckoutRequest(
   ) {
     return {
       ok: false,
-      error:
-        availability.available <= 0 ? 'This tier is sold out' : 'Tier not available',
+      error: availability.available <= 0 ? 'This tier is sold out' : 'Tier not available',
       status: 400,
     };
   }
@@ -142,7 +137,11 @@ export async function validateTierCapacityForFulfillment(
     return { ok: false, error: 'Could not verify inventory', status: 500 };
   }
 
-  if (tier?.status === 'hidden' || tier?.status === 'sold_out' || availability.available < quantity) {
+  if (
+    tier?.status === 'hidden' ||
+    tier?.status === 'sold_out' ||
+    availability.available < quantity
+  ) {
     return { ok: false, error: 'Not enough tickets available', status: 409 };
   }
 

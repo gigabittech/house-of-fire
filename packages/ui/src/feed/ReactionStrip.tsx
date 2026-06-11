@@ -11,10 +11,7 @@ export interface ReactionStripProps {
   onOpenPicker?: () => void;
 }
 
-function resolveMyReaction(
-  myReactions: ReactionKey[] | undefined,
-  post: Post,
-): ReactionKey | null {
+function resolveMyReaction(myReactions: ReactionKey[] | undefined, post: Post): ReactionKey | null {
   const fromProp = myReactions?.[0] ?? post.myReaction ?? null;
   return fromProp;
 }
@@ -61,7 +58,11 @@ export function ReactionStrip({
   const chips = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
       {entries.map(({ key, count }) => (
-        <span key={key} style={chipStyle(key)} title={myReaction === key ? 'Your reaction' : undefined}>
+        <span
+          key={key}
+          style={chipStyle(key)}
+          title={myReaction === key ? 'Your reaction' : undefined}
+        >
           <span style={{ fontSize: compact ? 11 : 12, lineHeight: 1 }}>{REACTION_EMOJI[key]}</span>
           <span>{count}</span>
         </span>

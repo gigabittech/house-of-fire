@@ -9,7 +9,7 @@ import { AppHeaderIconButton } from '@/components/AppHeaderIconButton';
 import { EventHeroBackground } from '@/components/EventHeroBackground';
 import { useAppHeader } from '@/hooks/useAppHeader';
 import { useCommunityRealtime } from '@/hooks/useCommunityRealtime';
-import { useEventInventoryRealtime } from '@/hooks/useEventInventoryRealtime';
+import { INVENTORY_POLL_MS, useEventInventory } from '@/hooks/useEventInventory';
 import { COMMUNITY_FEATURE_ENABLED } from '@/lib/features';
 import {
   formatCapacityMeta,
@@ -328,10 +328,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
       .finally(() => setEventLoading(false));
   }, []);
 
-  useEventInventoryRealtime({
+  useEventInventory({
     event: eventData,
     onEventChange: setEventData,
     enabled: !eventLoading,
+    pollIntervalMs: INVENTORY_POLL_MS.event,
   });
 
   const loadEventPosts = useCallback(() => {
@@ -341,17 +342,52 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
       .then((r) => r.json())
       .then((d: { posts?: ApiPost[] }) => {
-        if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
+        if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
         else setEventPosts([]);
       })
       .catch(() => setPostsError(true))
       .finally(() => setPostsLoading(false));
   }, [eventData?.id]);
 
+  const patchEventPost = useCallback(
+    (row: { id: string; reaction_counts?: Record<string, number>; reply_count?: number }) => {
+      setEventPosts((prev) =>
+        prev.map((p) =>
+          p.id === row.id
+            ? {
+                ...p,
+                reactions: row.reaction_counts ?? p.reactions,
+                replyCount: row.reply_count ?? p.replyCount,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
   useCommunityRealtime({
     eventId: eventData?.id,
-    onPostInsert: () => loadEventPosts(),
-    onPostUpdate: () => loadEventPosts(),
+    onPostInsert: async (row) => {
+      try {
+        const r = await fetch(`/api/posts/${row.id}`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { post?: ApiPost };
+        if (!d.post) return;
+        setEventPosts((prev) => {
+          const next = [apiPostToUi(d.post!), ...prev.filter((p) => p.id !== d.post!.id)];
+          return next.slice(0, 3);
+        });
+      } catch {
+        /* keep list */
+      }
+    },
+    onPostUpdate: (row) => patchEventPost(row),
+    onPostDelete: (oldRow) => {
+      if (oldRow.id) setEventPosts((prev) => prev.filter((p) => p.id !== oldRow.id));
+    },
+    onResync: () => loadEventPosts(),
+    enabled: COMMUNITY_FEATURE_ENABLED && !!eventData?.id,
   });
 
   useEffect(() => {
@@ -377,12 +413,9 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const tiers: Tier[] = rawTiers
     .filter((t) => t.status !== 'hidden')
     .map((t) => {
-      const effective =
-        (t as { effective_status?: string }).effective_status ?? t.status;
+      const effective = (t as { effective_status?: string }).effective_status ?? t.status;
       const remaining =
-        effective === 'sold_out'
-          ? 0
-          : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
+        effective === 'sold_out' ? 0 : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
       const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
       const allInCents = t.price_cents + feeCents;
       return {
@@ -413,7 +446,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
     { t: '1:00', name: 'After', note: 'DJ residents close' },
   ];
 
-  const apiFaqs = parseEventFaqs(eventData?.faqs);
+  const dressCodeText = eventData?.dress_code?.trim() || '';
+  const apiFaqs = parseEventFaqs(eventData?.faqs).filter(
+    (f) => !dressCodeText || !/^dress code/i.test(f.q.trim()),
+  );
   const faqs =
     apiFaqs.length > 0
       ? apiFaqs
@@ -422,10 +458,14 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             q: 'Where do I get in?',
             a: 'The side entrance on 23rd Street. Look for the orange light. We do not use the main door.',
           },
-          {
-            q: 'Dress code?',
-            a: 'No code. People show up looking like themselves. Wear what makes you move.',
-          },
+          ...(dressCodeText
+            ? []
+            : [
+                {
+                  q: 'Dress code?',
+                  a: 'No code. People show up looking like themselves. Wear what makes you move.',
+                },
+              ]),
           {
             q: 'Is there a coat check?',
             a: 'Yes — $3. Cash or in-app. The line moves fastest before 10:30.',
@@ -473,11 +513,7 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             </span>
           }
         />
-        <AppHeaderIconButton
-          icon="share"
-          label="Share event"
-          onClick={() => setShareOpen(true)}
-        />
+        <AppHeaderIconButton icon="share" label="Share event" onClick={() => setShareOpen(true)} />
       </>
     ),
     [],
@@ -509,108 +545,108 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
   if (!eventLoading && !eventData) {
     return (
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            background: colors.bg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <EmptyState
-            icon="calendar"
-            title={NO_EVENTS_MESSAGE}
-            action={
-              <button
-                className="hof-btn hof-press"
-                onClick={() => router.push('/')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  background: colors.amber,
-                  border: `1px solid ${colors.amber}`,
-                  fontFamily: 'Inter',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: colors.bg,
-                }}
-              >
-                Back to home
-              </button>
-            }
-          />
-        </div>
-    );
-  }
-
-  return (
       <div
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
           background: colors.bg,
-          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {/* Scrollable content — hero full bleed; body in centered column */}
-        <div
-          className="hof-scroll hof-app-page-scroll"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          }}
-        >
-          <EventHeroBackground src={heroSrc}>
-              <div style={pageColumn}>
-              <span
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  background: heroBadgeColors.background,
-                  border: `1px solid ${heroBadgeColors.border}`,
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: heroBadgeColors.color,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {eventHeroBadgeLabel(
-                  eventData ?? { edition_number: 0, status: 'upcoming' },
-                  rawTiers,
-                )}
-              </span>
-              <div
-                style={{
-                  fontFamily: 'Clash Display',
-                  fontWeight: 700,
-                  fontSize: 38,
-                  lineHeight: 1,
-                  color: colors.text,
-                  marginTop: 10,
-                  letterSpacing: '-0.02em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {eventData?.name ?? 'Next theme'}
-                {eventData?.tagline ? (
-                  <>
-                    <br />
-                    <span style={{ color: colors.amber }}>{eventData.tagline}</span>
-                  </>
-                ) : null}
-              </div>
-              </div>
-          </EventHeroBackground>
+        <EmptyState
+          icon="calendar"
+          title={NO_EVENTS_MESSAGE}
+          action={
+            <button
+              className="hof-btn hof-press"
+              onClick={() => router.push('/')}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: colors.amber,
+                border: `1px solid ${colors.amber}`,
+                fontFamily: 'Inter',
+                fontWeight: 600,
+                fontSize: 14,
+                color: colors.bg,
+              }}
+            >
+              Back to home
+            </button>
+          }
+        />
+      </div>
+    );
+  }
 
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: colors.bg,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Scrollable content — hero full bleed; body in centered column */}
+      <div
+        className="hof-scroll hof-app-page-scroll"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
+        }}
+      >
+        <EventHeroBackground src={heroSrc}>
           <div style={pageColumn}>
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 20,
+                background: heroBadgeColors.background,
+                border: `1px solid ${heroBadgeColors.border}`,
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: 600,
+                color: heroBadgeColors.color,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {eventHeroBadgeLabel(
+                eventData ?? { edition_number: 0, status: 'upcoming' },
+                rawTiers,
+              )}
+            </span>
+            <div
+              style={{
+                fontFamily: 'Clash Display',
+                fontWeight: 700,
+                fontSize: 38,
+                lineHeight: 1,
+                color: colors.text,
+                marginTop: 10,
+                letterSpacing: '-0.02em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {eventData?.name ?? 'Next theme'}
+              {eventData?.tagline ? (
+                <>
+                  <br />
+                  <span style={{ color: colors.amber }}>{eventData.tagline}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </EventHeroBackground>
+
+        <div style={pageColumn}>
           {/* Meta */}
           <div
             style={{
@@ -637,6 +673,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
               label="Capacity"
               value={formatCapacityMeta(eventCapacity, ticketsSold)}
             />
+            {dressCodeText ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <MetaItem icon="star" label="Dress code" value={dressCodeText} />
+              </div>
+            ) : null}
           </div>
 
           {/* Add to Calendar */}
@@ -1189,79 +1230,79 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
 
           {/* Talking about this — COMMUNITY_FEATURE */}
           {COMMUNITY_FEATURE_ENABLED ? (
-          <>
-          <SectionLabel>Talking about this</SectionLabel>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {postsLoading && (
-              <>
-                <FeedSkeletonCard />
-                <FeedSkeletonCard />
-              </>
-            )}
-            {!postsLoading && postsError && (
-              <ErrorState
-                retry={() => {
-                  if (!eventData?.id) return;
-                  setPostsLoading(true);
-                  setPostsError(false);
-                  fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
-                    .then((r) => r.json())
-                    .then((d: { posts?: ApiPost[] }) => {
-                      if (d.posts) setEventPosts(d.posts.map(apiPostToUi));
-                      else setEventPosts([]);
-                    })
-                    .catch(() => setPostsError(true))
-                    .finally(() => setPostsLoading(false));
-                }}
-              />
-            )}
-            {!postsLoading &&
-              !postsError &&
-              eventPosts.map((p) => (
-                <FeedPost
-                  key={p.id}
-                  post={p}
-                  compact
-                  onOpen={() => router.push('/community/' + p.id)}
-                  resolvePhoto={photoSrc}
-                />
-              ))}
-            <button
-              className="hof-btn hof-press"
-              onClick={() => router.push('/community')}
-              style={{
-                padding: '12px 14px',
-                background: colors.surface,
-                border: `1px dashed ${colors.border}`,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontFamily: 'Inter',
-                fontSize: 13,
-                color: colors.text,
-              }}
-            >
-              <span
+            <>
+              <SectionLabel>Talking about this</SectionLabel>
+              <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
+                  flexDirection: 'column',
+                  gap: 8,
                 }}
               >
-                <Icon name="chat" size={16} color={colors.amber} />
-                Open the Theme 24 thread
-              </span>
-              <Icon name="chev" size={14} color={colors.textSec} />
-            </button>
-          </div>
-          </>
+                {postsLoading && (
+                  <>
+                    <FeedSkeletonCard />
+                    <FeedSkeletonCard />
+                  </>
+                )}
+                {!postsLoading && postsError && (
+                  <ErrorState
+                    retry={() => {
+                      if (!eventData?.id) return;
+                      setPostsLoading(true);
+                      setPostsError(false);
+                      fetch(`/api/posts?eventId=${eventData.id}&limit=3`)
+                        .then((r) => r.json())
+                        .then((d: { posts?: ApiPost[] }) => {
+                          if (d.posts) setEventPosts(d.posts.map((p) => apiPostToUi(p)));
+                          else setEventPosts([]);
+                        })
+                        .catch(() => setPostsError(true))
+                        .finally(() => setPostsLoading(false));
+                    }}
+                  />
+                )}
+                {!postsLoading &&
+                  !postsError &&
+                  eventPosts.map((p) => (
+                    <FeedPost
+                      key={p.id}
+                      post={p}
+                      compact
+                      onOpen={() => router.push('/community/' + p.id)}
+                      resolvePhoto={photoSrc}
+                    />
+                  ))}
+                <button
+                  className="hof-btn hof-press"
+                  onClick={() => router.push('/community')}
+                  style={{
+                    padding: '12px 14px',
+                    background: colors.surface,
+                    border: `1px dashed ${colors.border}`,
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colors.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <Icon name="chat" size={16} color={colors.amber} />
+                    Open the Theme 24 thread
+                  </span>
+                  <Icon name="chev" size={14} color={colors.textSec} />
+                </button>
+              </div>
+            </>
           ) : null}
 
           {/* FAQ */}
@@ -1351,16 +1392,16 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
           </div>
 
           <div style={{ height: 24 }} />
-          </div>
         </div>
-
-        <CalendarSheet
-          open={calOpen}
-          onClose={() => setCalOpen(false)}
-          event={eventData ?? undefined}
-        />
-        <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
-        <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>
+
+      <CalendarSheet
+        open={calOpen}
+        onClose={() => setCalOpen(false)}
+        event={eventData ?? undefined}
+      />
+      <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
+      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} />
+    </div>
   );
 }

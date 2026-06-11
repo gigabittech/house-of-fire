@@ -33,7 +33,10 @@ export interface MemberUpdatePayload {
 const HANDLE_RE = /^[a-z0-9_]{3,32}$/;
 
 export function normalizeHandle(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
 }
 
 export function validateMemberUpdate(body: MemberUpdatePayload): string | null {
@@ -46,7 +49,11 @@ export function validateMemberUpdate(body: MemberUpdatePayload): string | null {
       return 'Handle must be 3–32 characters (letters, numbers, underscore)';
     }
   }
-  if (body.email !== undefined && body.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())) {
+  if (
+    body.email !== undefined &&
+    body.email.trim() &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())
+  ) {
     return 'Enter a valid email address';
   }
   if (body.role !== undefined && !['member', 'crew', 'admin'].includes(body.role)) {

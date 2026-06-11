@@ -22,7 +22,10 @@ const PUBLIC_ROUTES = [
   '/accept-transfer',
 ];
 
-async function shouldLockToLanding(request: NextRequest, supabase: ReturnType<typeof createServerClient>) {
+async function shouldLockToLanding(
+  request: NextRequest,
+  supabase: ReturnType<typeof createServerClient>,
+) {
   if (isComingSoonBypass(request)) return false;
   if (isComingSoonMode()) return true;
 

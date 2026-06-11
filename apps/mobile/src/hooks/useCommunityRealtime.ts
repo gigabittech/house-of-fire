@@ -2,11 +2,11 @@
 
 import { useSupabaseRealtime } from '@hof/realtime';
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
 
 type PostRow = {
   id: string;
   channel: string;
+  event_id?: string | null;
   moderation_status?: string;
   reaction_counts?: Record<string, number>;
   reply_count?: number;
@@ -18,30 +18,44 @@ export function useCommunityRealtime({
   eventId,
   onPostInsert,
   onPostUpdate,
+  onPostDelete,
   onReactionChange,
+  onResync,
   enabled = true,
 }: {
   channel?: string;
   eventId?: string;
   onPostInsert?: (row: PostRow) => void;
   onPostUpdate?: (row: PostRow) => void;
+  onPostDelete?: (row: Partial<PostRow>) => void;
   onReactionChange?: (postId: string, reactionCounts: Record<string, number>) => void;
+  onResync?: () => void;
   enabled?: boolean;
 }) {
-  const supabase = createClient();
-  const callbacksRef = useRef({ onPostInsert, onPostUpdate, onReactionChange });
+  const callbacksRef = useRef({
+    onPostInsert,
+    onPostUpdate,
+    onPostDelete,
+    onReactionChange,
+    onResync,
+  });
 
   useEffect(() => {
-    callbacksRef.current = { onPostInsert, onPostUpdate, onReactionChange };
-  }, [onPostInsert, onPostUpdate, onReactionChange]);
+    callbacksRef.current = {
+      onPostInsert,
+      onPostUpdate,
+      onPostDelete,
+      onReactionChange,
+      onResync,
+    };
+  }, [onPostInsert, onPostUpdate, onPostDelete, onReactionChange, onResync]);
 
   const postFilter = channel ? `channel=eq.${channel}` : undefined;
 
   useSupabaseRealtime<PostRow>({
-    supabase,
     table: 'posts',
     filter: postFilter,
-    eventTypes: ['INSERT', 'UPDATE'],
+    eventTypes: ['INSERT', 'UPDATE', 'DELETE'],
     enabled: enabled && !!channel,
     onInsert: (row) => {
       if (row.moderation_status && row.moderation_status !== 'approved') return;
@@ -49,14 +63,18 @@ export function useCommunityRealtime({
       callbacksRef.current.onPostInsert?.(row);
     },
     onUpdate: (row) => {
-      if (row.moderation_status === 'hidden' || row.moderation_status === 'rejected') return;
+      if (row.moderation_status === 'hidden' || row.moderation_status === 'rejected') {
+        callbacksRef.current.onPostDelete?.({ id: row.id });
+        return;
+      }
       callbacksRef.current.onPostUpdate?.(row);
       if (row.reaction_counts) {
         callbacksRef.current.onReactionChange?.(row.id, row.reaction_counts);
       }
     },
-    onResync: () => {
-      /* caller refetches via loadPosts */
+    onDelete: (oldRow) => {
+      if (oldRow.id) callbacksRef.current.onPostDelete?.(oldRow);
     },
+    onResync: () => callbacksRef.current.onResync?.(),
   });
 }

@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "description": "Supabase Realtime hooks and utilities for House of Fire.",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",

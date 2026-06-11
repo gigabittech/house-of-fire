@@ -1,26 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchAdminGuestByTicketId } from '@/lib/fetchGuestTicket';
+import {
+  isSoldTicketStatus,
+  patchGuestTicketRow,
+  patchTierStatusOnTicketDelta,
+} from '@/lib/realtimePatch';
 import { useGuestsRealtime } from '@/hooks/useGuestsRealtime';
 import { EventGuestSection } from '@/components/EventGuestSection';
-import {
-  GuestFilters,
-  type EventOption,
-  type GuestFilterState,
-} from '@/components/GuestFilters';
-import {
-  GuestTierStatus,
-  type EventTierStatusGroup,
-} from '@/components/GuestTierStatus';
+import { GuestFilters, type EventOption, type GuestFilterState } from '@/components/GuestFilters';
+import { GuestTierStatus, type EventTierStatusGroup } from '@/components/GuestTierStatus';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
+import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
+import type { ApiPagination } from '@/lib/pagination';
 import {
   buildGuestExportCsv,
   groupTicketsByEvent,
-  guestDisplayName,
-  guestEmail,
   normalizeGuestTicket,
   tierOptionsFromEventTiers,
-  tierOptionsFromTickets,
   ticketMatchesTierFilter,
   type AdminGuestTicket,
   type GuestTierOption,
@@ -53,11 +51,17 @@ export default function GuestsPage() {
   const [selectedTicket, setSelectedTicket] = useState<AdminGuestTicket | null>(null);
   const [tierStatus, setTierStatus] = useState<EventTierStatusGroup[]>([]);
   const [tierStatusLoading, setTierStatusLoading] = useState(true);
-  const [pagesByEvent, setPagesByEvent] = useState<Record<string, number>>({});
-  const [realtimeRefreshKey, setRealtimeRefreshKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<ApiPagination>({
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+    totalCount: 0,
+    totalPages: 1,
+  });
 
   const debouncedEmail = useDebouncedValue(filters.email, 400);
   const debouncedCode = useDebouncedValue(filters.code, 400);
+  const debouncedNameSearch = useDebouncedValue(filters.nameSearch, 400);
   const [eventsReady, setEventsReady] = useState(false);
 
   useEffect(() => {
@@ -106,98 +110,154 @@ export default function GuestsPage() {
         }
         return;
       }
-      if (!cancelled) setTierOptions(tierOptionsFromTickets(tickets));
+      if (!cancelled) setTierOptions([]);
     }
     void loadTiers();
     return () => {
       cancelled = true;
     };
-  }, [eventsReady, filters.eventId, tickets]);
+  }, [eventsReady, filters.eventId]);
 
-  useEffect(() => {
-    if (!eventsReady) return;
-
-    let cancelled = false;
-    async function fetchGuests() {
-      setLoading(true);
-      setError(null);
+  const fetchGuests = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!eventsReady) return;
+      if (!options?.silent) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const params = new URLSearchParams();
+        params.set('page', String(page));
+        params.set('pageSize', String(DEFAULT_PAGE_SIZE));
         if (filters.eventId) params.set('eventId', filters.eventId);
         if (filters.tierId && filters.eventId && !filters.tierId.startsWith('group:')) {
           params.set('tierId', filters.tierId);
         }
         if (debouncedEmail) params.set('email', debouncedEmail);
         if (debouncedCode) params.set('code', debouncedCode);
-        const qs = params.toString();
-        const res = await fetch(`/api/admin/guests${qs ? `?${qs}` : ''}`);
-        const data = (await res.json()) as { guests?: unknown[]; error?: string };
-        if (cancelled) return;
+        if (debouncedNameSearch.trim()) params.set('nameSearch', debouncedNameSearch.trim());
+        const res = await fetch(`/api/admin/guests?${params}`);
+        const data = (await res.json()) as {
+          guests?: unknown[];
+          pagination?: ApiPagination;
+          error?: string;
+        };
         if (data.error) {
           setError(data.error);
           setTickets([]);
         } else {
-          setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
+          setTickets(
+            (data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)),
+          );
+          if (data.pagination) setPagination(data.pagination);
         }
       } catch (err) {
-        if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Failed to load guests');
         setTickets([]);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!options?.silent) setLoading(false);
       }
-    }
+    },
+    [
+      eventsReady,
+      page,
+      filters.eventId,
+      filters.tierId,
+      debouncedEmail,
+      debouncedCode,
+      debouncedNameSearch,
+    ],
+  );
 
+  const fetchGuestsRef = useRef(fetchGuests);
+  useEffect(() => {
+    fetchGuestsRef.current = fetchGuests;
+  }, [fetchGuests]);
+
+  useEffect(() => {
     void fetchGuests();
-    return () => {
-      cancelled = true;
-    };
-  }, [eventsReady, filters.eventId, filters.tierId, debouncedEmail, debouncedCode, realtimeRefreshKey]);
+  }, [fetchGuests]);
 
   useEffect(() => {
-    setPagesByEvent({});
-  }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode, filters.nameSearch]);
+    setPage(1);
+  }, [filters.eventId, filters.tierId, debouncedEmail, debouncedCode, debouncedNameSearch]);
 
-  useEffect(() => {
+  const loadTierStatus = useCallback(async () => {
     if (!eventsReady) return;
-
-    let cancelled = false;
-    async function loadTierStatus() {
-      setTierStatusLoading(true);
-      try {
-        const params = filters.eventId ? `?eventId=${filters.eventId}` : '';
-        const res = await fetch(`/api/admin/guests/status${params}`);
-        const data = (await res.json()) as {
-          events?: EventTierStatusGroup[];
-          error?: string;
-        };
-        if (cancelled) return;
-        if (!data.error && data.events) {
-          setTierStatus(data.events);
-        } else {
-          setTierStatus([]);
-        }
-      } catch {
-        if (!cancelled) setTierStatus([]);
-      } finally {
-        if (!cancelled) setTierStatusLoading(false);
-      }
+    setTierStatusLoading(true);
+    try {
+      const params = filters.eventId ? `?eventId=${filters.eventId}` : '';
+      const res = await fetch(`/api/admin/guests/status${params}`);
+      const data = (await res.json()) as { events?: EventTierStatusGroup[]; error?: string };
+      if (!data.error && data.events) setTierStatus(data.events);
+      else setTierStatus([]);
+    } catch {
+      setTierStatus([]);
+    } finally {
+      setTierStatusLoading(false);
     }
-    void loadTierStatus();
-    return () => {
-      cancelled = true;
-    };
-  }, [eventsReady, filters.eventId, realtimeRefreshKey]);
+  }, [eventsReady, filters.eventId]);
 
-  const bumpRealtime = useCallback(() => {
-    setRealtimeRefreshKey((k) => k + 1);
-  }, []);
+  useEffect(() => {
+    void loadTierStatus();
+  }, [loadTierStatus]);
+
+  useEffect(() => {
+    if (!eventsReady || !filters.eventId) return;
+    const id = setInterval(() => void loadTierStatus(), 15_000);
+    return () => clearInterval(id);
+  }, [eventsReady, filters.eventId, loadTierStatus]);
 
   useGuestsRealtime({
     eventId: filters.eventId,
-    onResync: bumpRealtime,
-    onTierStatusResync: bumpRealtime,
     enabled: eventsReady && !!filters.eventId,
+    onTicketInsert: (row) => {
+      if (row.tier_id && row.event_id && isSoldTicketStatus(row.status)) {
+        setTierStatus((prev) => patchTierStatusOnTicketDelta(prev, row.tier_id!, row.event_id!, 1));
+      }
+      setPagination((p) => ({ ...p, totalCount: p.totalCount + 1 }));
+      if (page !== 1) return;
+      const hasTextFilters = !!(debouncedEmail || debouncedCode || debouncedNameSearch);
+      if (hasTextFilters) {
+        void fetchGuestsRef.current({ silent: true });
+        return;
+      }
+      void fetchAdminGuestByTicketId(row.id).then((guest) => {
+        if (!guest) return;
+        if (filters.tierId && !ticketMatchesTierFilter(guest, filters.tierId, tierOptions)) return;
+        setTickets((prev) => {
+          if (prev.some((t) => t.id === guest.id)) return prev;
+          return [guest, ...prev].slice(0, pagination.pageSize);
+        });
+      });
+    },
+    onTicketUpdate: (row, oldRow) => {
+      setTickets((prev) => patchGuestTicketRow(prev, row));
+      if (row.tier_id && row.event_id) {
+        const wasSold = isSoldTicketStatus(oldRow.status);
+        const isSold = isSoldTicketStatus(row.status);
+        if (wasSold !== isSold) {
+          setTierStatus((prev) =>
+            patchTierStatusOnTicketDelta(prev, row.tier_id!, row.event_id!, isSold ? 1 : -1),
+          );
+        }
+      }
+    },
+    onTicketDelete: (oldRow) => {
+      if (oldRow.id) {
+        setTickets((prev) => prev.filter((t) => t.id !== oldRow.id));
+        setPagination((p) => ({ ...p, totalCount: Math.max(0, p.totalCount - 1) }));
+      }
+      if (oldRow.tier_id && oldRow.event_id && isSoldTicketStatus(oldRow.status)) {
+        setTierStatus((prev) =>
+          patchTierStatusOnTicketDelta(prev, oldRow.tier_id!, oldRow.event_id!, -1),
+        );
+      }
+    },
+    onResync: () => {
+      void fetchGuestsRef.current({ silent: true });
+      void loadTierStatus();
+    },
   });
 
   const tierStatusScopeLabel = useMemo(() => {
@@ -208,19 +268,12 @@ export default function GuestsPage() {
     return 'All editions';
   }, [filters.eventId, events]);
 
-  const nameQuery = filters.nameSearch.trim().toLowerCase();
   const filteredTickets = useMemo(() => {
-    let result = tickets;
-    if (filters.tierId) {
-      result = result.filter((t) => ticketMatchesTierFilter(t, filters.tierId, tierOptions));
+    if (!filters.tierId || filters.tierId.startsWith('group:')) {
+      return tickets;
     }
-    if (!nameQuery) return result;
-    return result.filter((t) => {
-      const name = guestDisplayName(t).toLowerCase();
-      const email = guestEmail(t).toLowerCase();
-      return name.includes(nameQuery) || email.includes(nameQuery);
-    });
-  }, [tickets, filters.tierId, tierOptions, nameQuery]);
+    return tickets.filter((t) => ticketMatchesTierFilter(t, filters.tierId, tierOptions));
+  }, [tickets, filters.tierId, tierOptions]);
 
   const groups = useMemo(() => groupTicketsByEvent(filteredTickets), [filteredTickets]);
 
@@ -236,12 +289,12 @@ export default function GuestsPage() {
     if (filters.eventId) {
       const ev = events.find((e) => e.id === filters.eventId);
       if (ev) {
-        return `${ev.name} · Edition ${ev.edition_number} · ${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
+        return `${ev.name} · Edition ${ev.edition_number} · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'}`;
       }
     }
     const eventCount = groups.length;
-    return `All editions · ${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'} across ${eventCount} event${eventCount === 1 ? '' : 's'}`;
-  }, [filters.eventId, events, filteredTickets.length, groups.length]);
+    return `All editions · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'} across ${eventCount} event${eventCount === 1 ? '' : 's'} on this page`;
+  }, [filters.eventId, events, pagination.totalCount, groups.length]);
 
   function exportCsv() {
     const csv = buildGuestExportCsv(filteredTickets);
@@ -283,7 +336,7 @@ export default function GuestsPage() {
             marginTop: 4,
           }}
         >
-          {loading ? 'Loading…' : `${filteredTickets.length} confirmed`}
+          {loading ? 'Loading…' : `${pagination.totalCount.toLocaleString()} confirmed`}
         </div>
         <div
           style={{
@@ -367,16 +420,27 @@ export default function GuestsPage() {
               event={event}
               tickets={eventTickets}
               defaultExpanded={event.id === defaultExpandedEventId}
-              page={pagesByEvent[event.id] ?? 1}
-              onPageChange={(p) =>
-                setPagesByEvent((prev) => ({
-                  ...prev,
-                  [event.id]: p,
-                }))
-              }
               onViewTicket={setSelectedTicket}
             />
           ))}
+
+        {!loading && groups.length > 0 && (
+          <div
+            style={{
+              background: 'var(--hof-surface)',
+              border: '1px solid var(--hof-border)',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
+            <TablePagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.totalCount}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
       </div>
 
       <TicketDetailPanel

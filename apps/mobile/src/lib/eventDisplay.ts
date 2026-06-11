@@ -4,6 +4,11 @@ export const NO_EVENTS_MESSAGE = 'There are currently no events available.';
 
 export type EventStatus = 'upcoming' | 'live' | 'past' | 'cancelled';
 
+export type EventVisibility = 'public' | 'hidden';
+
+/** Public-facing status derived from DB event state + tier inventory. */
+export type EventDisplayStatus = 'upcoming' | 'live' | 'sold_out' | 'hidden';
+
 export type EventBadgeTone = 'amber' | 'success' | 'danger' | 'neutral';
 
 export interface UpcomingTier {
@@ -25,6 +30,9 @@ export interface UpcomingEvent {
   edition_number: number;
   name: string;
   status?: EventStatus;
+  visibility?: EventVisibility;
+  display_status?: EventDisplayStatus;
+  dress_code?: string | null;
   date: string;
   doors_open?: string;
   doors_close?: string;
@@ -153,15 +161,46 @@ export function isEventSoldOut(tiers: UpcomingTier[] | undefined): boolean {
   });
 }
 
+export function resolveEventDisplayStatus(
+  event: Pick<UpcomingEvent, 'status' | 'visibility'>,
+  tiers?: UpcomingTier[],
+): EventDisplayStatus {
+  if (event.visibility === 'hidden') return 'hidden';
+  if (event.status === 'live') return 'live';
+  if (isEventSoldOut(tiers)) return 'sold_out';
+  return 'upcoming';
+}
+
+export function eventDisplayStatusLabel(status: EventDisplayStatus): string {
+  switch (status) {
+    case 'hidden':
+      return 'Hidden';
+    case 'live':
+      return 'Live';
+    case 'sold_out':
+      return 'Sold out';
+    default:
+      return 'Upcoming';
+  }
+}
+
 export function eventHeroBadgeLabel(
-  event: Pick<UpcomingEvent, 'status' | 'edition_number'>,
+  event: Pick<UpcomingEvent, 'status' | 'edition_number' | 'visibility' | 'display_status'>,
   tiers?: UpcomingTier[],
 ): string {
   const edition = event.edition_number ?? '—';
-  if (isEventSoldOut(tiers)) return `Sold out · Theme № ${edition}`;
-  switch (event.status) {
+  const displayStatus = event.display_status ?? resolveEventDisplayStatus(event, tiers);
+  switch (displayStatus) {
+    case 'hidden':
+      return `Hidden · Theme № ${edition}`;
+    case 'sold_out':
+      return `Sold out · Theme № ${edition}`;
     case 'live':
       return `Live · Theme № ${edition}`;
+    default:
+      break;
+  }
+  switch (event.status) {
     case 'past':
       return `Past · Theme № ${edition}`;
     case 'cancelled':
@@ -172,10 +211,12 @@ export function eventHeroBadgeLabel(
 }
 
 export function eventHeroBadgeTone(
-  event: Pick<UpcomingEvent, 'status'>,
+  event: Pick<UpcomingEvent, 'status' | 'visibility' | 'display_status'>,
   tiers?: UpcomingTier[],
 ): EventBadgeTone {
-  if (isEventSoldOut(tiers)) return 'danger';
+  const displayStatus = event.display_status ?? resolveEventDisplayStatus(event, tiers);
+  if (displayStatus === 'hidden') return 'neutral';
+  if (displayStatus === 'sold_out') return 'danger';
   switch (event.status) {
     case 'live':
       return 'success';
@@ -222,11 +263,13 @@ export function eventHeroBadgeColors(tone: EventBadgeTone): {
 }
 
 export function eventInventoryBadgeLabel(
-  event: Pick<UpcomingEvent, 'status'>,
+  event: Pick<UpcomingEvent, 'status' | 'visibility' | 'display_status'>,
   tiers?: UpcomingTier[],
 ): string {
+  const displayStatus = event.display_status ?? resolveEventDisplayStatus(event, tiers);
+  if (displayStatus === 'hidden') return 'Hidden';
   const left = remainingTickets(tiers);
-  if (isEventSoldOut(tiers)) return 'Sold out';
+  if (displayStatus === 'sold_out' || isEventSoldOut(tiers)) return 'Sold out';
   if (event.status === 'live') {
     return left > 0 ? `Live · ${left} left` : 'Live · Doors open';
   }
@@ -234,10 +277,12 @@ export function eventInventoryBadgeLabel(
 }
 
 export function eventInventoryBadgeTone(
-  event: Pick<UpcomingEvent, 'status'>,
+  event: Pick<UpcomingEvent, 'status' | 'visibility' | 'display_status'>,
   tiers?: UpcomingTier[],
 ): 'warning' | 'success' | 'neutral' {
-  if (isEventSoldOut(tiers)) return 'neutral';
+  const displayStatus = event.display_status ?? resolveEventDisplayStatus(event, tiers);
+  if (displayStatus === 'hidden') return 'neutral';
+  if (displayStatus === 'sold_out' || isEventSoldOut(tiers)) return 'neutral';
   if (event.status === 'live') return 'success';
   return 'warning';
 }

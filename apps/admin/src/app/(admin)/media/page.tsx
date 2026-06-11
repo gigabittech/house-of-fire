@@ -1,12 +1,15 @@
 'use client';
 
+import { eventPhotoLightboxUrl, eventPhotoPreviewUrl } from '@hof/media';
 import { HofToast, ImageLightbox, type ToastKind } from '@hof/ui';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { MediaUploadModal } from '@/components/MediaUploadModal';
 import { PaneHeader } from '@/components/PaneHeader';
 import { Pill } from '@/components/Pill';
-import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
+import { DEFAULT_PAGE_SIZE } from '@/components/TablePagination';
+import { useAdminMediaFeed } from '@/hooks/useAdminMediaFeed';
 
 type PhotoStatus = 'pending' | 'approved' | 'rejected' | 'inactive';
 type StatusFilter = 'all' | PhotoStatus;
@@ -42,21 +45,13 @@ interface PhotoItem {
   eventName: string;
   status: PhotoStatus;
   publicUrl: string | null;
+  storagePath: string;
   createdAt: string;
 }
 
 interface ToastState {
   kind: ToastKind;
   message: string;
-}
-
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
 }
 
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -69,6 +64,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
 
 const TABLE_COLUMNS = '56px 1.5fr 1fr 1fr 120px 88px 56px';
 const TABLE_MIN_WIDTH = 860;
+const MEDIA_ROW_HEIGHT = 72;
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -140,6 +136,7 @@ function mapPhotoRow(row: PhotoApiRow): PhotoItem {
     eventName: row.events?.name ?? 'Unknown event',
     status: row.status,
     publicUrl: row.public_url,
+    storagePath: row.storage_path,
     createdAt: row.created_at,
   };
 }
@@ -190,13 +187,11 @@ function EllipsisText({
   );
 }
 
-function PhotoThumb({
-  url,
-  onPreview,
-}: {
-  url: string | null;
-  onPreview: () => void;
-}) {
+function PhotoThumb({ photo, onPreview }: { photo: PhotoItem; onPreview: () => void }) {
+  const url =
+    eventPhotoPreviewUrl({ storage_path: photo.storagePath, public_url: photo.publicUrl }) ??
+    photo.publicUrl;
+
   return (
     <button
       type="button"
@@ -217,7 +212,13 @@ function PhotoThumb({
       }}
     >
       {url ? (
-        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
       ) : (
         <div
           style={{
@@ -236,7 +237,7 @@ function PhotoThumb({
 }
 
 export default function MediaPage() {
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [events, setEvents] = useState<EventOption[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [eventId, setEventId] = useState('');
@@ -246,44 +247,27 @@ export default function MediaPage() {
   const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebouncedValue(search, 400);
   const debouncedEmail = useDebouncedValue(email, 400);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: DEFAULT_PAGE_SIZE,
-    total: 0,
-    totalPages: 1,
-    hasNext: false,
-    hasPrev: false,
-  });
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     sp.set('status', statusFilter);
-    sp.set('page', String(pagination.page));
-    sp.set('limit', String(pagination.limit));
+    sp.set('limit', String(DEFAULT_PAGE_SIZE));
     if (eventId) sp.set('eventId', eventId);
     if (debouncedSearch) sp.set('search', debouncedSearch);
     if (debouncedEmail) sp.set('email', debouncedEmail);
     if (dateFrom) sp.set('dateFrom', dateFrom);
     if (dateTo) sp.set('dateTo', dateTo);
     return sp.toString();
-  }, [
-    statusFilter,
-    eventId,
-    debouncedSearch,
-    debouncedEmail,
-    dateFrom,
-    dateTo,
-    pagination.page,
-    pagination.limit,
-  ]);
+  }, [statusFilter, eventId, debouncedSearch, debouncedEmail, dateFrom, dateTo]);
+
+  const { photos, totalCount, hasMore, loading, loadingMore, error, refresh, loadMore } =
+    useAdminMediaFeed<PhotoApiRow, PhotoItem>(queryString, mapPhotoRow);
 
   const hasActiveFilters =
     Boolean(eventId) ||
@@ -300,7 +284,6 @@ export default function MediaPage() {
     setDateFrom('');
     setDateTo('');
     setStatusFilter('pending');
-    setPagination((p) => ({ ...p, page: 1 }));
   }
 
   const showToast = useCallback((kind: ToastKind, message: string) => {
@@ -312,42 +295,6 @@ export default function MediaPage() {
     const timer = window.setTimeout(() => setToast(null), 4500);
     return () => window.clearTimeout(timer);
   }, [toast]);
-
-  const loadPhotos = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/media?${queryString}`);
-      const data = (await res.json()) as {
-        photos?: PhotoApiRow[];
-        pagination?: Pagination;
-        error?: string;
-      };
-      if (data.error) {
-        setError(data.error);
-        setPhotos([]);
-      } else {
-        const rows = data.photos ?? [];
-        const nextPagination = data.pagination;
-        if (
-          rows.length === 0 &&
-          nextPagination &&
-          nextPagination.total > 0 &&
-          nextPagination.page > 1
-        ) {
-          setPagination((p) => ({ ...p, page: p.page - 1 }));
-          return;
-        }
-        setPhotos(rows.map(mapPhotoRow));
-        if (nextPagination) setPagination(nextPagination);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load photos');
-      setPhotos([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [queryString]);
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -380,8 +327,24 @@ export default function MediaPage() {
   }, []);
 
   useEffect(() => {
-    void loadPhotos();
-  }, [loadPhotos]);
+    void refresh();
+  }, [refresh]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: photos.length + (hasMore ? 1 : 0),
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => MEDIA_ROW_HEIGHT,
+    overscan: 8,
+  });
+
+  useEffect(() => {
+    if (!hasMore || loadingMore || loading) return;
+    const items = rowVirtualizer.getVirtualItems();
+    const last = items[items.length - 1];
+    if (last && last.index >= photos.length - 1) {
+      void loadMore();
+    }
+  }, [hasMore, loading, loadingMore, loadMore, photos.length, rowVirtualizer]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -410,7 +373,7 @@ export default function MediaPage() {
       };
       showToast('success', messages[status]);
       void refreshPendingCount();
-      void loadPhotos();
+      void refresh();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Action failed');
     } finally {
@@ -438,7 +401,7 @@ export default function MediaPage() {
       }
       showToast('success', 'Photo permanently deleted');
       void refreshPendingCount();
-      void loadPhotos();
+      void refresh();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Delete failed');
     } finally {
@@ -446,13 +409,9 @@ export default function MediaPage() {
     }
   }
 
-  function handleUploaded(
-    uploadedEventId: string,
-    result: { uploaded: number; failed: number },
-  ) {
+  function handleUploaded(uploadedEventId: string, result: { uploaded: number; failed: number }) {
     setEventId(uploadedEventId);
     setStatusFilter('all');
-    setPagination((p) => ({ ...p, page: 1 }));
     if (result.failed > 0) {
       showToast(
         'warn',
@@ -466,15 +425,152 @@ export default function MediaPage() {
           : `${result.uploaded} photos uploaded successfully`,
       );
     }
-    void loadPhotos();
+    void refresh();
     void refreshPendingCount();
   }
 
   const headerSub = loading
     ? 'Loading…'
     : statusFilter === 'pending'
-      ? `${pagination.total} pending`
-      : `${pagination.total} photo${pagination.total === 1 ? '' : 's'}`;
+      ? `${totalCount} pending`
+      : `${totalCount} photo${totalCount === 1 ? '' : 's'}`;
+
+  const openPhotoPreview = useCallback((photo: PhotoItem) => {
+    const url =
+      eventPhotoLightboxUrl({
+        storage_path: photo.storagePath,
+        public_url: photo.publicUrl,
+      }) ?? photo.publicUrl;
+    if (url) setPreviewUrl(url);
+  }, []);
+
+  const renderPhotoRow = (photo: PhotoItem, borderBottom: boolean) => {
+    const uploaderMeta = `@${photo.handle}${photo.email ? ` · ${photo.email}` : ''}`;
+    return (
+      <div
+        key={photo.id}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: TABLE_COLUMNS,
+          gap: 12,
+          padding: '12px 18px',
+          alignItems: 'center',
+          borderBottom: borderBottom ? '1px solid var(--hof-border)' : 'none',
+          fontFamily: 'Inter, system-ui',
+          fontSize: 13,
+          color: 'var(--hof-text)',
+          minWidth: TABLE_MIN_WIDTH,
+          height: MEDIA_ROW_HEIGHT,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div>
+          <PhotoThumb photo={photo} onPreview={() => openPhotoPreview(photo)} />
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <EllipsisText title={photo.displayName} style={{ fontWeight: 500 }}>
+            {photo.displayName}
+          </EllipsisText>
+          <EllipsisText
+            title={uploaderMeta}
+            style={{
+              fontSize: 12,
+              color: 'var(--hof-text-sec)',
+              marginTop: 2,
+            }}
+          >
+            {uploaderMeta}
+          </EllipsisText>
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <EllipsisText
+            title={photo.fileName}
+            style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}
+          >
+            {photo.fileName}
+          </EllipsisText>
+          {photo.caption ? (
+            <EllipsisText
+              title={photo.caption}
+              style={{
+                fontSize: 11,
+                color: 'var(--hof-text-dis)',
+                marginTop: 2,
+              }}
+            >
+              {photo.caption}
+            </EllipsisText>
+          ) : null}
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <Pill tone="neutral" size="sm">
+            {photo.eventLabel}
+          </Pill>
+          <EllipsisText
+            title={photo.eventName}
+            style={{
+              fontSize: 12,
+              color: 'var(--hof-text-sec)',
+              marginTop: 4,
+            }}
+          >
+            {photo.eventName}
+          </EllipsisText>
+        </div>
+
+        <EllipsisText
+          title={formatWhen(photo.createdAt)}
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 11,
+            color: 'var(--hof-text-sec)',
+          }}
+        >
+          {formatWhen(photo.createdAt)}
+        </EllipsisText>
+
+        <div>
+          <Pill tone={statusTone(photo.status)}>{photo.status}</Pill>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <PhotoActionsMenu
+            photo={photo}
+            busy={busyId === photo.id}
+            open={openMenuId === photo.id}
+            onToggle={() => setOpenMenuId((cur) => (cur === photo.id ? null : photo.id))}
+            onPreview={() => {
+              setOpenMenuId(null);
+              openPhotoPreview(photo);
+            }}
+            onApprove={() => {
+              setOpenMenuId(null);
+              void updatePhotoStatus(photo.id, 'approved');
+            }}
+            onReject={() => {
+              setOpenMenuId(null);
+              void updatePhotoStatus(photo.id, 'rejected');
+            }}
+            onDeactivate={() => {
+              setOpenMenuId(null);
+              void updatePhotoStatus(photo.id, 'inactive');
+            }}
+            onReactivate={() => {
+              setOpenMenuId(null);
+              void updatePhotoStatus(photo.id, 'approved');
+            }}
+            onDelete={() => {
+              setOpenMenuId(null);
+              void deletePhoto(photo.id, photo.fileName);
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -561,7 +657,6 @@ export default function MediaPage() {
                   <input
                     value={search}
                     onChange={(e) => {
-                      setPagination((p) => ({ ...p, page: 1 }));
                       setSearch(e.target.value);
                     }}
                     placeholder="Name, handle, file, caption…"
@@ -585,7 +680,6 @@ export default function MediaPage() {
                 <input
                   value={email}
                   onChange={(e) => {
-                    setPagination((p) => ({ ...p, page: 1 }));
                     setEmail(e.target.value);
                   }}
                   placeholder="uploader@email.com"
@@ -609,7 +703,6 @@ export default function MediaPage() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => {
-                    setPagination((p) => ({ ...p, page: 1 }));
                     setDateFrom(e.target.value);
                   }}
                   style={inputStyle}
@@ -632,7 +725,6 @@ export default function MediaPage() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => {
-                    setPagination((p) => ({ ...p, page: 1 }));
                     setDateTo(e.target.value);
                   }}
                   style={inputStyle}
@@ -664,7 +756,6 @@ export default function MediaPage() {
                 <select
                   value={eventId}
                   onChange={(e) => {
-                    setPagination((p) => ({ ...p, page: 1 }));
                     setEventId(e.target.value);
                   }}
                   style={inputStyle}
@@ -698,7 +789,6 @@ export default function MediaPage() {
                         key={f.value}
                         type="button"
                         onClick={() => {
-                          setPagination((p) => ({ ...p, page: 1 }));
                           setStatusFilter(f.value);
                         }}
                         style={{
@@ -797,144 +887,76 @@ export default function MediaPage() {
                 No photos match these filters.
               </div>
             ) : (
-              photos.map((photo, i) => {
-                const uploaderMeta = `@${photo.handle}${photo.email ? ` · ${photo.email}` : ''}`;
-                return (
-                  <div
-                    key={photo.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: TABLE_COLUMNS,
-                      gap: 12,
-                      padding: '12px 18px',
-                      alignItems: 'center',
-                      borderBottom: i < photos.length - 1 ? '1px solid var(--hof-border)' : 'none',
-                      fontFamily: 'Inter, system-ui',
-                      fontSize: 13,
-                      color: 'var(--hof-text)',
-                      minWidth: TABLE_MIN_WIDTH,
-                    }}
-                  >
-                    <div>
-                      <PhotoThumb
-                        url={photo.publicUrl}
-                        onPreview={() => photo.publicUrl && setPreviewUrl(photo.publicUrl)}
-                      />
-                    </div>
+              <div
+                ref={scrollRef}
+                style={{
+                  maxHeight: 'calc(100vh - 320px)',
+                  overflow: 'auto',
+                  minWidth: TABLE_MIN_WIDTH,
+                }}
+              >
+                <div
+                  style={{
+                    height: rowVirtualizer.getTotalSize(),
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const isLoaderRow = virtualRow.index >= photos.length;
+                    const photo = photos[virtualRow.index];
 
-                    <div style={{ minWidth: 0 }}>
-                      <EllipsisText title={photo.displayName} style={{ fontWeight: 500 }}>
-                        {photo.displayName}
-                      </EllipsisText>
-                      <EllipsisText
-                        title={uploaderMeta}
+                    return (
+                      <div
+                        key={virtualRow.key}
                         style={{
-                          fontSize: 12,
-                          color: 'var(--hof-text-sec)',
-                          marginTop: 2,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
                         }}
                       >
-                        {uploaderMeta}
-                      </EllipsisText>
-                    </div>
-
-                    <div style={{ minWidth: 0 }}>
-                      <EllipsisText
-                        title={photo.fileName}
-                        style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}
-                      >
-                        {photo.fileName}
-                      </EllipsisText>
-                      {photo.caption ? (
-                        <EllipsisText
-                          title={photo.caption}
-                          style={{
-                            fontSize: 11,
-                            color: 'var(--hof-text-dis)',
-                            marginTop: 2,
-                          }}
-                        >
-                          {photo.caption}
-                        </EllipsisText>
-                      ) : null}
-                    </div>
-
-                    <div style={{ minWidth: 0 }}>
-                      <Pill tone="neutral" size="sm">
-                        {photo.eventLabel}
-                      </Pill>
-                      <EllipsisText
-                        title={photo.eventName}
-                        style={{
-                          fontSize: 12,
-                          color: 'var(--hof-text-sec)',
-                          marginTop: 4,
-                        }}
-                      >
-                        {photo.eventName}
-                      </EllipsisText>
-                    </div>
-
-                    <EllipsisText
-                      title={formatWhen(photo.createdAt)}
-                      style={{
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: 11,
-                        color: 'var(--hof-text-sec)',
-                      }}
-                    >
-                      {formatWhen(photo.createdAt)}
-                    </EllipsisText>
-
-                    <div>
-                      <Pill tone={statusTone(photo.status)}>{photo.status}</Pill>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <PhotoActionsMenu
-                        photo={photo}
-                        busy={busyId === photo.id}
-                        open={openMenuId === photo.id}
-                        onToggle={() =>
-                          setOpenMenuId((cur) => (cur === photo.id ? null : photo.id))
-                        }
-                        onPreview={() => {
-                          setOpenMenuId(null);
-                          if (photo.publicUrl) setPreviewUrl(photo.publicUrl);
-                        }}
-                        onApprove={() => {
-                          setOpenMenuId(null);
-                          void updatePhotoStatus(photo.id, 'approved');
-                        }}
-                        onReject={() => {
-                          setOpenMenuId(null);
-                          void updatePhotoStatus(photo.id, 'rejected');
-                        }}
-                        onDeactivate={() => {
-                          setOpenMenuId(null);
-                          void updatePhotoStatus(photo.id, 'inactive');
-                        }}
-                        onReactivate={() => {
-                          setOpenMenuId(null);
-                          void updatePhotoStatus(photo.id, 'approved');
-                        }}
-                        onDelete={() => {
-                          setOpenMenuId(null);
-                          void deletePhoto(photo.id, photo.fileName);
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
+                        {isLoaderRow ? (
+                          <div
+                            style={{
+                              height: MEDIA_ROW_HEIGHT,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--hof-text-sec)',
+                              fontFamily: 'Inter, system-ui',
+                              fontSize: 12,
+                            }}
+                          >
+                            {loadingMore ? 'Loading more photos…' : null}
+                          </div>
+                        ) : (
+                          photo &&
+                          renderPhotoRow(photo, virtualRow.index < photos.length - 1 || hasMore)
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
-            <TablePagination
-              page={pagination.page}
-              pageSize={pagination.limit}
-              total={pagination.total}
-              onPageChange={(p) => setPagination((cur) => ({ ...cur, page: p }))}
-            />
+            {!loading && photos.length > 0 ? (
+              <div
+                style={{
+                  padding: '12px 18px',
+                  borderTop: '1px solid var(--hof-border)',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 12,
+                  color: 'var(--hof-text-sec)',
+                }}
+              >
+                Showing {photos.length.toLocaleString('en-US')} of{' '}
+                {totalCount.toLocaleString('en-US')}
+                {hasMore ? ' · scroll for more' : ''}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -993,12 +1015,10 @@ function PhotoActionsMenu({
   onReactivate: () => void;
   onDelete: () => void;
 }) {
-  const showApprove =
-    photo.status === 'pending' || photo.status === 'rejected';
+  const showApprove = photo.status === 'pending' || photo.status === 'rejected';
   const showReject = photo.status === 'pending';
   const showDeactivate =
-    photo.status === 'approved' ||
-    (photo.status !== 'inactive' && photo.status !== 'approved');
+    photo.status === 'approved' || (photo.status !== 'inactive' && photo.status !== 'approved');
   const showReactivate = photo.status === 'inactive';
 
   return (
@@ -1052,7 +1072,12 @@ function PhotoActionsMenu({
             </button>
           ) : null}
           {showApprove ? (
-            <button type="button" role="menuitem" onClick={onApprove} style={menuItemStyle('success')}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onApprove}
+              style={menuItemStyle('success')}
+            >
               Approve
             </button>
           ) : null}
@@ -1072,7 +1097,12 @@ function PhotoActionsMenu({
             </button>
           ) : null}
           {showDeactivate ? (
-            <button type="button" role="menuitem" onClick={onDeactivate} style={menuItemStyle('warn')}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onDeactivate}
+              style={menuItemStyle('warn')}
+            >
               Deactivate
             </button>
           ) : null}

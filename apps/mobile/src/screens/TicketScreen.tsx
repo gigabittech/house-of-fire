@@ -209,14 +209,11 @@ export default function TicketScreen() {
   const [ticketError, setTicketError] = useState(false);
   const [holderFallback, setHolderFallback] = useState<string | null>(null);
   const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const headerActions = useMemo(
     () => (
-      <AppHeaderIconButton
-        icon="share"
-        label="Share ticket"
-        onClick={() => setShareOpen(true)}
-      />
+      <AppHeaderIconButton icon="share" label="Share ticket" onClick={() => setShareOpen(true)} />
     ),
     [],
   );
@@ -239,6 +236,28 @@ export default function TicketScreen() {
     ticket?.metadata?.holder_email?.trim() ||
     tickets[0]?.metadata?.holder_email?.trim() ||
     null;
+  const receiptOrderId = ticket?.order_id ?? tickets[0]?.order_id ?? null;
+
+  async function resendReceipt() {
+    if (!receiptOrderId) return;
+    setResendLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${receiptOrderId}/resend-receipt`, { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; recipient?: string };
+      if (!res.ok) {
+        notify('error', data.error ?? 'Could not resend receipt.');
+        return;
+      }
+      notify(
+        'success',
+        data.recipient ? `Receipt resent to ${data.recipient}.` : 'Receipt resent to your email.',
+      );
+    } catch {
+      notify('error', 'Network error — try again.');
+    } finally {
+      setResendLoading(false);
+    }
+  }
 
   const reloadTickets = useCallback(async () => {
     const list = await loadAllTickets({ paymentIntentId: paymentIntentFromRedirect });
@@ -391,7 +410,10 @@ export default function TicketScreen() {
         {showEmptyOrError ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
             {ticketError ? (
-              <EmptyState title="Could not load ticket" body="Check your connection and try again." />
+              <EmptyState
+                title="Could not load ticket"
+                body="Check your connection and try again."
+              />
             ) : (
               <EmptyState
                 title="No ticket"
@@ -498,7 +520,8 @@ export default function TicketScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                See you at the door. The QR below is your ticket — keep brightness up when you arrive.
+                See you at the door. The QR below is your ticket — keep brightness up when you
+                arrive.
               </div>
               {justPurchased ? (
                 <div
@@ -549,16 +572,40 @@ export default function TicketScreen() {
                     >
                       {receiptEmail ? (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to your email.
-                          Check your inbox — and spam if you don&apos;t see it within a few minutes.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to your
+                          email. Check your inbox — and spam if you don&apos;t see it within a few
+                          minutes.
                         </>
                       ) : (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to the email
-                          you used at checkout. Check your inbox — and spam if needed.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to the
+                          email you used at checkout. Check your inbox — and spam if needed.
                         </>
                       )}
                     </div>
+                    {receiptOrderId ? (
+                      <button
+                        type="button"
+                        className="hof-btn hof-press"
+                        disabled={resendLoading}
+                        onClick={() => {
+                          void resendReceipt();
+                        }}
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${colors.border}`,
+                          background: colors.elevated,
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: colors.amber,
+                        }}
+                      >
+                        {resendLoading ? 'Sending…' : 'Resend receipt email'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -623,7 +670,11 @@ export default function TicketScreen() {
                         }}
                       />
                       {ticketFieldsLoading ? (
-                        <TicketSkeletonBar width="100%" height={16} style={{ marginTop: 6, maxWidth: 200 }} />
+                        <TicketSkeletonBar
+                          width="100%"
+                          height={16}
+                          style={{ marginTop: 6, maxWidth: 200 }}
+                        />
                       ) : (
                         <div
                           style={{

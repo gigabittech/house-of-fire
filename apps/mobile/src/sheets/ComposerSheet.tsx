@@ -6,6 +6,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { CHANNELS } from '../data/posts';
 import { uploadPostMediaBatch } from '../lib/storageUpload';
+import { APP_OVERLAY_Z, appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
 interface ComposerSheetProps {
@@ -132,19 +133,19 @@ export default function ComposerSheet({
   const canPost = body.trim().length > 0;
 
   const scrim: CSSProperties = {
-    position: 'absolute',
+    ...appOverlayFixed(),
     inset: 0,
-    zIndex: 80,
     background: 'rgba(0,0,0,0.55)',
     opacity: shown ? 1 : 0,
     transition: 'opacity 200ms ease-out',
+    pointerEvents: shown ? 'auto' : 'none',
   };
   const sheet: CSSProperties = {
-    position: 'absolute',
+    position: 'fixed',
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 90,
+    zIndex: APP_OVERLAY_Z + 1,
     background: colors.surface,
     borderTop: `1px solid ${colors.border}`,
     borderTopLeftRadius: 22,

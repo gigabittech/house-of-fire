@@ -92,10 +92,24 @@ function ToggleRow({
         />
       </div>
       <div>
-        <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 500, fontSize: 13, color: 'var(--hof-text)' }}>
+        <div
+          style={{
+            fontFamily: 'Inter, system-ui',
+            fontWeight: 500,
+            fontSize: 13,
+            color: 'var(--hof-text)',
+          }}
+        >
           {label}
         </div>
-        <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', marginTop: 2 }}>
+        <div
+          style={{
+            fontFamily: 'Inter, system-ui',
+            fontSize: 11,
+            color: 'var(--hof-text-sec)',
+            marginTop: 2,
+          }}
+        >
           {description}
         </div>
       </div>
@@ -328,7 +342,9 @@ export function MemberEditModal({ open, memberId, onClose, onSaved }: MemberEdit
         </div>
 
         {loading ? (
-          <div style={{ padding: 22, color: 'var(--hof-text-sec)', fontSize: 13 }}>Loading member…</div>
+          <div style={{ padding: 22, color: 'var(--hof-text-sec)', fontSize: 13 }}>
+            Loading member…
+          </div>
         ) : (
           <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: '18px 22px 22px' }}>
             <div style={{ display: 'grid', gap: 14 }}>
@@ -357,7 +373,12 @@ export function MemberEditModal({ open, memberId, onClose, onSaved }: MemberEdit
                       <img
                         src={avatarPreview ?? avatarUrl ?? ''}
                         alt={displayName || 'Profile photo'}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
                       />
                     ) : (
                       <Avatar initials={initials || 'M'} size={72} />

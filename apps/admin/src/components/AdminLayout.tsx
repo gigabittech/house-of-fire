@@ -1,64 +1,11 @@
 'use client';
 
-import { breakpoints, sidebarWidth } from '@hof/design-tokens';
-import { HofLogoMark } from '@hof/ui';
-import Link from 'next/link';
+import { HofAdminAppShell, type AdminNavId } from '@hof/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavCountsRealtime } from '@/hooks/useNavCountsRealtime';
-import { Avatar } from '@/components/Avatar';
-import { Icon } from '@/components/Icon';
+import { ADMIN_NAV_HREF, adminNavIdFromPath, adminPageTitle } from '@/lib/adminNav';
 import { createClient } from '@/lib/supabase';
-
-const NAV_ITEMS: Array<{ id: string; href: string; icon: string; label: string; badge?: string }> =
-  [
-    { id: 'dashboard', href: '/dashboard', icon: 'chart', label: 'Dashboard' },
-    { id: 'events', href: '/events', icon: 'calendar', label: 'Events' },
-    { id: 'guests', href: '/guests', icon: 'users', label: 'Guest list' },
-    { id: 'door', href: '/door', icon: 'qr', label: 'Door' },
-    { id: 'media', href: '/media', icon: 'image', label: 'Photo review' },
-    { id: 'members', href: '/members', icon: 'user', label: 'Members' },
-    { id: 'mod', href: '/mod', icon: 'flag', label: 'Moderation' },
-    { id: 'announce', href: '/announce', icon: 'bell', label: 'Announcements' },
-    { id: 'email-log', href: '/email-log', icon: 'mail', label: 'Email log' },
-    { id: 'codes', href: '/codes', icon: 'tag', label: 'Codes & comps' },
-    { id: 'financials', href: '/financials', icon: 'wallet', label: 'Financials' },
-  ];
-
-// Breakpoint thresholds derived from design-tokens.
-// The token set only defines mobile (390) and desktop (1280); we add a tablet
-// threshold at 768px which sits between the two.
-const BP_TABLET = 768;
-const BP_DESKTOP = breakpoints.desktop; // 1280
-
-/** Match member app `HofAppShell` sidebar chrome (shared design token). */
-const SIDEBAR_WIDTH = sidebarWidth.full;
-const SIDEBAR_WIDTH_TABLET = sidebarWidth.rail;
-
-type SidebarMode = 'full' | 'icon-only' | 'hidden';
-
-function useSidebarMode(): SidebarMode {
-  const [mode, setMode] = useState<SidebarMode>('full');
-
-  useEffect(() => {
-    function update() {
-      const w = window.innerWidth;
-      if (w < BP_TABLET) {
-        setMode('hidden');
-      } else if (w < BP_DESKTOP) {
-        setMode('icon-only');
-      } else {
-        setMode('full');
-      }
-    }
-
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
-  return mode;
-}
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -67,12 +14,9 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const sidebarMode = useSidebarMode();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [mediaBadge, setMediaBadge] = useState<string | undefined>();
   const [modBadge, setModBadge] = useState<string | undefined>();
   const [userName, setUserName] = useState('Admin');
-  const [userInitials, setUserInitials] = useState('AD');
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('Crew');
 
@@ -92,9 +36,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     void loadCounts();
   }, [loadCounts]);
 
+  const applyMediaDelta = useCallback((delta: number) => {
+    setMediaBadge((prev) => {
+      const n = Math.max(0, (prev ? Number.parseInt(prev, 10) : 0) + delta);
+      return n > 0 ? String(n) : undefined;
+    });
+  }, []);
+
+  const applyModDelta = useCallback((delta: number) => {
+    setModBadge((prev) => {
+      const n = Math.max(0, (prev ? Number.parseInt(prev, 10) : 0) + delta);
+      return n > 0 ? String(n) : undefined;
+    });
+  }, []);
+
   useNavCountsRealtime({
-    onMediaPending: loadCounts,
-    onModPending: loadCounts,
+    onMediaDelta: applyMediaDelta,
+    onModDelta: applyModDelta,
   });
 
   useEffect(() => {
@@ -111,14 +69,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         .maybeSingle();
       const name = profile?.display_name ?? user.email?.split('@')[0] ?? 'Admin';
       setUserName(name);
-      setUserInitials(
-        name
-          .split(' ')
-          .map((p) => p[0] ?? '')
-          .join('')
-          .slice(0, 2)
-          .toUpperCase(),
-      );
       setUserAvatarUrl(profile?.avatar_url ?? null);
       const roleLabel =
         profile?.role === 'admin' ? 'Owner' : profile?.role === 'crew' ? 'Crew' : 'Member';
@@ -127,320 +77,40 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     void loadProfile();
   }, [pathname]);
 
-  // Close drawer whenever the route changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset drawer on pathname change
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
-  function isActive(href: string): boolean {
-    return pathname === href || pathname.startsWith(href + '/');
-  }
-
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
   }
 
-  // ── Sidebar column widths (same as member HofAppShell) ───────────────────
-  const sidebarWidth =
-    sidebarMode === 'full' ? SIDEBAR_WIDTH : sidebarMode === 'icon-only' ? SIDEBAR_WIDTH_TABLET : 0;
-  const sidebarPadding = sidebarMode === 'icon-only' ? '2px 0 16px' : '2px 12px 16px';
-
-  // ── Shared sidebar content ─────────────────────────────────────────────────
-  function SidebarContent({ compact }: { compact: boolean }) {
-    return (
-      <>
-        {/* Brand header — matches HofAppShell */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: compact ? 'center' : 'flex-start',
-            width: '100%',
-            padding: 0,
-            marginTop: 16,
-            marginBottom: 20,
-            lineHeight: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          {compact ? (
-            <HofLogoMark size={24} alt="House of Fire" />
-          ) : (
-            <HofLogoMark fit="wordmark" variant="sidebar" src="/assets/hof-logo.png" width={140} alt="House of Fire" />
-          )}
-        </div>
-
-        {/* Nav items */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {NAV_ITEMS.map((item) => {
-            const badge =
-              item.id === 'media' ? mediaBadge : item.id === 'mod' ? modBadge : item.badge;
-            const navItem = badge ? { ...item, badge } : item;
-            const active = isActive(navItem.href);
-            return (
-              <Link
-                key={navItem.id}
-                href={navItem.href}
-                title={compact ? navItem.label : undefined}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: compact ? 0 : 10,
-                  padding: compact ? '10px 0' : '9px 10px',
-                  justifyContent: compact ? 'center' : 'flex-start',
-                  borderRadius: 6,
-                  textDecoration: 'none',
-                  background: active ? 'var(--hof-elevated)' : 'transparent',
-                  color: active ? 'var(--hof-text)' : 'var(--hof-text-sec)',
-                  borderLeft: active ? '2px solid var(--hof-amber)' : '2px solid transparent',
-                  transition: 'background 100ms',
-                  position: 'relative',
-                }}
-              >
-                <Icon
-                  name={navItem.icon}
-                  size={16}
-                  color={active ? 'var(--hof-amber)' : 'var(--hof-text-sec)'}
-                />
-                {!compact && (
-                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{navItem.label}</span>
-                )}
-                {/* Badge dot in compact mode */}
-                {compact && navItem.badge && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      width: 6,
-                      height: 6,
-                      borderRadius: 3,
-                      background: navItem.id === 'mod' ? 'var(--hof-warning)' : 'var(--hof-amber)',
-                    }}
-                  />
-                )}
-                {!compact && navItem.id === 'door' && (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      color: 'var(--hof-success)',
-                      letterSpacing: '0.16em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: 3,
-                        background: 'var(--hof-success)',
-                        animation: 'hof-pulse 1.4s ease-in-out infinite',
-                        flexShrink: 0,
-                      }}
-                    />
-                    Live
-                  </span>
-                )}
-                {!compact && navItem.badge && navItem.id !== 'door' && (
-                  <span
-                    style={{
-                      background: item.id === 'mod' ? 'var(--hof-warning)' : 'var(--hof-amber)',
-                      color: 'var(--hof-bg)',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: '2px 6px',
-                      borderRadius: 8,
-                    }}
-                  >
-                    {navItem.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User footer */}
-        <div
-          style={{
-            marginTop: 'auto',
-            borderTop: '1px solid var(--hof-border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: compact ? 0 : 10,
-            padding: '12px 6px 0',
-            justifyContent: compact ? 'center' : 'flex-start',
-          }}
-        >
-          <Avatar initials={userInitials} src={userAvatarUrl} alt={userName} size={32} />
-          {!compact && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--hof-text)' }}>
-                {userName}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--hof-text-sec)' }}>{userRole}</div>
-            </div>
-          )}
-          {!compact && (
-            <button
-              onClick={() => {
-                void handleSignOut();
-              }}
-              title="Sign out"
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                flexShrink: 0,
-                background: 'transparent',
-                border: '1px solid var(--hof-border)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path
-                  stroke="var(--hof-text-sec)"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
-      </>
-    );
-  }
+  const handleNav = useCallback(
+    (id: AdminNavId) => {
+      const href = ADMIN_NAV_HREF[id];
+      if (pathname === href || pathname.startsWith(`${href}/`)) return;
+      router.push(href);
+    },
+    [pathname, router],
+  );
 
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        background: 'var(--hof-bg)',
-        color: 'var(--hof-text)',
-        fontFamily: 'Inter, system-ui',
-        overflow: 'hidden',
+    <HofAdminAppShell
+      active={adminNavIdFromPath(pathname)}
+      onNav={handleNav}
+      pageTitle={adminPageTitle(pathname)}
+      user={{
+        name: userName,
+        email: userRole,
+        avatarUrl: userAvatarUrl,
+      }}
+      onSignOut={() => {
+        void handleSignOut();
+      }}
+      badges={{
+        media: mediaBadge,
+        mod: modBadge,
       }}
     >
-      {/* ── Sidebar: full or icon-only (>=768px) ─────────────────────────────*/}
-      {sidebarMode !== 'hidden' && (
-        <div
-          style={{
-            width: sidebarWidth,
-            flexShrink: 0,
-            background: 'var(--hof-surface)',
-            borderRight: '1px solid var(--hof-border)',
-            padding: sidebarPadding,
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'width 200ms ease',
-            overflow: 'hidden',
-          }}
-        >
-          <SidebarContent compact={sidebarMode === 'icon-only'} />
-        </div>
-      )}
-
-      {/* ── Overlay drawer for mobile (<768px) ───────────────────────────────*/}
-      {sidebarMode === 'hidden' && drawerOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setDrawerOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 40,
-              background: 'rgba(0,0,0,0.55)',
-            }}
-          />
-          {/* Drawer panel */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              bottom: 0,
-              zIndex: 50,
-              width: SIDEBAR_WIDTH,
-              background: 'var(--hof-surface)',
-              borderRight: '1px solid var(--hof-border)',
-              padding: sidebarPadding,
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'adminDrawerSlideIn 180ms ease',
-            }}
-          >
-            <SidebarContent compact={false} />
-          </div>
-        </>
-      )}
-
-      {/* ── Main content ─────────────────────────────────────────────────────*/}
-      <main
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          position: 'relative',
-          scrollbarWidth: 'thin',
-        }}
-      >
-        {/* Hamburger — visible only when sidebar is hidden */}
-        {sidebarMode === 'hidden' && (
-          <button
-            onClick={() => setDrawerOpen((o) => !o)}
-            aria-label="Open navigation"
-            style={{
-              position: 'sticky',
-              top: 12,
-              left: 12,
-              zIndex: 30,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: 'var(--hof-surface)',
-              border: '1px solid var(--hof-border)',
-              cursor: 'pointer',
-              marginLeft: 12,
-              marginTop: 12,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                stroke="var(--hof-text)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-        )}
-        {children}
-      </main>
-
-      {/* ── Drawer slide-in keyframe ──────────────────────────────────────────*/}
-      <style>{`
-        @keyframes adminDrawerSlideIn {
-          from { transform: translateX(-100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-      `}</style>
-    </div>
+      {children}
+    </HofAdminAppShell>
   );
 }

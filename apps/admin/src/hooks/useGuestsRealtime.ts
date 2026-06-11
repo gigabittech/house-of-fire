@@ -2,50 +2,50 @@
 
 import { useSupabaseRealtime } from '@hof/realtime';
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
+import type { TicketRealtimeRow } from '@/lib/realtimePatch';
 
 export function useGuestsRealtime({
   eventId,
+  onTicketInsert,
+  onTicketUpdate,
+  onTicketDelete,
   onResync,
-  onTierStatusResync,
   enabled = true,
 }: {
   eventId: string;
-  onResync: () => void;
-  onTierStatusResync: () => void;
+  onTicketInsert?: (row: TicketRealtimeRow) => void;
+  onTicketUpdate?: (row: TicketRealtimeRow, oldRow: Partial<TicketRealtimeRow>) => void;
+  onTicketDelete?: (oldRow: Partial<TicketRealtimeRow>) => void;
+  onResync?: () => void;
   enabled?: boolean;
 }) {
-  const supabase = createClient();
-  const onResyncRef = useRef(onResync);
-  const onTierRef = useRef(onTierStatusResync);
-
-  useEffect(() => {
-    onResyncRef.current = onResync;
-    onTierRef.current = onTierStatusResync;
-  }, [onResync, onTierStatusResync]);
-
-  const filter = eventId ? `event_id=eq.${eventId}` : undefined;
-
-  useSupabaseRealtime({
-    supabase,
-    table: 'tickets',
-    filter,
-    eventTypes: ['INSERT', 'UPDATE'],
-    enabled: enabled && !!eventId,
-    debounceMs: 300,
-    onInsert: () => onResyncRef.current(),
-    onUpdate: () => onResyncRef.current(),
-    onResync: () => onResyncRef.current(),
+  const callbacksRef = useRef({
+    onTicketInsert,
+    onTicketUpdate,
+    onTicketDelete,
+    onResync,
   });
 
-  useSupabaseRealtime({
-    supabase,
-    table: 'ticket_tiers',
-    filter,
-    eventTypes: ['UPDATE'],
+  useEffect(() => {
+    callbacksRef.current = {
+      onTicketInsert,
+      onTicketUpdate,
+      onTicketDelete,
+      onResync,
+    };
+  }, [onTicketInsert, onTicketUpdate, onTicketDelete, onResync]);
+
+  const ticketFilter = eventId ? `event_id=eq.${eventId}` : undefined;
+
+  useSupabaseRealtime<TicketRealtimeRow>({
+    table: 'tickets',
+    filter: ticketFilter,
+    eventTypes: ['INSERT', 'UPDATE', 'DELETE'],
     enabled: enabled && !!eventId,
-    debounceMs: 300,
-    onUpdate: () => onTierRef.current(),
-    onResync: () => onTierRef.current(),
+    debounceMs: 150,
+    onInsert: (row) => callbacksRef.current.onTicketInsert?.(row),
+    onUpdate: (row, oldRow) => callbacksRef.current.onTicketUpdate?.(row, oldRow),
+    onDelete: (oldRow) => callbacksRef.current.onTicketDelete?.(oldRow),
+    onResync: () => callbacksRef.current.onResync?.(),
   });
 }
