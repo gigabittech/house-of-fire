@@ -187,13 +187,7 @@ function EllipsisText({
   );
 }
 
-function PhotoThumb({
-  photo,
-  onPreview,
-}: {
-  photo: PhotoItem;
-  onPreview: () => void;
-}) {
+function PhotoThumb({ photo, onPreview }: { photo: PhotoItem; onPreview: () => void }) {
   const url =
     eventPhotoPreviewUrl({ storage_path: photo.storagePath, public_url: photo.publicUrl }) ??
     photo.publicUrl;
@@ -272,16 +266,8 @@ export default function MediaPage() {
     return sp.toString();
   }, [statusFilter, eventId, debouncedSearch, debouncedEmail, dateFrom, dateTo]);
 
-  const {
-    photos,
-    totalCount,
-    hasMore,
-    loading,
-    loadingMore,
-    error,
-    refresh,
-    loadMore,
-  } = useAdminMediaFeed<PhotoApiRow, PhotoItem>(queryString, mapPhotoRow);
+  const { photos, totalCount, hasMore, loading, loadingMore, error, refresh, loadMore } =
+    useAdminMediaFeed<PhotoApiRow, PhotoItem>(queryString, mapPhotoRow);
 
   const hasActiveFilters =
     Boolean(eventId) ||
@@ -423,10 +409,7 @@ export default function MediaPage() {
     }
   }
 
-  function handleUploaded(
-    uploadedEventId: string,
-    result: { uploaded: number; failed: number },
-  ) {
+  function handleUploaded(uploadedEventId: string, result: { uploaded: number; failed: number }) {
     setEventId(uploadedEventId);
     setStatusFilter('all');
     if (result.failed > 0) {
@@ -969,7 +952,8 @@ export default function MediaPage() {
                   color: 'var(--hof-text-sec)',
                 }}
               >
-                Showing {photos.length.toLocaleString('en-US')} of {totalCount.toLocaleString('en-US')}
+                Showing {photos.length.toLocaleString('en-US')} of{' '}
+                {totalCount.toLocaleString('en-US')}
                 {hasMore ? ' · scroll for more' : ''}
               </div>
             ) : null}
@@ -1031,12 +1015,10 @@ function PhotoActionsMenu({
   onReactivate: () => void;
   onDelete: () => void;
 }) {
-  const showApprove =
-    photo.status === 'pending' || photo.status === 'rejected';
+  const showApprove = photo.status === 'pending' || photo.status === 'rejected';
   const showReject = photo.status === 'pending';
   const showDeactivate =
-    photo.status === 'approved' ||
-    (photo.status !== 'inactive' && photo.status !== 'approved');
+    photo.status === 'approved' || (photo.status !== 'inactive' && photo.status !== 'approved');
   const showReactivate = photo.status === 'inactive';
 
   return (
@@ -1090,7 +1072,12 @@ function PhotoActionsMenu({
             </button>
           ) : null}
           {showApprove ? (
-            <button type="button" role="menuitem" onClick={onApprove} style={menuItemStyle('success')}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onApprove}
+              style={menuItemStyle('success')}
+            >
               Approve
             </button>
           ) : null}
@@ -1110,7 +1097,12 @@ function PhotoActionsMenu({
             </button>
           ) : null}
           {showDeactivate ? (
-            <button type="button" role="menuitem" onClick={onDeactivate} style={menuItemStyle('warn')}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onDeactivate}
+              style={menuItemStyle('warn')}
+            >
               Deactivate
             </button>
           ) : null}

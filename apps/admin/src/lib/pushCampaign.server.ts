@@ -1,9 +1,5 @@
-import {
-  sendWebPush,
-  type PushPayload,
-  type PushRecipientRow,
-  type PushSegment,
-} from '@hof/push';
+import type { PushPayload, PushRecipientRow, PushSegment } from '@hof/push';
+import { sendWebPush } from '@hof/push/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 

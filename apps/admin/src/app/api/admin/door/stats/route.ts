@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
   if (eventId) {
     const { data, error: eventError } = await supabase
       .from('events')
-      .select('id, edition_number, name, venue_name, doors_open, doors_close, date, capacity, status')
+      .select(
+        'id, edition_number, name, venue_name, doors_open, doors_close, date, capacity, status',
+      )
       .eq('id', eventId)
       .maybeSingle();
     if (eventError) {

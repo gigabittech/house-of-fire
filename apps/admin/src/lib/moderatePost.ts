@@ -1,7 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-export type ModerationAction = 'approved' | 'rejected' | 'hidden' | 'deleted' | 'pinned' | 'unpinned';
+export type ModerationAction =
+  | 'approved'
+  | 'rejected'
+  | 'hidden'
+  | 'deleted'
+  | 'pinned'
+  | 'unpinned';
 
 type AdminClient = SupabaseClient<Database>;
 

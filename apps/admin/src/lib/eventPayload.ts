@@ -169,18 +169,14 @@ export function parseEventPayload(
 
   if (b.dress_code !== undefined) {
     out.dress_code =
-      b.dress_code === null || b.dress_code === ''
-        ? null
-        : String(b.dress_code).trim();
+      b.dress_code === null || b.dress_code === '' ? null : String(b.dress_code).trim();
   } else if (!partial) {
     out.dress_code = null;
   }
 
   if (b.hero_image_url !== undefined) {
     out.hero_image_url =
-      b.hero_image_url === null || b.hero_image_url === ''
-        ? null
-        : String(b.hero_image_url).trim();
+      b.hero_image_url === null || b.hero_image_url === '' ? null : String(b.hero_image_url).trim();
   }
 
   if (b.faqs !== undefined) {

@@ -243,7 +243,8 @@ export function FeedPost({
                 lineHeight: 1.4,
               }}
             >
-              <span style={{ color: colors.text, fontWeight: 500 }}>Reason:</span> {post.moderationNote}
+              <span style={{ color: colors.text, fontWeight: 500 }}>Reason:</span>{' '}
+              {post.moderationNote}
             </div>
           </div>
         )}

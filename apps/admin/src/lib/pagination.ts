@@ -14,7 +14,10 @@ export function parsePagination(
     searchParams.get('pageSize') ?? searchParams.get('limit') ?? String(defaults?.pageSize ?? 25);
 
   const page = Math.max(1, Number.parseInt(pageRaw ?? '1', 10) || 1);
-  const pageSize = Math.min(100, Math.max(1, Number.parseInt(sizeRaw, 10) || defaults?.pageSize || 25));
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Number.parseInt(sizeRaw, 10) || defaults?.pageSize || 25),
+  );
 
   return { page, pageSize };
 }

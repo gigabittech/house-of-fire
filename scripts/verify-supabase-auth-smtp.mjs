@@ -12,7 +12,9 @@ const PROJECT_REF =
   env.SUPABASE_PROJECT_REF ?? projectRefFromSupabaseUrl(env.NEXT_PUBLIC_SUPABASE_URL);
 
 if (!SUPABASE_ACCESS_TOKEN || !PROJECT_REF) {
-  console.error('Need SUPABASE_ACCESS_TOKEN and NEXT_PUBLIC_SUPABASE_URL in apps/mobile/.env.local');
+  console.error(
+    'Need SUPABASE_ACCESS_TOKEN and NEXT_PUBLIC_SUPABASE_URL in apps/mobile/.env.local',
+  );
   process.exit(1);
 }
 

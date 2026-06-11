@@ -79,26 +79,26 @@ export default function ArchiveScreen() {
   useAppHeader({ title: 'Archive' });
 
   return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        background: colors.bg,
+      }}
+    >
       <div
+        className="hof-scroll hof-app-page-scroll"
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden',
-          background: colors.bg,
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
-        <div
-          className="hof-scroll hof-app-page-scroll"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            paddingTop: isWide ? layoutChrome.wideActionsInset : layoutChrome.mobilePageHeaderInset,
-            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          }}
-        >
-          <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
+        <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
           {/* Year filter */}
           <div
             className="hof-scroll"
@@ -134,9 +134,7 @@ export default function ArchiveScreen() {
 
           {/* Grid */}
           {loadingArchive ? (
-            <div
-              style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 8 }}
-            >
+            <div style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[0, 1, 2].map((i) => (
                 <FeedSkeletonCard key={i} />
               ))}
@@ -235,7 +233,8 @@ export default function ArchiveScreen() {
                         >
                           {e.name}
                         </div>
-                        {typeof e.attendee_count === 'number' || typeof e.photo_count === 'number' ? (
+                        {typeof e.attendee_count === 'number' ||
+                        typeof e.photo_count === 'number' ? (
                           <div
                             style={{
                               fontFamily: 'Inter',
@@ -291,41 +290,41 @@ export default function ArchiveScreen() {
               )}
             </div>
           )}
-          </div>
         </div>
-
-        {/* Photo submission FAB */}
-        <button
-          className="hof-btn hof-press"
-          onClick={() => setUploadOpen(true)}
-          aria-label="Submit your photos"
-          style={{
-            position: 'absolute',
-            right: 18,
-            bottom: isWide ? 24 : 110,
-            zIndex: 25,
-            height: 48,
-            padding: '0 18px 0 14px',
-            borderRadius: 24,
-            background: colors.amber,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            boxShadow: '0 8px 24px rgba(232,101,26,0.35), 0 2px 4px rgba(0,0,0,0.4)',
-          }}
-        >
-          <Icon name="camera" size={18} color={colors.bg} />
-          <span style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 500, color: colors.bg }}>
-            Submit photos
-          </span>
-        </button>
-
-        <PhotoSubmitSheet
-          open={uploadOpen}
-          onClose={() => setUploadOpen(false)}
-          eventId={uploadEventId}
-          edition={uploadEdition}
-        />
       </div>
+
+      {/* Photo submission FAB */}
+      <button
+        className="hof-btn hof-press"
+        onClick={() => setUploadOpen(true)}
+        aria-label="Submit your photos"
+        style={{
+          position: 'absolute',
+          right: 18,
+          bottom: isWide ? 24 : 110,
+          zIndex: 25,
+          height: 48,
+          padding: '0 18px 0 14px',
+          borderRadius: 24,
+          background: colors.amber,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          boxShadow: '0 8px 24px rgba(232,101,26,0.35), 0 2px 4px rgba(0,0,0,0.4)',
+        }}
+      >
+        <Icon name="camera" size={18} color={colors.bg} />
+        <span style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 500, color: colors.bg }}>
+          Submit photos
+        </span>
+      </button>
+
+      <PhotoSubmitSheet
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        eventId={uploadEventId}
+        edition={uploadEdition}
+      />
+    </div>
   );
 }

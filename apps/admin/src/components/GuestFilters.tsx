@@ -48,13 +48,7 @@ const inputStyle: CSSProperties = {
   outline: 'none',
 };
 
-export function GuestFilters({
-  events,
-  tiers,
-  filters,
-  onChange,
-  onExportCsv,
-}: GuestFiltersProps) {
+export function GuestFilters({ events, tiers, filters, onChange, onExportCsv }: GuestFiltersProps) {
   const set = (patch: Partial<GuestFilterState>) => onChange({ ...filters, ...patch });
 
   return (

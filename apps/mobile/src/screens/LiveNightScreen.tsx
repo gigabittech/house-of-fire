@@ -233,7 +233,9 @@ export default function LiveNightScreen() {
     const profile = p.is_anonymous ? null : p.profiles;
     const displayName = profile?.display_name ?? 'Anonymous';
     const role =
-      profile?.role === 'crew' || profile?.role === 'admin' ? ('crew' as const) : ('member' as const);
+      profile?.role === 'crew' || profile?.role === 'admin'
+        ? ('crew' as const)
+        : ('member' as const);
     return {
       id: p.id,
       i: initialsFrom(displayName),
@@ -370,270 +372,270 @@ export default function LiveNightScreen() {
 
   if (!lineupLoading && !eventId) {
     return (
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            background: colors.bg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <EmptyState
-            icon="flame"
-            title={NO_EVENTS_MESSAGE}
-            action={
-              <button
-                className="hof-btn hof-press"
-                onClick={() => router.push('/')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  background: colors.amber,
-                  border: `1px solid ${colors.amber}`,
-                  fontFamily: 'Inter',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: colors.bg,
-                }}
-              >
-                Back to home
-              </button>
-            }
-          />
-        </div>
-    );
-  }
-
-  return (
       <div
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
-          overflow: 'hidden',
           background: colors.bg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {/* Live banner — amber top strip */}
-        <div
-          style={{
-            position: 'absolute',
-            top: isWide ? 12 : 8,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
-            boxSizing: 'border-box',
-            zIndex: 10,
-            padding: '10px 16px',
-            background: colors.amber,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
+        <EmptyState
+          icon="flame"
+          title={NO_EVENTS_MESSAGE}
+          action={
+            <button
+              className="hof-btn hof-press"
+              onClick={() => router.push('/')}
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                background: colors.bg,
-                animation: 'hof-pulse 1.4s ease-in-out infinite',
-              }}
-            />
-            <span
-              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: colors.amber,
+                border: `1px solid ${colors.amber}`,
                 fontFamily: 'Inter',
                 fontWeight: 600,
-                fontSize: 11,
+                fontSize: 14,
                 color: colors.bg,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
               }}
             >
-              Doors are open
-            </span>
-          </div>
+              Back to home
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        background: colors.bg,
+      }}
+    >
+      {/* Live banner — amber top strip */}
+      <div
+        style={{
+          position: 'absolute',
+          top: isWide ? 12 : 8,
+          left: isWide ? '50%' : 0,
+          right: isWide ? 'auto' : 0,
+          transform: isWide ? 'translateX(-50%)' : undefined,
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
+          boxSizing: 'border-box',
+          zIndex: 10,
+          padding: '10px 16px',
+          background: colors.amber,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             style={{
-              fontFamily: 'JetBrains Mono',
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              background: colors.bg,
+              animation: 'hof-pulse 1.4s ease-in-out infinite',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: 'Inter',
+              fontWeight: 600,
               fontSize: 11,
               color: colors.bg,
-              fontVariantNumeric: 'tabular-nums',
-              fontWeight: 600,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
             }}
           >
-            {hh}:{mm} MT
+            Doors are open
           </span>
         </div>
-
-        {/* Inner scroll — centered column on tablet/desktop */}
-        <div
-          className="hof-scroll"
+        <span
           style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: isWide ? '50%' : 0,
-            right: isWide ? 'auto' : 0,
-            transform: isWide ? 'translateX(-50%)' : undefined,
-            width: isWide
-              ? isDesktop
-                ? `min(100%, ${layoutWidth.appDesktop}px)`
-                : `min(100%, ${layoutWidth.app}px)`
-              : 'auto',
-            overflowY: 'auto',
+            fontFamily: 'JetBrains Mono',
+            fontSize: 11,
+            color: colors.bg,
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 600,
           }}
         >
-          <div style={{ height: 92 }} />
+          {hh}:{mm} MT
+        </span>
+      </div>
 
-          {/* QR ticket hero */}
-          <div style={{ padding: '14px 16px 0' }}>
-            {ticketLoading ? (
-              <Skeleton height={280} />
-            ) : ticketCode ? (
-              <button
-                className="hof-btn hof-press"
-                onClick={() => router.push('/ticket')}
-                style={{
-                  width: '100%',
-                  padding: 0,
-                  textAlign: 'left',
-                  background: colors.text,
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  boxShadow: '0 12px 40px rgba(232,101,26,0.25), 0 0 0 1px rgba(240,237,230,0.1)',
-                  display: 'block',
-                }}
-              >
-                <div style={{ padding: '16px 18px 8px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        color: colors.bg,
-                        opacity: 0.55,
-                        letterSpacing: '0.22em',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Your ticket · Th {eventId ? '' : '24'}
-                    </div>
-                    <span
-                      style={{
-                        padding: '3px 7px',
-                        background: colors.amber,
-                        color: colors.bg,
-                        fontFamily: 'Inter',
-                        fontSize: 9,
-                        fontWeight: 700,
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                        borderRadius: 3,
-                      }}
-                    >
-                      GA
-                    </span>
-                  </div>
-                </div>
+      {/* Inner scroll — centered column on tablet/desktop */}
+      <div
+        className="hof-scroll"
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: isWide ? '50%' : 0,
+          right: isWide ? 'auto' : 0,
+          transform: isWide ? 'translateX(-50%)' : undefined,
+          width: isWide
+            ? isDesktop
+              ? `min(100%, ${layoutWidth.appDesktop}px)`
+              : `min(100%, ${layoutWidth.app}px)`
+            : 'auto',
+          overflowY: 'auto',
+        }}
+      >
+        <div style={{ height: 92 }} />
+
+        {/* QR ticket hero */}
+        <div style={{ padding: '14px 16px 0' }}>
+          {ticketLoading ? (
+            <Skeleton height={280} />
+          ) : ticketCode ? (
+            <button
+              className="hof-btn hof-press"
+              onClick={() => router.push('/ticket')}
+              style={{
+                width: '100%',
+                padding: 0,
+                textAlign: 'left',
+                background: colors.text,
+                borderRadius: 16,
+                overflow: 'hidden',
+                boxShadow: '0 12px 40px rgba(232,101,26,0.25), 0 0 0 1px rgba(240,237,230,0.1)',
+                display: 'block',
+              }}
+            >
+              <div style={{ padding: '16px 18px 8px' }}>
                 <div
                   style={{
-                    padding: '4px 16px 18px',
                     display: 'flex',
-                    flexDirection: 'column',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                   }}
                 >
-                  <FakeQR size={220} fg={colors.bg} bg={colors.text} />
                   <div
                     style={{
-                      marginTop: 12,
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 13,
+                      fontFamily: 'Inter',
+                      fontSize: 10,
                       color: colors.bg,
-                      letterSpacing: '0.16em',
-                      fontWeight: 500,
+                      opacity: 0.55,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
                     }}
                   >
-                    {ticketCode}
-                    {ticketHolderName ? ` · ${ticketHolderName}` : ''}
+                    Your ticket · Th {eventId ? '' : '24'}
                   </div>
+                  <span
+                    style={{
+                      padding: '3px 7px',
+                      background: colors.amber,
+                      color: colors.bg,
+                      fontFamily: 'Inter',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      borderRadius: 3,
+                    }}
+                  >
+                    GA
+                  </span>
                 </div>
-              </button>
-            ) : (
+              </div>
               <div
                 style={{
-                  padding: '20px 18px',
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 16,
-                  textAlign: 'center',
+                  padding: '4px 16px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                 }}
               >
+                <FakeQR size={220} fg={colors.bg} bg={colors.text} />
                 <div
                   style={{
-                    fontFamily: 'Inter',
-                    fontWeight: 500,
-                    fontSize: 14,
-                    color: colors.text,
-                    marginBottom: 8,
-                  }}
-                >
-                  No ticket yet
-                </div>
-                <button
-                  className="hof-btn hof-press"
-                  onClick={() => router.push('/checkout')}
-                  style={{
-                    fontFamily: 'Inter',
+                    marginTop: 12,
+                    fontFamily: 'JetBrains Mono',
                     fontSize: 13,
-                    color: colors.amber,
-                    fontWeight: 600,
+                    color: colors.bg,
+                    letterSpacing: '0.16em',
+                    fontWeight: 500,
                   }}
                 >
-                  Get a ticket →
-                </button>
+                  {ticketCode}
+                  {ticketHolderName ? ` · ${ticketHolderName}` : ''}
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Brightness hint */}
-          <div
-            style={{
-              margin: '10px 16px 0',
-              padding: '10px 14px',
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <Icon name="bolt" size={14} color={colors.warning} />
-            <div style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
-              Brightness will auto-max when you reach the scanner.
+            </button>
+          ) : (
+            <div
+              style={{
+                padding: '20px 18px',
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 16,
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter',
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: colors.text,
+                  marginBottom: 8,
+                }}
+              >
+                No ticket yet
+              </div>
+              <button
+                className="hof-btn hof-press"
+                onClick={() => router.push('/checkout')}
+                style={{
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: colors.amber,
+                  fontWeight: 600,
+                }}
+              >
+                Get a ticket →
+              </button>
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Live thread strip — COMMUNITY_FEATURE */}
-          {COMMUNITY_FEATURE_ENABLED ? (
+        {/* Brightness hint */}
+        <div
+          style={{
+            margin: '10px 16px 0',
+            padding: '10px 14px',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <Icon name="bolt" size={14} color={colors.warning} />
+          <div style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, color: colors.textSec }}>
+            Brightness will auto-max when you reach the scanner.
+          </div>
+        </div>
+
+        {/* Live thread strip — COMMUNITY_FEATURE */}
+        {COMMUNITY_FEATURE_ENABLED ? (
           <div style={{ padding: '24px 16px 0' }}>
             <div
               style={{
@@ -822,10 +824,141 @@ export default function LiveNightScreen() {
               )}
             </div>
           </div>
-          ) : null}
+        ) : null}
 
-          {/* Set times */}
-          <div style={{ padding: '24px 16px 0' }}>
+        {/* Set times */}
+        <div style={{ padding: '24px 16px 0' }}>
+          <div
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 10,
+              color: colors.amber,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              marginBottom: 10,
+            }}
+          >
+            Now playing · Set times
+          </div>
+          <div
+            style={{
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
+            {lineupLoading ? (
+              <div
+                style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}
+              >
+                <Skeleton height={44} />
+                <Skeleton height={44} />
+                <Skeleton height={44} />
+              </div>
+            ) : setTimes.length > 0 ? (
+              setTimes.map((l, i, a) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '12px 14px',
+                    borderBottom: i < a.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    opacity: l.status === 'past' ? 0.4 : 1,
+                    background: l.status === 'now' ? 'rgba(232,101,26,0.06)' : 'transparent',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 12,
+                      color: l.status === 'now' ? colors.amber : colors.textSec,
+                      width: 44,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {l.t}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontFamily: 'Clash Display',
+                        fontWeight: 600,
+                        fontSize: 16,
+                        color: l.status === 'now' ? colors.amber : colors.text,
+                      }}
+                    >
+                      {l.name}
+                    </div>
+                  </div>
+                  {l.status === 'now' && (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: colors.amber,
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: 3,
+                          background: colors.amber,
+                          animation: 'hof-pulse 1.4s ease-in-out infinite',
+                        }}
+                      />
+                      Now
+                    </span>
+                  )}
+                  {l.status === 'next' && (
+                    <span
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: colors.textSec,
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Up next
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div
+                style={{
+                  padding: '14px',
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: colors.textSec,
+                }}
+              >
+                Lineup not announced yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* At the venue */}
+        <div style={{ padding: '24px 16px 0' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 10,
+            }}
+          >
             <div
               style={{
                 fontFamily: 'Inter',
@@ -833,244 +966,113 @@ export default function LiveNightScreen() {
                 color: colors.amber,
                 letterSpacing: '0.22em',
                 textTransform: 'uppercase',
-                marginBottom: 10,
               }}
             >
-              Now playing · Set times
+              At the venue
             </div>
-            <div
-              style={{
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-            >
-              {lineupLoading ? (
-                <div
-                  style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}
-                >
-                  <Skeleton height={44} />
-                  <Skeleton height={44} />
-                  <Skeleton height={44} />
-                </div>
-              ) : setTimes.length > 0 ? (
-                setTimes.map((l, i, a) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      padding: '12px 14px',
-                      borderBottom: i < a.length - 1 ? `1px solid ${colors.border}` : 'none',
-                      opacity: l.status === 'past' ? 0.4 : 1,
-                      background: l.status === 'now' ? 'rgba(232,101,26,0.06)' : 'transparent',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: 12,
-                        color: l.status === 'now' ? colors.amber : colors.textSec,
-                        width: 44,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {l.t}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          fontFamily: 'Clash Display',
-                          fontWeight: 600,
-                          fontSize: 16,
-                          color: l.status === 'now' ? colors.amber : colors.text,
-                        }}
-                      >
-                        {l.name}
-                      </div>
-                    </div>
-                    {l.status === 'now' && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: colors.amber,
-                          letterSpacing: '0.16em',
-                          textTransform: 'uppercase',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 5,
-                            height: 5,
-                            borderRadius: 3,
-                            background: colors.amber,
-                            animation: 'hof-pulse 1.4s ease-in-out infinite',
-                          }}
-                        />
-                        Now
-                      </span>
-                    )}
-                    {l.status === 'next' && (
-                      <span
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: colors.textSec,
-                          letterSpacing: '0.16em',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Up next
-                      </span>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div
-                  style={{
-                    padding: '14px',
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: colors.textSec,
-                  }}
-                >
-                  Lineup not announced yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* At the venue */}
-          <div style={{ padding: '24px 16px 0' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 10,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  color: colors.amber,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                At the venue
-              </div>
-              <button
-                className="hof-btn"
-                onClick={() => setMapOpen(true)}
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: colors.amber,
-                  fontWeight: 500,
-                }}
-              >
-                View on map →
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {venueInfo.map(([t, ic, sub]) => (
-                <div
-                  key={t}
-                  style={{
-                    padding: '12px 14px',
-                    background: colors.surface,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Icon name={ic} size={16} color={colors.amber} />
-                  <div
-                    style={{
-                      fontFamily: 'Inter',
-                      fontWeight: 500,
-                      fontSize: 13,
-                      color: colors.text,
-                      marginTop: 8,
-                    }}
-                  >
-                    {t}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      color: colors.textSec,
-                      marginTop: 2,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {sub}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Emergency strip */}
-          <div style={{ padding: '24px 16px 0' }}>
             <button
-              className="hof-btn hof-press"
+              className="hof-btn"
+              onClick={() => setMapOpen(true)}
               style={{
-                width: '100%',
-                padding: '12px 14px',
-                textAlign: 'left',
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: colors.amber,
+                fontWeight: 500,
               }}
             >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  background: 'rgba(232,74,26,0.12)',
-                  border: '1px solid rgba(232,74,26,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name="bolt" size={14} color={colors.error} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: colors.text }}
-                >
-                  Reach Crew or report something
-                </div>
-                <div
-                  style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, marginTop: 1 }}
-                >
-                  Crew is in the room. Discreet help button.
-                </div>
-              </div>
-              <Icon name="chev" size={14} color={colors.textSec} />
+              View on map →
             </button>
           </div>
-
-          {/* Bottom spacer for nav */}
-          <div style={{ height: 120 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {venueInfo.map(([t, ic, sub]) => (
+              <div
+                key={t}
+                style={{
+                  padding: '12px 14px',
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 10,
+                }}
+              >
+                <Icon name={ic} size={16} color={colors.amber} />
+                <div
+                  style={{
+                    fontFamily: 'Inter',
+                    fontWeight: 500,
+                    fontSize: 13,
+                    color: colors.text,
+                    marginTop: 8,
+                  }}
+                >
+                  {t}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    color: colors.textSec,
+                    marginTop: 2,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {sub}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
+        {/* Emergency strip */}
+        <div style={{ padding: '24px 16px 0' }}>
+          <button
+            className="hof-btn hof-press"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              textAlign: 'left',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                background: 'rgba(232,74,26,0.12)',
+                border: '1px solid rgba(232,74,26,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="bolt" size={14} color={colors.error} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 13, color: colors.text }}
+              >
+                Reach Crew or report something
+              </div>
+              <div
+                style={{ fontFamily: 'Inter', fontSize: 11, color: colors.textSec, marginTop: 1 }}
+              >
+                Crew is in the room. Discreet help button.
+              </div>
+            </div>
+            <Icon name="chev" size={14} color={colors.textSec} />
+          </button>
+        </div>
+
+        {/* Bottom spacer for nav */}
+        <div style={{ height: 120 }} />
       </div>
+
+      <MapSheet open={mapOpen} onClose={() => setMapOpen(false)} />
+    </div>
   );
 }

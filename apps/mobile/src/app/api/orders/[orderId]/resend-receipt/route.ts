@@ -6,7 +6,10 @@ import {
   ReceiptResendRateLimitError,
   resendOrderReceipt,
 } from '../../../../../lib/receipt/emailResend.server';
-import { createServerSupabaseClient, createServiceRoleClient } from '../../../../../lib/supabase.server';
+import {
+  createServerSupabaseClient,
+  createServiceRoleClient,
+} from '../../../../../lib/supabase.server';
 
 function clientIp(request: NextRequest): string {
   return (
@@ -16,10 +19,7 @@ function clientIp(request: NextRequest): string {
   );
 }
 
-export async function POST(
-  request: NextRequest,
-  ctx: { params: Promise<{ orderId: string }> },
-) {
+export async function POST(request: NextRequest, ctx: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await ctx.params;
   const trimmed = orderId?.trim();
   if (!trimmed) {

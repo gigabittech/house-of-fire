@@ -28,7 +28,8 @@ describe('eventPhotoUrls', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
     const photo = {
       storage_path: 'events/1/u/1.jpg',
-      public_url: 'https://example.supabase.co/storage/v1/object/public/event-photos/events/1/u/1.jpg',
+      public_url:
+        'https://example.supabase.co/storage/v1/object/public/event-photos/events/1/u/1.jpg',
     };
     expect(eventPhotoThumbUrl(photo)).toContain('/render/image/public/');
     expect(eventPhotoGridUrl(photo)).toContain('width=480');

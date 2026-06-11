@@ -10,7 +10,12 @@ export type EventPhotoTransformOptions = {
 export const EVENT_PHOTO_THUMB = { width: 320, height: 320, quality: 70, resize: 'cover' } as const;
 export const EVENT_PHOTO_GRID = { width: 480, height: 480, quality: 75, resize: 'cover' } as const;
 export const EVENT_PHOTO_PREVIEW = { width: 96, height: 96, quality: 65, resize: 'cover' } as const;
-export const EVENT_PHOTO_LIGHTBOX = { width: 1920, height: 1920, quality: 85, resize: 'contain' } as const;
+export const EVENT_PHOTO_LIGHTBOX = {
+  width: 1920,
+  height: 1920,
+  quality: 85,
+  resize: 'contain',
+} as const;
 
 function supabaseProjectUrl(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');

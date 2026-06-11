@@ -207,7 +207,9 @@ export default function MembersPage() {
         <Kpi
           label="Crew & comp"
           value={loading ? '…' : String(stats?.crew_count ?? 0)}
-          delta={stats ? `${stats.crew_count} Crew · ${stats.photographer_count} Photographers` : ''}
+          delta={
+            stats ? `${stats.crew_count} Crew · ${stats.photographer_count} Photographers` : ''
+          }
           tone="muted"
         />
       </div>

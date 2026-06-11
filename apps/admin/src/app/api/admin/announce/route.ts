@@ -126,7 +126,9 @@ export async function POST(request: NextRequest) {
     if (emails.length > 0) {
       const imagesHtml =
         safeMedia.length > 0
-          ? safeMedia.map((url) => `<p><img src="${url}" alt="" style="max-width:100%"/></p>`).join('')
+          ? safeMedia
+              .map((url) => `<p><img src="${url}" alt="" style="max-width:100%"/></p>`)
+              .join('')
           : '';
       try {
         await resend.emails.send({
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
         body: (postBody?.trim() || title.trim()).slice(0, 240),
         url: eventId ? `/event` : '/',
         segment,
-        eventId: segment === 'all_members' ? null : eventId ?? null,
+        eventId: segment === 'all_members' ? null : (eventId ?? null),
         createdBy: user.id,
         meta: { postId: post.id, source: 'announce' },
       });

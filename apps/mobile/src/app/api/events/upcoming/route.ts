@@ -15,10 +15,7 @@ function normalizeDbTime(value: string): string {
   return value.length >= 5 ? value.slice(0, 5) : value;
 }
 
-function effectiveTierStatus(
-  tier: TicketTierRow,
-  remaining: number,
-): TicketTierRow['status'] {
+function effectiveTierStatus(tier: TicketTierRow, remaining: number): TicketTierRow['status'] {
   if (tier.status === 'hidden') return 'hidden';
   if (tier.status === 'sold_out' || remaining <= 0) return 'sold_out';
   return 'available';
@@ -96,8 +93,7 @@ export async function GET() {
     }
   }
 
-  const visibility =
-    (event as { visibility?: 'public' | 'hidden' }).visibility ?? 'public';
+  const visibility = (event as { visibility?: 'public' | 'hidden' }).visibility ?? 'public';
   const dressCode = (event as { dress_code?: string | null }).dress_code ?? null;
   const displayStatus = resolveEventDisplayStatus(
     { status: event.status, visibility },

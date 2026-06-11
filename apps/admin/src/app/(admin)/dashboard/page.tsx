@@ -184,9 +184,7 @@ function GuestListWidget({
               marginTop: 4,
             }}
           >
-            {loading
-              ? '…'
-              : `${totalCount} confirmed · showing ${displayGuests.length}`}
+            {loading ? '…' : `${totalCount} confirmed · showing ${displayGuests.length}`}
           </div>
         </div>
         <div

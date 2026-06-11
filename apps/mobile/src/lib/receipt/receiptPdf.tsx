@@ -133,13 +133,7 @@ function LineItemRow({ item }: { item: ReceiptLineItem }) {
   );
 }
 
-function ReceiptPdfDocument({
-  data,
-  logoSrc,
-}: {
-  data: OrderReceiptData;
-  logoSrc: string | null;
-}) {
+function ReceiptPdfDocument({ data, logoSrc }: { data: OrderReceiptData; logoSrc: string | null }) {
   const footerSubtotal = data.subtotalCents - data.discountCents + data.feeCents;
 
   return (

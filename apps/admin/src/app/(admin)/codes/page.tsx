@@ -640,10 +640,7 @@ export default function CodesPage() {
                       ? String(selected.analytics.remainingUses)
                       : '∞',
                   ],
-                  [
-                    'Discount given',
-                    formatMoney(selected.analytics?.totalDiscountCents ?? 0),
-                  ],
+                  ['Discount given', formatMoney(selected.analytics?.totalDiscountCents ?? 0)],
                   ['Revenue', formatMoney(selected.analytics?.revenueCents ?? 0)],
                   ['Last used', formatLastUsed(selected.analytics?.lastUsedAt)],
                 ] as const

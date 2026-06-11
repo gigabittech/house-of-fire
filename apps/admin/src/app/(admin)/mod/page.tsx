@@ -130,7 +130,9 @@ function ReportCard({
         <Pill tone={r.severity === 'high' ? 'danger' : 'warning'} size="sm">
           {r.kind}
         </Pill>
-        <span style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)' }}>
+        <span
+          style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)' }}
+        >
           Reported by @{r.reporter} · {r.age} ago
         </span>
       </div>
@@ -148,7 +150,14 @@ function ReportCard({
       >
         "{r.post}"
       </div>
-      <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', marginTop: 8 }}>
+      <div
+        style={{
+          fontFamily: 'Inter, system-ui',
+          fontSize: 11,
+          color: 'var(--hof-text-sec)',
+          marginTop: 8,
+        }}
+      >
         Author: <span style={{ color: 'var(--hof-text)', fontWeight: 500 }}>@{r.author}</span>
       </div>
       <div
@@ -215,11 +224,24 @@ function QueueCard({
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'Inter, system-ui', fontWeight: 600, fontSize: 13, color: 'var(--hof-text)' }}>
+              <span
+                style={{
+                  fontFamily: 'Inter, system-ui',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  color: 'var(--hof-text)',
+                }}
+              >
                 @{q.authorHandle}
               </span>
               {q.authorName !== q.authorHandle && (
-                <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)' }}>
+                <span
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-text-sec)',
+                  }}
+                >
                   {q.authorName}
                 </span>
               )}
@@ -229,8 +251,17 @@ function QueueCard({
                 </Pill>
               )}
             </div>
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', marginTop: 4 }}>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--hof-amber)' }}>{q.channel}</span>
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 11,
+                color: 'var(--hof-text-sec)',
+                marginTop: 4,
+              }}
+            >
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--hof-amber)' }}>
+                {q.channel}
+              </span>
               {' · '}
               {q.age} ago
             </div>
@@ -238,11 +269,26 @@ function QueueCard({
         </div>
 
         {q.title && (
-          <div style={{ fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 15, color: 'var(--hof-text)', marginBottom: 6 }}>
+          <div
+            style={{
+              fontFamily: 'Clash Display, system-ui',
+              fontWeight: 600,
+              fontSize: 15,
+              color: 'var(--hof-text)',
+              marginBottom: 6,
+            }}
+          >
             {q.title}
           </div>
         )}
-        <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text)', lineHeight: 1.5 }}>
+        <div
+          style={{
+            fontFamily: 'Inter, system-ui',
+            fontSize: 13,
+            color: 'var(--hof-text)',
+            lineHeight: 1.5,
+          }}
+        >
           {q.body}
         </div>
 
@@ -290,7 +336,11 @@ function QueueCard({
             padding: 24,
           }}
         >
-          <img src={lightbox} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          <img
+            src={lightbox}
+            alt=""
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
         </div>
       )}
     </>
@@ -508,14 +558,39 @@ export default function ModPage() {
         }}
       >
         <div>
-          <div style={{ fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+          <div
+            style={{
+              fontFamily: 'Inter, system-ui',
+              fontSize: 10,
+              color: 'var(--hof-text-sec)',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+            }}
+          >
             Moderation
           </div>
-          <div style={{ fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 26, color: 'var(--hof-text)', letterSpacing: '-0.01em', marginTop: 4 }}>
+          <div
+            style={{
+              fontFamily: 'Clash Display, system-ui',
+              fontWeight: 600,
+              fontSize: 26,
+              color: 'var(--hof-text)',
+              letterSpacing: '-0.01em',
+              marginTop: 4,
+            }}
+          >
             Keep the board honest
           </div>
-          <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)', marginTop: 4 }}>
-            {reports.length} reports awaiting review · {loading ? '…' : `${queue.length} posts awaiting approval`}
+          <div
+            style={{
+              fontFamily: 'Inter, system-ui',
+              fontSize: 12,
+              color: 'var(--hof-text-sec)',
+              marginTop: 4,
+            }}
+          >
+            {reports.length} reports awaiting review ·{' '}
+            {loading ? '…' : `${queue.length} posts awaiting approval`}
           </div>
         </div>
         <button type="button" onClick={() => void openLog()} style={ghostBtn}>
@@ -548,9 +623,31 @@ export default function ModPage() {
           gap: 16,
         }}
       >
-        <div style={{ background: 'var(--hof-surface)', border: '1px solid var(--hof-border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+        <div
+          style={{
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 12,
+            padding: 18,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 10,
+                color: 'var(--hof-text-sec)',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
               Reported posts
             </div>
             <Pill tone="danger" size="sm">
@@ -558,36 +655,95 @@ export default function ModPage() {
             </Pill>
           </div>
           {reports.length === 0 ? (
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)', padding: '16px 0', textAlign: 'center' }}>
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+                padding: '16px 0',
+                textAlign: 'center',
+              }}
+            >
               No open reports
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {reports.map((r) => (
-                <ReportCard key={r.id} r={r} onDismiss={(id) => void dismissReport(id)} onHide={(id, postId) => void hideReport(id, postId)} />
+                <ReportCard
+                  key={r.id}
+                  r={r}
+                  onDismiss={(id) => void dismissReport(id)}
+                  onHide={(id, postId) => void hideReport(id, postId)}
+                />
               ))}
             </div>
           )}
         </div>
 
-        <div style={{ background: 'var(--hof-surface)', border: '1px solid var(--hof-border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+        <div
+          style={{
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 12,
+            padding: 18,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 10,
+                color: 'var(--hof-text-sec)',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
               Post queue
             </div>
             <Pill tone="amber" size="sm">
               {loading ? '…' : `${queue.length} waiting`}
             </Pill>
           </div>
-          <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)', marginBottom: 12, lineHeight: 1.5 }}>
+          <div
+            style={{
+              fontFamily: 'Inter, system-ui',
+              fontSize: 12,
+              color: 'var(--hof-text-sec)',
+              marginBottom: 12,
+              lineHeight: 1.5,
+            }}
+          >
             Posts awaiting approval before they appear on the board.
           </div>
           {loading ? (
-            <div style={{ padding: 16, textAlign: 'center', fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+            <div
+              style={{
+                padding: 16,
+                textAlign: 'center',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+              }}
+            >
               Loading…
             </div>
           ) : queue.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+            <div
+              style={{
+                padding: 16,
+                textAlign: 'center',
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+              }}
+            >
               Queue is empty — all caught up
             </div>
           ) : (
@@ -608,17 +764,48 @@ export default function ModPage() {
       </div>
 
       <div style={{ padding: '0 28px 28px' }}>
-        <div style={{ background: 'var(--hof-surface)', border: '1px solid var(--hof-border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 10, color: 'var(--hof-text-sec)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+        <div
+          style={{
+            background: 'var(--hof-surface)',
+            border: '1px solid var(--hof-border)',
+            borderRadius: 12,
+            padding: 18,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 10,
+                color: 'var(--hof-text-sec)',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
               Pinned posts
             </div>
-            <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)' }}>
+            <span
+              style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)' }}
+            >
               Max 3 pinned per channel
             </span>
           </div>
           {pinned.length === 0 ? (
-            <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)', padding: '8px 0' }}>
+            <div
+              style={{
+                fontFamily: 'Inter, system-ui',
+                fontSize: 13,
+                color: 'var(--hof-text-sec)',
+                padding: '8px 0',
+              }}
+            >
               No pinned posts
             </div>
           ) : (
@@ -634,8 +821,24 @@ export default function ModPage() {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 500, fontSize: 13, color: 'var(--hof-text)' }}>{p.title}</div>
-                  <div style={{ fontFamily: 'Inter, system-ui', fontSize: 11, color: 'var(--hof-text-sec)', marginTop: 2 }}>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontWeight: 500,
+                      fontSize: 13,
+                      color: 'var(--hof-text)',
+                    }}
+                  >
+                    {p.title}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, system-ui',
+                      fontSize: 11,
+                      color: 'var(--hof-text-sec)',
+                      marginTop: 2,
+                    }}
+                  >
                     {p.channel} · {p.author} · {p.age} ago
                   </div>
                 </div>
@@ -674,12 +877,33 @@ export default function ModPage() {
               flexDirection: 'column',
             }}
           >
-            <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              style={{
+                padding: '20px 20px 0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <div>
-                <div style={{ fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 20, color: 'var(--hof-text)' }}>
+                <div
+                  style={{
+                    fontFamily: 'Clash Display, system-ui',
+                    fontWeight: 600,
+                    fontSize: 20,
+                    color: 'var(--hof-text)',
+                  }}
+                >
                   Mod log
                 </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)', marginTop: 4 }}>
+                <div
+                  style={{
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 12,
+                    color: 'var(--hof-text-sec)',
+                    marginTop: 4,
+                  }}
+                >
                   {logLoading ? 'Loading…' : `${logEntries.length} actions`}
                 </div>
               </div>
@@ -720,11 +944,25 @@ export default function ModPage() {
               </div>
 
               {logLoading ? (
-                <div style={{ padding: 20, fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+                <div
+                  style={{
+                    padding: 20,
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 13,
+                    color: 'var(--hof-text-sec)',
+                  }}
+                >
                   Loading…
                 </div>
               ) : logEntries.length === 0 ? (
-                <div style={{ padding: 20, fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+                <div
+                  style={{
+                    padding: 20,
+                    fontFamily: 'Inter, system-ui',
+                    fontSize: 13,
+                    color: 'var(--hof-text-sec)',
+                  }}
+                >
                   No moderation actions yet
                 </div>
               ) : (
@@ -741,10 +979,22 @@ export default function ModPage() {
                       fontSize: 12,
                     }}
                   >
-                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--hof-text-sec)' }}>
+                    <div
+                      style={{
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: 11,
+                        color: 'var(--hof-text-sec)',
+                      }}
+                    >
                       {formatWhen(entry.created_at)}
                     </div>
-                    <div style={{ fontWeight: 600, color: 'var(--hof-text)', textTransform: 'capitalize' }}>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        color: 'var(--hof-text)',
+                        textTransform: 'capitalize',
+                      }}
+                    >
                       {entry.action}
                     </div>
                     <div style={{ color: 'var(--hof-text)', minWidth: 0 }}>
@@ -762,10 +1012,22 @@ export default function ModPage() {
                         #{entry.post?.channel ?? '?'}
                       </div>
                     </div>
-                    <div style={{ color: 'var(--hof-text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div
+                      style={{
+                        color: 'var(--hof-text-sec)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       @{entry.moderator?.handle ?? 'mod'}
                     </div>
-                    <div style={{ color: 'var(--hof-text-sec)', fontStyle: entry.reason ? 'italic' : 'normal' }}>
+                    <div
+                      style={{
+                        color: 'var(--hof-text-sec)',
+                        fontStyle: entry.reason ? 'italic' : 'normal',
+                      }}
+                    >
                       {entry.reason ?? '—'}
                     </div>
                   </div>

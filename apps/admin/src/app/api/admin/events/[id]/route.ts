@@ -8,10 +8,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 type EventUpdate = Database['public']['Tables']['events']['Update'];
 
-export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const supabase = createAdminSupabaseClient();
 
@@ -56,10 +53,7 @@ export async function GET(
   return NextResponse.json({ event, sold: sold ?? 0, tiers: tiersWithStats });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 
@@ -96,10 +90,7 @@ export async function PATCH(
   return NextResponse.json({ event: data });
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 

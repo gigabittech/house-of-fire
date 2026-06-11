@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { subscribeChannel } from './channelManager';
 import { RealtimeDedupe, rowId, rowsEqual } from './dedupe';
 import { useRealtimeStatus } from './RealtimeProvider';
@@ -21,7 +21,8 @@ function processPayload<T extends Record<string, unknown>>(
     onDelete?: UseSupabaseRealtimeOptions<T>['onDelete'];
   },
 ): void {
-  const id = rowId(payload.new as Record<string, unknown>) || rowId(payload.old as Record<string, unknown>);
+  const id =
+    rowId(payload.new as Record<string, unknown>) || rowId(payload.old as Record<string, unknown>);
   if (!dedupe.shouldProcess(payload.table, id, payload.eventType, payload.commit_timestamp)) {
     return;
   }
@@ -44,6 +45,13 @@ function processPayload<T extends Record<string, unknown>>(
   }
 }
 
+function mapChannelStatus(channelStatus: string): RealtimeConnectionStatus {
+  if (channelStatus === 'SUBSCRIBED') return 'connected';
+  if (channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT') return 'error';
+  if (channelStatus === 'CLOSED') return 'disconnected';
+  return 'connecting';
+}
+
 export function useSupabaseRealtime<T extends Record<string, unknown> = Record<string, unknown>>(
   options: UseSupabaseRealtimeOptions<T>,
 ): { status: RealtimeConnectionStatus } {
@@ -62,7 +70,8 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
   } = options;
 
   const supabase = useRealtimeSupabase(supabaseProp);
-  const { setStatus: setGlobalStatus } = useRealtimeStatus();
+  const { registerConnection, unregisterConnection } = useRealtimeStatus();
+  const connectionId = useId();
   const [status, setStatus] = useState<RealtimeConnectionStatus>('connecting');
 
   const handlersRef = useRef({ onInsert, onUpdate, onDelete, onResync });
@@ -78,10 +87,25 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
   useEffect(() => {
     if (!enabled) {
       setStatus('disconnected');
+      unregisterConnection(connectionId);
       return;
     }
 
     dedupeRef.current.clear();
+    wasConnectedRef.current = false;
+
+    const updateStatus = (channelStatus: string) => {
+      const next = mapChannelStatus(channelStatus);
+      setStatus(next);
+      registerConnection(connectionId, next);
+
+      if (channelStatus === 'SUBSCRIBED') {
+        if (wasConnectedRef.current && handlersRef.current.onResync) {
+          handlersRef.current.onResync();
+        }
+        wasConnectedRef.current = true;
+      }
+    };
 
     const flush = (payload: PostgresChangePayload<T>) => {
       processPayload(payload, dedupeRef.current, handlersRef.current);
@@ -110,33 +134,16 @@ export function useSupabaseRealtime<T extends Record<string, unknown> = Record<s
       filter,
       eventTypes: eventTypes as RealtimeEventType[],
       onPayload,
-      onStatus: (channelStatus) => {
-        if (channelStatus === 'SUBSCRIBED') {
-          setStatus('connected');
-          setGlobalStatus('connected');
-          if (wasConnectedRef.current && handlersRef.current.onResync) {
-            handlersRef.current.onResync();
-          }
-          wasConnectedRef.current = true;
-        } else if (channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT') {
-          setStatus('error');
-          setGlobalStatus('error');
-        } else if (channelStatus === 'CLOSED') {
-          setStatus('disconnected');
-          setGlobalStatus('disconnected');
-        } else {
-          setStatus('connecting');
-          setGlobalStatus('connecting');
-        }
-      },
+      onStatus: updateStatus,
     });
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       unsubscribe();
+      unregisterConnection(connectionId);
       setStatus('disconnected');
     };
-  }, [table, schema, filter, enabled, debounceMs, eventTypes.join(','), setGlobalStatus, supabase]);
+  }, [table, schema, filter, enabled, debounceMs, eventTypes, connectionId, registerConnection, unregisterConnection, supabase]);
 
   return { status };
 }

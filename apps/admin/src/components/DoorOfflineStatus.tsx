@@ -99,12 +99,16 @@ export function DoorOfflineStatus({
       </span>
 
       {cacheMeta ? (
-        <span style={{ padding: '5px 10px', border: '1px solid var(--hof-border)', borderRadius: 6 }}>
+        <span
+          style={{ padding: '5px 10px', border: '1px solid var(--hof-border)', borderRadius: 6 }}
+        >
           Guest list: {cacheMeta.count.toLocaleString()} · {formatAge(cacheMeta.fetchedAt)}
           {stale ? ' · refresh recommended' : ''}
         </span>
       ) : (
-        <span style={{ padding: '5px 10px', border: '1px solid var(--hof-border)', borderRadius: 6 }}>
+        <span
+          style={{ padding: '5px 10px', border: '1px solid var(--hof-border)', borderRadius: 6 }}
+        >
           No offline guest list — download before doors
         </span>
       )}

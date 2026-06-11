@@ -154,7 +154,9 @@ export default function PushPage() {
 
       const sent = data.delivery?.sent ?? data.campaign?.sent_count ?? 0;
       const failed = data.delivery?.failed ?? data.campaign?.failed_count ?? 0;
-      setSuccess(`Push sent to ${sent} device${sent === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}.`);
+      setSuccess(
+        `Push sent to ${sent} device${sent === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}.`,
+      );
       setTitle('');
       setBody('');
       await loadCampaigns();
@@ -170,7 +172,10 @@ export default function PushPage() {
     setError(null);
     try {
       const res = await fetch(`/api/admin/push/campaigns/${id}/retry`, { method: 'POST' });
-      const data = (await res.json()) as { error?: string; delivery?: { sent: number; failed: number } };
+      const data = (await res.json()) as {
+        error?: string;
+        delivery?: { sent: number; failed: number };
+      };
       if (!res.ok) {
         setError(data.error ?? 'Retry failed');
         return;
@@ -211,7 +216,14 @@ export default function PushPage() {
         >
           Web push
         </div>
-        <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)', marginTop: 4 }}>
+        <div
+          style={{
+            fontFamily: 'Inter, system-ui',
+            fontSize: 12,
+            color: 'var(--hof-text-sec)',
+            marginTop: 4,
+          }}
+        >
           Lock-screen alerts for members who opted in on the app.
         </div>
       </div>
@@ -249,7 +261,12 @@ export default function PushPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Notification title"
-            style={{ ...inputStyle, fontFamily: 'Clash Display, system-ui', fontWeight: 600, fontSize: 17 }}
+            style={{
+              ...inputStyle,
+              fontFamily: 'Clash Display, system-ui',
+              fontWeight: 600,
+              fontSize: 17,
+            }}
           />
 
           <textarea
@@ -279,7 +296,12 @@ export default function PushPage() {
             >
               Tap opens
             </label>
-            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/event" style={inputStyle} />
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="/event"
+              style={inputStyle}
+            />
           </div>
 
           <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -325,7 +347,9 @@ export default function PushPage() {
                 style={inputStyle}
                 disabled={!needsEvent && segment !== 'vip_members'}
               >
-                <option value="">{segment === 'vip_members' ? 'All VIP members' : 'Select event'}</option>
+                <option value="">
+                  {segment === 'vip_members' ? 'All VIP members' : 'Select event'}
+                </option>
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.label}
@@ -353,10 +377,26 @@ export default function PushPage() {
           </div>
 
           {error ? (
-            <div style={{ marginTop: 12, fontFamily: 'Inter, system-ui', fontSize: 12, color: '#f87171' }}>{error}</div>
+            <div
+              style={{
+                marginTop: 12,
+                fontFamily: 'Inter, system-ui',
+                fontSize: 12,
+                color: '#f87171',
+              }}
+            >
+              {error}
+            </div>
           ) : null}
           {success ? (
-            <div style={{ marginTop: 12, fontFamily: 'Inter, system-ui', fontSize: 12, color: '#4ade80' }}>
+            <div
+              style={{
+                marginTop: 12,
+                fontFamily: 'Inter, system-ui',
+                fontSize: 12,
+                color: '#4ade80',
+              }}
+            >
               {success}
             </div>
           ) : null}
@@ -408,7 +448,13 @@ export default function PushPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {campaigns.length === 0 ? (
-              <div style={{ fontFamily: 'Inter, system-ui', fontSize: 13, color: 'var(--hof-text-sec)' }}>
+              <div
+                style={{
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 13,
+                  color: 'var(--hof-text-sec)',
+                }}
+              >
                 No campaigns yet.
               </div>
             ) : (
@@ -422,7 +468,14 @@ export default function PushPage() {
                     borderRadius: 10,
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                         <Pill tone={statusTone(c.status)} size="sm">
@@ -485,8 +538,8 @@ export default function PushPage() {
                       letterSpacing: '0.04em',
                     }}
                   >
-                    {formatWhen(c.created_at)} · target {c.target_count} · sent {c.sent_count} · failed{' '}
-                    {c.failed_count} · expired {c.expired_count}
+                    {formatWhen(c.created_at)} · target {c.target_count} · sent {c.sent_count} ·
+                    failed {c.failed_count} · expired {c.expired_count}
                   </div>
                 </div>
               ))

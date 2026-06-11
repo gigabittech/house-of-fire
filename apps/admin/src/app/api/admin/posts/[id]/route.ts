@@ -48,7 +48,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ post: data });
   }
 
-  if (body.moderation_status === 'approved' || body.moderation_status === 'rejected' || body.moderation_status === 'hidden') {
+  if (
+    body.moderation_status === 'approved' ||
+    body.moderation_status === 'rejected' ||
+    body.moderation_status === 'hidden'
+  ) {
     const modAction = body.moderation_status;
     const result = await applyModerationAction({
       supabase,

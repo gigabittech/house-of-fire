@@ -213,11 +213,7 @@ export default function TicketScreen() {
 
   const headerActions = useMemo(
     () => (
-      <AppHeaderIconButton
-        icon="share"
-        label="Share ticket"
-        onClick={() => setShareOpen(true)}
-      />
+      <AppHeaderIconButton icon="share" label="Share ticket" onClick={() => setShareOpen(true)} />
     ),
     [],
   );
@@ -414,7 +410,10 @@ export default function TicketScreen() {
         {showEmptyOrError ? (
           <div className="hof-no-print" style={{ padding: '0 16px' }}>
             {ticketError ? (
-              <EmptyState title="Could not load ticket" body="Check your connection and try again." />
+              <EmptyState
+                title="Could not load ticket"
+                body="Check your connection and try again."
+              />
             ) : (
               <EmptyState
                 title="No ticket"
@@ -521,7 +520,8 @@ export default function TicketScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                See you at the door. The QR below is your ticket — keep brightness up when you arrive.
+                See you at the door. The QR below is your ticket — keep brightness up when you
+                arrive.
               </div>
               {justPurchased ? (
                 <div
@@ -572,13 +572,14 @@ export default function TicketScreen() {
                     >
                       {receiptEmail ? (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to your email.
-                          Check your inbox — and spam if you don&apos;t see it within a few minutes.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to your
+                          email. Check your inbox — and spam if you don&apos;t see it within a few
+                          minutes.
                         </>
                       ) : (
                         <>
-                          Your receipt and ticket{ tickets.length > 1 ? 's' : ''} were sent to the email
-                          you used at checkout. Check your inbox — and spam if needed.
+                          Your receipt and ticket{tickets.length > 1 ? 's' : ''} were sent to the
+                          email you used at checkout. Check your inbox — and spam if needed.
                         </>
                       )}
                     </div>
@@ -669,7 +670,11 @@ export default function TicketScreen() {
                         }}
                       />
                       {ticketFieldsLoading ? (
-                        <TicketSkeletonBar width="100%" height={16} style={{ marginTop: 6, maxWidth: 200 }} />
+                        <TicketSkeletonBar
+                          width="100%"
+                          height={16}
+                          style={{ marginTop: 6, maxWidth: 200 }}
+                        />
                       ) : (
                         <div
                           style={{

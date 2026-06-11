@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '../../../../lib/supabase.admin';
-import {
-  fetchPromoAnalyticsForCodes,
-  syncAllDiscountCodeUses,
-} from '../../../../lib/promoCodes';
+import { fetchPromoAnalyticsForCodes, syncAllDiscountCodeUses } from '../../../../lib/promoCodes';
 
 export async function GET() {
   const supabase = createAdminSupabaseClient();
@@ -24,8 +21,7 @@ export async function GET() {
   const codesWithStats = codes.map((c) => {
     const stats = analytics[c.id];
     const totalUses = stats?.totalUses ?? c.uses ?? 0;
-    const remainingUses =
-      c.max_uses !== null ? Math.max(0, c.max_uses - totalUses) : null;
+    const remainingUses = c.max_uses !== null ? Math.max(0, c.max_uses - totalUses) : null;
     return {
       ...c,
       uses: totalUses,
@@ -66,7 +62,8 @@ export async function POST(request: NextRequest) {
   const code = body.code?.trim().toUpperCase();
   if (!code) return NextResponse.json({ error: 'code is required' }, { status: 400 });
 
-  const kind = body.kind === 'flat_cents' ? 'flat_cents' : body.kind === 'fixed' ? 'fixed' : 'percent';
+  const kind =
+    body.kind === 'flat_cents' ? 'flat_cents' : body.kind === 'fixed' ? 'fixed' : 'percent';
 
   const { data, error } = await supabase
     .from('discount_codes')

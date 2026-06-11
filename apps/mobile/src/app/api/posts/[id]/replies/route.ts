@@ -1,8 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import {
-  buildRepliesResponse,
-  listPostRepliesRpc,
-} from '../../../../../lib/communityApi.server';
+import { buildRepliesResponse, listPostRepliesRpc } from '../../../../../lib/communityApi.server';
 import { parseFeedCursor, parsePageSize } from '../../../../../lib/cursorPagination';
 import { notifyPostAuthor } from '../../../../../lib/postNotifications.server';
 import { createServerSupabaseClient } from '../../../../../lib/supabase.server';

@@ -1,13 +1,22 @@
 'use client';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { SupabaseProvider } from './supabaseContext';
 import type { RealtimeConnectionStatus } from './types';
 
 type RealtimeContextValue = {
   status: RealtimeConnectionStatus;
-  setStatus: (status: RealtimeConnectionStatus) => void;
+  registerConnection: (id: string, status: RealtimeConnectionStatus) => void;
+  unregisterConnection: (id: string) => void;
   disconnectedSince: number | null;
   showDisconnectedBanner: boolean;
 };
@@ -16,6 +25,14 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 const BANNER_DELAY_MS = 30_000;
 
+function aggregateStatus(statuses: RealtimeConnectionStatus[]): RealtimeConnectionStatus {
+  if (statuses.length === 0) return 'connected';
+  if (statuses.some((s) => s === 'error')) return 'error';
+  if (statuses.some((s) => s === 'disconnected')) return 'disconnected';
+  if (statuses.some((s) => s === 'connecting')) return 'connecting';
+  return 'connected';
+}
+
 export function RealtimeProvider({
   children,
   supabase,
@@ -23,11 +40,12 @@ export function RealtimeProvider({
   children: React.ReactNode;
   supabase: SupabaseClient;
 }) {
+  const connectionsRef = useRef(new Map<string, RealtimeConnectionStatus>());
   const [status, setStatusState] = useState<RealtimeConnectionStatus>('connecting');
   const [disconnectedSince, setDisconnectedSince] = useState<number | null>(null);
   const [showDisconnectedBanner, setShowDisconnectedBanner] = useState(false);
 
-  const setStatus = useCallback((next: RealtimeConnectionStatus) => {
+  const applyGlobalStatus = useCallback((next: RealtimeConnectionStatus) => {
     setStatusState(next);
     if (next === 'connected') {
       setDisconnectedSince(null);
@@ -36,6 +54,22 @@ export function RealtimeProvider({
       setDisconnectedSince((prev) => prev ?? Date.now());
     }
   }, []);
+
+  const registerConnection = useCallback(
+    (id: string, next: RealtimeConnectionStatus) => {
+      connectionsRef.current.set(id, next);
+      applyGlobalStatus(aggregateStatus([...connectionsRef.current.values()]));
+    },
+    [applyGlobalStatus],
+  );
+
+  const unregisterConnection = useCallback(
+    (id: string) => {
+      connectionsRef.current.delete(id);
+      applyGlobalStatus(aggregateStatus([...connectionsRef.current.values()]));
+    },
+    [applyGlobalStatus],
+  );
 
   useEffect(() => {
     if (status !== 'disconnected' && status !== 'error') return;
@@ -48,8 +82,14 @@ export function RealtimeProvider({
   }, [status, disconnectedSince]);
 
   const value = useMemo(
-    () => ({ status, setStatus, disconnectedSince, showDisconnectedBanner }),
-    [status, setStatus, disconnectedSince, showDisconnectedBanner],
+    () => ({
+      status,
+      registerConnection,
+      unregisterConnection,
+      disconnectedSince,
+      showDisconnectedBanner,
+    }),
+    [status, registerConnection, unregisterConnection, disconnectedSince, showDisconnectedBanner],
   );
 
   return (
@@ -64,7 +104,8 @@ export function useRealtimeStatus(): RealtimeContextValue {
   if (!ctx) {
     return {
       status: 'connected',
-      setStatus: () => {},
+      registerConnection: () => {},
+      unregisterConnection: () => {},
       disconnectedSince: null,
       showDisconnectedBanner: false,
     };

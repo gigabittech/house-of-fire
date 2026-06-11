@@ -45,7 +45,11 @@ export async function countEventPhotosRpc(
   return Number(data ?? 0);
 }
 
-export function buildPhotoPageResponse(photos: EventPhotoRow[], hasMore: boolean, totalCount?: number) {
+export function buildPhotoPageResponse(
+  photos: EventPhotoRow[],
+  hasMore: boolean,
+  totalCount?: number,
+) {
   const nextCursor = hasMore ? photoCursorFromRow(photos[photos.length - 1]) : null;
   return {
     photos,

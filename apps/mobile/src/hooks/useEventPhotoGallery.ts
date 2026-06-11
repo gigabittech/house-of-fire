@@ -1,6 +1,11 @@
 'use client';
 
-import { appendPhotoCursorParams, mergePhotosById, type EventPhotoCursor, type EventPhotoRow } from '@hof/media';
+import {
+  appendPhotoCursorParams,
+  mergePhotosById,
+  type EventPhotoCursor,
+  type EventPhotoRow,
+} from '@hof/media';
 import { useCallback, useRef, useState } from 'react';
 
 const DEFAULT_PAGE_SIZE = 48;
@@ -13,14 +18,21 @@ type PhotoPageResponse = {
   event?: unknown;
 };
 
-function buildGalleryUrl(basePath: string, cursor: EventPhotoCursor | null, pageSize: number): string {
+function buildGalleryUrl(
+  basePath: string,
+  cursor: EventPhotoCursor | null,
+  pageSize: number,
+): string {
   const url = new URL(basePath, window.location.origin);
   url.searchParams.set('limit', String(pageSize));
   appendPhotoCursorParams(url, cursor);
   return `${url.pathname}${url.search}`;
 }
 
-export function useEventPhotoGallery<TEvent = unknown>(basePath: string, pageSize = DEFAULT_PAGE_SIZE) {
+export function useEventPhotoGallery<TEvent = unknown>(
+  basePath: string,
+  pageSize = DEFAULT_PAGE_SIZE,
+) {
   const [photos, setPhotos] = useState<EventPhotoRow[]>([]);
   const [eventMeta, setEventMeta] = useState<TEvent | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);

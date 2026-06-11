@@ -79,7 +79,8 @@ export function EventFormModal({
       ...DEFAULT_EVENT_FORM,
       ...initial,
       faqs: initial?.faqs ?? [],
-      max_tickets_per_user: initial?.max_tickets_per_user ?? DEFAULT_EVENT_FORM.max_tickets_per_user,
+      max_tickets_per_user:
+        initial?.max_tickets_per_user ?? DEFAULT_EVENT_FORM.max_tickets_per_user,
     });
     setTiers(initialTiers.map((t) => ({ ...t })));
   }, [open, initial, initialTiers]);
@@ -93,8 +94,7 @@ export function EventFormModal({
 
   if (!open) return null;
 
-  const liveBlocked =
-    liveEventId != null && (mode === 'create' || eventId !== liveEventId);
+  const liveBlocked = liveEventId != null && (mode === 'create' || eventId !== liveEventId);
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -160,8 +160,7 @@ export function EventFormModal({
         faqs: form.faqs.filter((f) => f.q.trim() || f.a.trim()),
       };
 
-      const url =
-        mode === 'edit' && eventId ? `/api/admin/events/${eventId}` : '/api/admin/events';
+      const url = mode === 'edit' && eventId ? `/api/admin/events/${eventId}` : '/api/admin/events';
       const method = mode === 'edit' ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -409,9 +408,7 @@ export function EventFormModal({
                 max={20}
                 style={inputStyle}
                 value={form.max_tickets_per_user}
-                onChange={(e) =>
-                  setField('max_tickets_per_user', Number(e.target.value) || 4)
-                }
+                onChange={(e) => setField('max_tickets_per_user', Number(e.target.value) || 4)}
               />
             </div>
           </div>

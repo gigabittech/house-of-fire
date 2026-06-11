@@ -5,10 +5,7 @@ import { deliverPushCampaign } from '@/lib/pushCampaign.server';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
-export async function POST(
-  _request: NextRequest,
-  ctx: { params: Promise<{ id: string }> },
-) {
+export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminRole();
   if (!auth.ok) return auth.response;
 

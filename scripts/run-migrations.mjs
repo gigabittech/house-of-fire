@@ -21,7 +21,9 @@ const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
 const connectionString = process.env.SUPABASE_DB_URL;
 if (!connectionString) {
   console.error('✗ SUPABASE_DB_URL is not set.');
-  console.error('  Pass the Supabase Postgres connection string (with password) as SUPABASE_DB_URL.');
+  console.error(
+    '  Pass the Supabase Postgres connection string (with password) as SUPABASE_DB_URL.',
+  );
   process.exit(1);
 }
 

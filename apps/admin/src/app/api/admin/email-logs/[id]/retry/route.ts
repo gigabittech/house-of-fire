@@ -9,7 +9,9 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:5
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key';
 
 function metaRecord(meta: unknown): Record<string, unknown> {
-  return typeof meta === 'object' && meta && !Array.isArray(meta) ? (meta as Record<string, unknown>) : {};
+  return typeof meta === 'object' && meta && !Array.isArray(meta)
+    ? (meta as Record<string, unknown>)
+    : {};
 }
 
 async function retryAuthMagicLink(row: {
@@ -62,7 +64,8 @@ async function retryReceipt(row: { id: string; meta: unknown }, actorId: string)
     throw new Error('Receipt retry missing orderId in log metadata.');
   }
 
-  const mobileUrl = process.env.MOBILE_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const mobileUrl =
+    process.env.MOBILE_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
@@ -95,11 +98,7 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
   const { id } = await ctx.params;
   const supabase = createAdminSupabaseClient();
 
-  const { data: row, error } = await supabase
-    .from('email_logs')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data: row, error } = await supabase.from('email_logs').select('*').eq('id', id).single();
 
   if (error || !row) {
     return NextResponse.json({ error: error?.message ?? 'Email log not found' }, { status: 404 });

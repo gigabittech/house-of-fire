@@ -30,9 +30,7 @@ describe('cursorPagination', () => {
   });
 
   it('builds cursor from row', () => {
-    expect(
-      cursorFromRow({ created_at: '2026-01-02T00:00:00.000Z', id: 'abc' }),
-    ).toEqual({
+    expect(cursorFromRow({ created_at: '2026-01-02T00:00:00.000Z', id: 'abc' })).toEqual({
       createdAt: '2026-01-02T00:00:00.000Z',
       id: 'abc',
     });
@@ -46,10 +44,7 @@ describe('cursorPagination', () => {
   });
 
   it('merges arrays without duplicate ids', () => {
-    const merged = mergeUniqueById(
-      [{ id: 'a' }, { id: 'b' }],
-      [{ id: 'b' }, { id: 'c' }],
-    );
+    const merged = mergeUniqueById([{ id: 'a' }, { id: 'b' }], [{ id: 'b' }, { id: 'c' }]);
     expect(merged.map((row) => row.id)).toEqual(['a', 'b', 'c']);
   });
 

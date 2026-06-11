@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  isRetryablePushStatus,
-  isSubscriptionExpiredStatus,
-  pushRetryDelayMs,
-} from './retry';
+import { isRetryablePushStatus, isSubscriptionExpiredStatus, pushRetryDelayMs } from './retry';
 import { parsePushSegment, segmentRequiresEvent } from './segments';
 
 describe('push retry helpers', () => {

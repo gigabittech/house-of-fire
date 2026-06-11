@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
   const tierId = searchParams.get('tierId')?.trim() || null;
   const email = searchParams.get('email')?.trim() ?? '';
   const code = searchParams.get('code')?.trim() ?? '';
-  const nameSearch = searchParams.get('nameSearch')?.trim() ?? searchParams.get('search')?.trim() ?? '';
+  const nameSearch =
+    searchParams.get('nameSearch')?.trim() ?? searchParams.get('search')?.trim() ?? '';
 
   const supabase = createAdminSupabaseClient();
 
@@ -44,7 +45,12 @@ export async function GET(request: NextRequest) {
     const guest = normalizeGuestTicket(row as Record<string, unknown>);
     return NextResponse.json({
       guests: [guest],
-      pagination: normalizePagination({ page: 1, pageSize: 1, totalCount: 1, totalPages: 1 }, 1, 1, 1),
+      pagination: normalizePagination(
+        { page: 1, pageSize: 1, totalCount: 1, totalPages: 1 },
+        1,
+        1,
+        1,
+      ),
     });
   }
 

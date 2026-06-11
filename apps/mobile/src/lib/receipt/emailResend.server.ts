@@ -41,18 +41,36 @@ export class ReceiptResendNotFoundError extends Error {
   }
 }
 
-function assertResendRateLimit(actorType: ReceiptResendActorType, actorKey: string, orderId: string) {
+function assertResendRateLimit(
+  actorType: ReceiptResendActorType,
+  actorKey: string,
+  orderId: string,
+) {
   if (actorType === 'admin') {
-    if (!rateLimitCheck(`receipt-resend:admin:${actorKey}:${orderId}`, ADMIN_ORDER_LIMIT, ADMIN_ORDER_WINDOW_MS)) {
+    if (
+      !rateLimitCheck(
+        `receipt-resend:admin:${actorKey}:${orderId}`,
+        ADMIN_ORDER_LIMIT,
+        ADMIN_ORDER_WINDOW_MS,
+      )
+    ) {
       throw new ReceiptResendRateLimitError();
     }
     return;
   }
 
-  if (!rateLimitCheck(`receipt-resend:member:${actorKey}:${orderId}`, MEMBER_ORDER_LIMIT, MEMBER_ORDER_WINDOW_MS)) {
+  if (
+    !rateLimitCheck(
+      `receipt-resend:member:${actorKey}:${orderId}`,
+      MEMBER_ORDER_LIMIT,
+      MEMBER_ORDER_WINDOW_MS,
+    )
+  ) {
     throw new ReceiptResendRateLimitError();
   }
-  if (!rateLimitCheck(`receipt-resend:member-ip:${actorKey}`, MEMBER_IP_LIMIT, MEMBER_IP_WINDOW_MS)) {
+  if (
+    !rateLimitCheck(`receipt-resend:member-ip:${actorKey}`, MEMBER_IP_LIMIT, MEMBER_IP_WINDOW_MS)
+  ) {
     throw new ReceiptResendRateLimitError();
   }
 }

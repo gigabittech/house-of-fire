@@ -56,20 +56,23 @@ export function DoorQrScanner({
 
   onScanRef.current = onScan;
 
-  const tryEmitScan = useCallback((raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed || disabled || scanning) return false;
+  const tryEmitScan = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed || disabled || scanning) return false;
 
-    const now = Date.now();
-    const last = lastScannedRef.current;
-    if (last && last.code === trimmed && now - last.at < SCAN_COOLDOWN_MS) {
-      return false;
-    }
+      const now = Date.now();
+      const last = lastScannedRef.current;
+      if (last && last.code === trimmed && now - last.at < SCAN_COOLDOWN_MS) {
+        return false;
+      }
 
-    lastScannedRef.current = { code: trimmed, at: now };
-    void onScanRef.current(trimmed);
-    return true;
-  }, [disabled, scanning]);
+      lastScannedRef.current = { code: trimmed, at: now };
+      void onScanRef.current(trimmed);
+      return true;
+    },
+    [disabled, scanning],
+  );
 
   const stopCamera = useCallback(() => {
     controlsRef.current?.stop();
@@ -376,8 +379,7 @@ export function DoorQrScanner({
               background:
                 manualCode.trim() && !scanning && !disabled ? colors.amber : colors.elevated,
               border: 'none',
-              cursor:
-                manualCode.trim() && !scanning && !disabled ? 'pointer' : 'not-allowed',
+              cursor: manualCode.trim() && !scanning && !disabled ? 'pointer' : 'not-allowed',
               fontFamily: 'Inter, system-ui, sans-serif',
               fontSize: 13,
               fontWeight: 600,

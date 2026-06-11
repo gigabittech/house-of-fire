@@ -55,24 +55,27 @@ export default function PostScreen({ postId }: PostScreenProps) {
     onBack: handleBack,
   });
 
-  const loadPost = useCallback((options?: { silent?: boolean }) => {
-    if (!postId) return;
-    if (!options?.silent) {
-      setFetchDone(false);
-    }
-    setFetchError(false);
-    fetch(`/api/posts/${postId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error('not found');
-        return r.json();
-      })
-      .then((d: { post?: ApiPost; myReactions?: string[] }) => {
-        if (d.post) setApiPost(d.post);
-        if (d.myReactions) setMyReactions(d.myReactions);
-      })
-      .catch(() => setFetchError(true))
-      .finally(() => setFetchDone(true));
-  }, [postId]);
+  const loadPost = useCallback(
+    (options?: { silent?: boolean }) => {
+      if (!postId) return;
+      if (!options?.silent) {
+        setFetchDone(false);
+      }
+      setFetchError(false);
+      fetch(`/api/posts/${postId}`)
+        .then((r) => {
+          if (!r.ok) throw new Error('not found');
+          return r.json();
+        })
+        .then((d: { post?: ApiPost; myReactions?: string[] }) => {
+          if (d.post) setApiPost(d.post);
+          if (d.myReactions) setMyReactions(d.myReactions);
+        })
+        .catch(() => setFetchError(true))
+        .finally(() => setFetchDone(true));
+    },
+    [postId],
+  );
 
   useEffect(() => {
     loadPost();
@@ -212,16 +215,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
     } finally {
       setSending(false);
     }
-  }, [
-    appendReply,
-    authUser,
-    postId,
-    removeReply,
-    replaceReply,
-    reply,
-    sending,
-    showToast,
-  ]);
+  }, [appendReply, authUser, postId, removeReply, replaceReply, reply, sending, showToast]);
 
   const post = apiPost ? apiPostToUi(apiPost, { myReactions }) : null;
   const replyCount = apiPost?.reply_count ?? replies.length;
@@ -240,7 +234,9 @@ export default function PostScreen({ postId }: PostScreenProps) {
         }}
       >
         <Icon name="chat" size={32} color={colors.textSec} />
-        <div style={{ fontFamily: 'Inter', fontSize: 14, color: colors.textSec }}>Post not found</div>
+        <div style={{ fontFamily: 'Inter', fontSize: 14, color: colors.textSec }}>
+          Post not found
+        </div>
         <button
           className="hof-btn hof-press"
           onClick={() => router.back()}
@@ -500,14 +496,12 @@ export default function PostScreen({ postId }: PostScreenProps) {
         }}
       >
         <Avatar
-          initials={
-            (authUser?.name ?? 'M')
-              .split(' ')
-              .map((p) => p[0] ?? '')
-              .slice(0, 2)
-              .join('')
-              .toUpperCase()
-          }
+          initials={(authUser?.name ?? 'M')
+            .split(' ')
+            .map((p) => p[0] ?? '')
+            .slice(0, 2)
+            .join('')
+            .toUpperCase()}
           userRole="member"
           src={authUser?.avatarUrl}
           alt={authUser?.name}

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  DoorQrScanner,
-  DoorScanResult,
-  type CameraState,
-  type DoorScanResultData,
-} from '@hof/ui';
+import { DoorQrScanner, DoorScanResult, type CameraState, type DoorScanResultData } from '@hof/ui';
 import { processDoorScan } from '@hof/door-checkin';
 import {
   drainCheckInQueue,
@@ -104,9 +99,7 @@ export default function CrewDoorPage() {
 
   if (allowed === null) {
     return (
-      <main style={{ padding: 24, color: 'var(--hof-text, #f5f2eb)' }}>
-        Loading door scanner…
-      </main>
+      <main style={{ padding: 24, color: 'var(--hof-text, #f5f2eb)' }}>Loading door scanner…</main>
     );
   }
 
@@ -147,7 +140,14 @@ export default function CrewDoorPage() {
       }}
     >
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#9a958c', textTransform: 'uppercase' }}>
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.2em',
+            color: '#9a958c',
+            textTransform: 'uppercase',
+          }}
+        >
           Door check-in
         </div>
         <h1 style={{ fontSize: 22, margin: '4px 0 0', fontWeight: 600 }}>{eventLabel}</h1>
@@ -164,11 +164,25 @@ export default function CrewDoorPage() {
         >
           {online ? 'Online' : 'Offline'}
         </span>
-        <span style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2826', color: '#9a958c' }}>
+        <span
+          style={{
+            padding: '4px 10px',
+            borderRadius: 6,
+            border: '1px solid #2a2826',
+            color: '#9a958c',
+          }}
+        >
           Camera: {cameraState === 'live' ? 'live' : cameraState}
         </span>
         {pending > 0 && (
-          <span style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e8651a', color: '#e8651a' }}>
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid #e8651a',
+              color: '#e8651a',
+            }}
+          >
             {pending} queued
           </span>
         )}
@@ -190,7 +204,9 @@ export default function CrewDoorPage() {
         {pending > 0 && (
           <button
             type="button"
-            onClick={() => void drainCheckInQueue(SCAN_API).then(() => setPending(getQueuedCheckIns().length))}
+            onClick={() =>
+              void drainCheckInQueue(SCAN_API).then(() => setPending(getQueuedCheckIns().length))
+            }
             style={{
               padding: '4px 10px',
               borderRadius: 6,

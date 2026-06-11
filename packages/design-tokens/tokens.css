@@ -553,6 +553,12 @@ button.hof-btn {
   .hof-app-shell-main .hof-app-page-scroll {
     padding-left: var(--hof-sidebar-w);
     box-sizing: border-box;
+    /* Let clicks pass through the scroll container to the sidebar underneath. */
+    pointer-events: none;
+  }
+
+  .hof-app-shell-main .hof-app-page-scroll > * {
+    pointer-events: auto;
   }
 
   /* Sticky bars sit beside the sidebar so the logo stays visible */
@@ -581,6 +587,19 @@ button.hof-btn {
   height: 100%;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile bottom nav slot — sits above page scroll layers. */
+.hof-mobile-nav-slot {
+  position: relative;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.hof-mobile-nav-slot > * {
+  pointer-events: auto;
 }
 
 .hof-show-mobile-only {
@@ -676,7 +695,7 @@ button.hof-btn {
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 30;
+    z-index: 100;
     width: var(--hof-sidebar-w);
     pointer-events: auto;
   }
@@ -690,6 +709,11 @@ button.hof-btn {
   .hof-app-sidebar {
     padding: 14px 12px 16px;
   }
+}
+
+.hof-app-sidebar--hidden {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .hof-sidebar-logo-area {

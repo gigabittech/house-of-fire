@@ -23,7 +23,9 @@ interface TicketDetailPanelProps {
   onClose: () => void;
 }
 
-function statusTone(status: AdminGuestTicket['status']): 'success' | 'danger' | 'neutral' | 'warning' {
+function statusTone(
+  status: AdminGuestTicket['status'],
+): 'success' | 'danger' | 'neutral' | 'warning' {
   if (status === 'used' || status === 'valid') return 'success';
   if (status === 'refunded' || status === 'cancelled') return 'danger';
   if (status === 'transferred') return 'warning';
@@ -184,7 +186,14 @@ function TicketStubCard({
       }}
     >
       <div style={{ padding: '18px 18px 14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}
+        >
           <div>
             <div
               style={{
@@ -567,7 +576,9 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
               <DetailCell label="Date" value={eventDate} />
               <DetailCell label="Venue" value={ev?.venue_name ?? '—'} />
               <DetailCell label="Purchased" value={formatPurchasedAt(ticket.purchased_at)} />
-              {ticket.used_at && <DetailCell label="Used" value={formatPurchasedAt(ticket.used_at)} />}
+              {ticket.used_at && (
+                <DetailCell label="Used" value={formatPurchasedAt(ticket.used_at)} />
+              )}
               {ticket.checked_in_at && (
                 <DetailCell label="Checked in" value={formatPurchasedAt(ticket.checked_in_at)} />
               )}
@@ -633,7 +644,9 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
             <div style={{ padding: '12px 16px 14px' }}>
               {[
                 ['Subtotal', formatCents(receipt.subtotal)],
-                ...(receipt.discount > 0 ? [['Discount', `−${formatCents(receipt.discount)}`] as const] : []),
+                ...(receipt.discount > 0
+                  ? [['Discount', `−${formatCents(receipt.discount)}`] as const]
+                  : []),
                 ['Fees', formatCents(receipt.fees)],
                 ...(receipt.payMethod ? [['Payment', receipt.payMethod] as const] : []),
                 ['Tickets in order', String(receipt.ticketCount)],
@@ -666,7 +679,9 @@ export function TicketDetailPanel({ ticket, allTickets, onClose }: TicketDetailP
                 }}
               >
                 <span>Total</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCents(receipt.total)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {formatCents(receipt.total)}
+                </span>
               </div>
               <CopyableId label="Stripe Payment Intent" value={receipt.stripePaymentIntentId} />
               <CopyableId label="Charge ID" value={receipt.stripeChargeId} />

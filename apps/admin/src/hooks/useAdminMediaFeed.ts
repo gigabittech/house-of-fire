@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  appendPhotoCursorParams,
-  mergePhotosById,
-  type EventPhotoCursor,
-} from '@hof/media';
+import { appendPhotoCursorParams, mergePhotosById, type EventPhotoCursor } from '@hof/media';
 import { useCallback, useRef, useState } from 'react';
 
 type MediaPageResponse<T> = {
@@ -36,15 +32,18 @@ export function useAdminMediaFeed<TApi extends { id: string }, TItem extends { i
   const requestIdRef = useRef(0);
   const loadingMoreRef = useRef(false);
 
-  const applyPage = useCallback((data: MediaPageResponse<TApi>, append: boolean) => {
-    const incoming = (data.photos ?? []).map(mapItem);
-    setPhotos((prev) => (append ? mergePhotosById(prev, incoming) : incoming));
-    setNextCursor(data.nextCursor ?? null);
-    setHasMore(data.hasMore ?? false);
-    if (typeof data.totalCount === 'number') {
-      setTotalCount(data.totalCount);
-    }
-  }, [mapItem]);
+  const applyPage = useCallback(
+    (data: MediaPageResponse<TApi>, append: boolean) => {
+      const incoming = (data.photos ?? []).map(mapItem);
+      setPhotos((prev) => (append ? mergePhotosById(prev, incoming) : incoming));
+      setNextCursor(data.nextCursor ?? null);
+      setHasMore(data.hasMore ?? false);
+      if (typeof data.totalCount === 'number') {
+        setTotalCount(data.totalCount);
+      }
+    },
+    [mapItem],
+  );
 
   const fetchPage = useCallback(
     async (cursor: EventPhotoCursor | null, append: boolean) => {

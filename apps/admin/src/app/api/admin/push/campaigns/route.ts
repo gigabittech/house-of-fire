@@ -1,10 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { isVapidConfigured, parsePushSegment, segmentRequiresEvent } from '@hof/push';
-import {
-  createPushCampaign,
-  deliverPushCampaign,
-} from '@/lib/pushCampaign.server';
+import { createPushCampaign, deliverPushCampaign } from '@/lib/pushCampaign.server';
 import { normalizePagination, parsePagination } from '@/lib/pagination';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
@@ -40,7 +37,10 @@ export async function POST(request: NextRequest) {
 
   if (!isVapidConfigured()) {
     return NextResponse.json(
-      { error: 'VAPID keys are not configured. Set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.' },
+      {
+        error:
+          'VAPID keys are not configured. Set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.',
+      },
       { status: 503 },
     );
   }
@@ -86,7 +86,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (body.send === false) {
-      return NextResponse.json({ campaignId: created.id, targetCount: created.targetCount }, { status: 201 });
+      return NextResponse.json(
+        { campaignId: created.id, targetCount: created.targetCount },
+        { status: 201 },
+      );
     }
 
     const delivery = await deliverPushCampaign(supabase, created.id);

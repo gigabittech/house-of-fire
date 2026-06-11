@@ -38,14 +38,17 @@ async function fetchUserEmails(
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return map;
 
-  await Promise.all(
-    uniqueIds.map(async (id) => {
-      const { data } = await supabase.auth.admin.getUserById(id);
-      const email = data?.user?.email?.trim();
-      if (email) map.set(id, email);
-    }),
-  );
+  const { data, error } = await supabase.rpc('admin_resolve_user_emails', {
+    p_user_ids: uniqueIds,
+  });
+  if (error || !data) return map;
+
+  for (const [id, email] of Object.entries(data as Record<string, string>)) {
+    const trimmed = email?.trim();
+    if (trimmed) map.set(id, trimmed);
+  }
 
   return map;
 }

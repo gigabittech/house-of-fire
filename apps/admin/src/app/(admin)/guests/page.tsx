@@ -9,15 +9,8 @@ import {
 } from '@/lib/realtimePatch';
 import { useGuestsRealtime } from '@/hooks/useGuestsRealtime';
 import { EventGuestSection } from '@/components/EventGuestSection';
-import {
-  GuestFilters,
-  type EventOption,
-  type GuestFilterState,
-} from '@/components/GuestFilters';
-import {
-  GuestTierStatus,
-  type EventTierStatusGroup,
-} from '@/components/GuestTierStatus';
+import { GuestFilters, type EventOption, type GuestFilterState } from '@/components/GuestFilters';
+import { GuestTierStatus, type EventTierStatusGroup } from '@/components/GuestTierStatus';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
 import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
 import type { ApiPagination } from '@/lib/pagination';
@@ -153,7 +146,9 @@ export default function GuestsPage() {
           setError(data.error);
           setTickets([]);
         } else {
-          setTickets((data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)));
+          setTickets(
+            (data.guests ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>)),
+          );
           if (data.pagination) setPagination(data.pagination);
         }
       } catch (err) {

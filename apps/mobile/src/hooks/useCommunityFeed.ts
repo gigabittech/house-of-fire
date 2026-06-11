@@ -11,9 +11,7 @@ import type { ApiPost } from '@/lib/postUi';
 
 const DEFAULT_PAGE_SIZE = 20;
 
-type FeedMode =
-  | { kind: 'channel'; channel: string }
-  | { kind: 'mine' };
+type FeedMode = { kind: 'channel'; channel: string } | { kind: 'mine' };
 
 type FeedPageResponse = {
   posts?: ApiPost[];

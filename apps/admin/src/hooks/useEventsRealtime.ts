@@ -12,11 +12,7 @@ type EventRow = {
 };
 
 /** Event status changes only — tier inventory uses snapshot polling (no ticket_tiers realtime). */
-export function useEventsRealtime({
-  onEventUpdate,
-}: {
-  onEventUpdate: (row: EventRow) => void;
-}) {
+export function useEventsRealtime({ onEventUpdate }: { onEventUpdate: (row: EventRow) => void }) {
   const eventRef = useRef(onEventUpdate);
 
   useEffect(() => {

@@ -1,6 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { eventFormPayloadToInsert, parseEventPayload, type EventFormPayload } from '@/lib/eventPayload';
+import {
+  eventFormPayloadToInsert,
+  parseEventPayload,
+  type EventFormPayload,
+} from '@/lib/eventPayload';
 import { requireAdminRole } from '@/lib/requireAdminRole';
 import { assertSingleLiveEvent } from '@/lib/singleLiveEvent';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
@@ -8,6 +12,14 @@ import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 export async function GET(request: NextRequest) {
   const supabase = createAdminSupabaseClient();
   const includeStats = request.nextUrl.searchParams.get('includeStats') === '1';
+
+  if (includeStats) {
+    const { data: withStats, error: statsError } = await supabase.rpc('admin_list_events_with_stats');
+    if (statsError) {
+      return NextResponse.json({ error: statsError.message }, { status: 500 });
+    }
+    return NextResponse.json({ events: withStats ?? [] });
+  }
 
   const { data: events, error: eventsError } = await supabase
     .from('events')
@@ -18,47 +30,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: eventsError.message }, { status: 500 });
   }
 
-  if (!includeStats) {
-    return NextResponse.json({ events: events ?? [] });
-  }
-
-  const { data: tickets, error: ticketsError } = await supabase
-    .from('tickets')
-    .select('event_id, amount_cents, status')
-    .in('status', ['valid', 'used']);
-
-  if (ticketsError) {
-    return NextResponse.json({ error: ticketsError.message }, { status: 500 });
-  }
-
-  const statsByEvent: Record<string, { sold: number; gross_cents: number }> = {};
-  for (const t of tickets ?? []) {
-    const cur = statsByEvent[t.event_id] ?? { sold: 0, gross_cents: 0 };
-    statsByEvent[t.event_id] = {
-      sold: cur.sold + 1,
-      gross_cents: cur.gross_cents + t.amount_cents,
-    };
-  }
-
-  const withStats = await Promise.all(
-    (events ?? []).map(async (ev) => {
-      const s = statsByEvent[ev.id] ?? { sold: 0, gross_cents: 0 };
-      const visibility = (ev as { visibility?: string }).visibility ?? 'public';
-      const { data: displayStatus } = await supabase.rpc('event_display_status', {
-        p_status: ev.status,
-        p_visibility: visibility,
-        p_event_id: ev.id,
-      });
-      return {
-        ...ev,
-        sold: s.sold,
-        gross_cents: s.gross_cents,
-        display_status: displayStatus ?? 'upcoming',
-      };
-    }),
-  );
-
-  return NextResponse.json({ events: withStats });
+  return NextResponse.json({ events: events ?? [] });
 }
 
 export async function POST(request: NextRequest) {

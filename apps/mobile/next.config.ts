@@ -1,6 +1,10 @@
 import { loadEnvConfig } from '@next/env';
 import type { NextConfig } from 'next';
-import { createMonorepoNextBase, monorepoRoot, optimizePackageImports } from '../../config/next-shared';
+import {
+  createMonorepoNextBase,
+  monorepoRoot,
+  optimizePackageImports,
+} from '../../config/next-shared';
 
 // Next.js caches env from the app dir first (no .env there). forceReload loads monorepo root.
 // https://github.com/vercel/next.js/issues/92040

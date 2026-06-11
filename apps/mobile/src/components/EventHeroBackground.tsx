@@ -25,8 +25,7 @@ const BOTTOM_GRADIENT_STYLE: CSSProperties = {
   right: 0,
   bottom: 0,
   height: 360,
-  background:
-    'linear-gradient(180deg, transparent 0%, rgba(10,10,8,0.85) 50%, #0A0A08 100%)',
+  background: 'linear-gradient(180deg, transparent 0%, rgba(10,10,8,0.85) 50%, #0A0A08 100%)',
 };
 
 function heroHeight(isDesktop: boolean, isWide: boolean): number | string {
@@ -34,13 +33,7 @@ function heroHeight(isDesktop: boolean, isWide: boolean): number | string {
 }
 
 /** Shared hero photo + overlays for Home and Event — keep in sync here. */
-export function EventHeroBackground({
-  src,
-  children,
-}: {
-  src: string;
-  children?: ReactNode;
-}) {
+export function EventHeroBackground({ src, children }: { src: string; children?: ReactNode }) {
   const { isWide, isDesktop } = useResponsive();
 
   return (

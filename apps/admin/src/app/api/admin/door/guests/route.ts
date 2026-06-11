@@ -26,7 +26,11 @@ export async function GET(request: NextRequest) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data: rows, error, count } = await supabase
+  const {
+    data: rows,
+    error,
+    count,
+  } = await supabase
     .from('tickets')
     .select(ADMIN_GUEST_SELECT, { count: 'exact' })
     .eq('event_id', eventId)
@@ -39,9 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const guests = (rows ?? []).map((row) =>
-    normalizeGuestTicket(row as Record<string, unknown>),
-  );
+  const guests = (rows ?? []).map((row) => normalizeGuestTicket(row as Record<string, unknown>));
 
   return NextResponse.json({
     guests,

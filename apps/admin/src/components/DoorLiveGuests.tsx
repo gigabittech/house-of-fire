@@ -270,12 +270,7 @@ export function DoorLiveGuests({ eventId, refreshKey = 0 }: DoorLiveGuestsProps)
           </table>
         </div>
 
-        <TablePagination
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={total}
-          onPageChange={setPage}
-        />
+        <TablePagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
       </div>
 
       {detailTicket && (

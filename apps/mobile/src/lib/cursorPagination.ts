@@ -16,17 +16,15 @@ export function parseFeedCursor(searchParams: URLSearchParams): FeedCursor | nul
   return { createdAt, id };
 }
 
-export function parsePageSize(
-  searchParams: URLSearchParams,
-  fallback = 20,
-  max = 50,
-): number {
+export function parsePageSize(searchParams: URLSearchParams, fallback = 20, max = 50): number {
   const raw = searchParams.get('limit') ?? searchParams.get('pageSize');
   if (!raw) return fallback;
   return Math.min(max, Math.max(1, Number.parseInt(raw, 10) || fallback));
 }
 
-export function cursorFromRow(row: { created_at: string; id: string } | null | undefined): FeedCursor | null {
+export function cursorFromRow(
+  row: { created_at: string; id: string } | null | undefined,
+): FeedCursor | null {
   if (!row?.created_at || !row.id) return null;
   return { createdAt: row.created_at, id: row.id };
 }

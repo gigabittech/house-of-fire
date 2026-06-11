@@ -59,9 +59,12 @@ export async function GET(request: NextRequest) {
   }
 
   const activity = (rows ?? []).map((row) => {
-    const profileRaw = row.profiles as { display_name?: string | null } | null | Array<{
-      display_name?: string | null;
-    }>;
+    const profileRaw = row.profiles as
+      | { display_name?: string | null }
+      | null
+      | Array<{
+          display_name?: string | null;
+        }>;
     const profile = Array.isArray(profileRaw) ? (profileRaw[0] ?? null) : profileRaw;
     const tierRaw = row.ticket_tiers as
       | { display_name?: string; name?: string }
@@ -73,11 +76,9 @@ export async function GET(request: NextRequest) {
       row.metadata && typeof row.metadata === 'object'
         ? (row.metadata as Record<string, unknown>)
         : null;
-    const isDoor =
-      row.source === 'door' || (row.stripe_charge_id ?? '').startsWith('door-');
+    const isDoor = row.source === 'door' || (row.stripe_charge_id ?? '').startsWith('door-');
     const isCheckedIn = row.status === 'used' || !!row.checked_in_at;
-    const payMethod =
-      typeof meta?.pay_method === 'string' ? meta.pay_method : null;
+    const payMethod = typeof meta?.pay_method === 'string' ? meta.pay_method : null;
 
     const purchased = new Date(row.purchased_at);
     const t = purchased.toLocaleTimeString('en-US', {

@@ -5,7 +5,6 @@ export {
   MAX_PUSH_ATTEMPTS,
   pushRetryDelayMs,
 } from './retry';
-export { configureWebPush, sendWebPush } from './send';
 export type {
   PushCampaignStatus,
   PushDeliveryStatus,

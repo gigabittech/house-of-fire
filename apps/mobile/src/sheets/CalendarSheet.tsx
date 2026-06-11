@@ -202,8 +202,12 @@ export default function CalendarSheet({ open, onClose, event }: CalendarSheetPro
                 <Icon name={opt.icon as Parameters<typeof Icon>[0]['name']} size={18} />
               </div>
               <div>
-                <div style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 14 }}>{opt.label}</div>
-                <div style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec, marginTop: 2 }}>
+                <div style={{ fontFamily: 'Inter', fontWeight: 500, fontSize: 14 }}>
+                  {opt.label}
+                </div>
+                <div
+                  style={{ fontFamily: 'Inter', fontSize: 12, color: colors.textSec, marginTop: 2 }}
+                >
                   {opt.sub}
                 </div>
               </div>

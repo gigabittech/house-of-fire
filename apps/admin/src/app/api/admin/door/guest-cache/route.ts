@@ -23,18 +23,28 @@ export async function GET(request: NextRequest) {
     eventId = event.id;
   }
 
-  const { data: tickets, error } = await supabase
-    .from('tickets')
-    .select(
-      'code, status, checked_in_at, used_at, holder_id, metadata, ticket_tiers!tickets_tier_id_fkey(display_name, name), profiles!tickets_holder_id_fkey(display_name, handle)',
-    )
-    .eq('event_id', eventId)
-    .in('status', ['valid', 'used'])
-    .limit(CACHE_LIMIT);
+  const [{ count: totalCount }, { data: tickets, error }] = await Promise.all([
+    supabase
+      .from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .in('status', ['valid', 'used']),
+    supabase
+      .from('tickets')
+      .select(
+        'code, status, checked_in_at, used_at, holder_id, metadata, ticket_tiers!tickets_tier_id_fkey(display_name, name), profiles!tickets_holder_id_fkey(display_name, handle)',
+      )
+      .eq('event_id', eventId)
+      .in('status', ['valid', 'used'])
+      .limit(CACHE_LIMIT),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const total = totalCount ?? 0;
+  const truncated = total > CACHE_LIMIT;
 
   const rows = (tickets ?? []).map((t) => {
     const profile = t.profiles as { display_name?: string; handle?: string } | null;
@@ -59,5 +69,8 @@ export async function GET(request: NextRequest) {
     eventId,
     fetchedAt: new Date().toISOString(),
     tickets: rows,
+    totalCount: total,
+    truncated,
+    cacheLimit: CACHE_LIMIT,
   });
 }

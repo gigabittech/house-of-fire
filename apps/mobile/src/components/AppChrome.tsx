@@ -40,7 +40,8 @@ function titleFromPath(pathname: string): string {
   if (pathname === '/' || pathname === '/live') return 'Home';
   if (pathname.startsWith('/event')) return 'Event';
   if (pathname.startsWith('/archive')) return 'Archive';
-  if (pathname.startsWith('/community')) return COMMUNITY_FEATURE_ENABLED ? 'Community' : 'House of Fire';
+  if (pathname.startsWith('/community'))
+    return COMMUNITY_FEATURE_ENABLED ? 'Community' : 'House of Fire';
   if (pathname.startsWith('/profile/settings')) return 'Settings';
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/checkout')) return 'Checkout';
@@ -55,8 +56,9 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthUser();
-  const { config } = useAppHeaderContext();
-  const hideBottomNav = pathname.startsWith('/checkout');
+  const { config, chromeOverlay } = useAppHeaderContext();
+  const hideBottomNav = pathname.startsWith('/checkout') || Boolean(chromeOverlay.hideBottomNav);
+  const hideSidebar = Boolean(chromeOverlay.hideSidebar);
 
   const handleSignOut = useCallback(async () => {
     clearProfileCache();
@@ -78,6 +80,7 @@ function AppChromeShell({ children }: { children: React.ReactNode }) {
         onBack={config.onBack}
         hideMobilePageHeader={config.hideMobileHeader}
         hideBottomNav={hideBottomNav}
+        hideSidebar={hideSidebar}
         excludeNavIds={[...COMMUNITY_EXCLUDED_NAV_IDS]}
       >
         {children}
@@ -90,11 +93,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   if (usesStandaloneLayout(pathname)) {
-    return (
-      <div style={{ width: '100%', height: '100%', minHeight: '100dvh' }}>
-        {children}
-      </div>
-    );
+    return <div style={{ width: '100%', height: '100%', minHeight: '100dvh' }}>{children}</div>;
   }
 
   return (

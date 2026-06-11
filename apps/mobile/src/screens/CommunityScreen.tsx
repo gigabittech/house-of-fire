@@ -41,9 +41,7 @@ export default function CommunityScreen() {
 
   const feedMode = useMemo(
     (): { kind: 'channel'; channel: string } | { kind: 'mine' } =>
-      feedView === 'mine'
-        ? { kind: 'mine' }
-        : { kind: 'channel', channel: activeChannel },
+      feedView === 'mine' ? { kind: 'mine' } : { kind: 'channel', channel: activeChannel },
     [feedView, activeChannel],
   );
 
@@ -367,7 +365,9 @@ export default function CommunityScreen() {
                   post={post}
                   showChannel={activeChannel === 'general' && feedView === 'channel'}
                   resolvePhoto={photoSrc}
-                  interactiveReactions={feedView === 'channel' && post.moderationStatus === 'approved'}
+                  interactiveReactions={
+                    feedView === 'channel' && post.moderationStatus === 'approved'
+                  }
                   onReact={(emoji) => void handleReact(post.id, emoji)}
                   onOpen={() => router.push(`/community/${post.id}`)}
                   pressFeedback={false}

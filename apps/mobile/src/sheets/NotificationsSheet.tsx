@@ -3,8 +3,10 @@
 import { colors } from '@hof/design-tokens';
 import { Avatar, EmptyState, HofConfirm, Icon, useToast } from '@hof/ui';
 import { type CSSProperties, useCallback, useEffect, useState } from 'react';
+import { useChromeOverlay } from '@/hooks/useChromeOverlay';
 import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
 import { useSupabaseUserId } from '@/hooks/useSupabaseUserId';
+import { appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
 import { apiNotifToItem, type ApiNotif, type NotifItem } from '../lib/notificationUi';
@@ -132,6 +134,7 @@ type NotifFilter = (typeof NOTIF_FILTERS)[number];
 
 export default function NotificationsSheet({ open, onClose, onOpenPost }: NotificationsSheetProps) {
   const { mounted, shown } = useSheet(open);
+  useChromeOverlay(open);
   const { showToast } = useToast();
   const userId = useSupabaseUserId();
   const [notifs, setNotifs] = useState<NotifItem[]>([]);
@@ -194,14 +197,14 @@ export default function NotificationsSheet({ open, onClose, onOpenPost }: Notifi
   });
 
   const overlay: CSSProperties = {
-    position: 'absolute',
+    ...appOverlayFixed(),
     inset: 0,
-    zIndex: 100,
     background: colors.bg,
     transform: shown ? 'translateY(0)' : 'translateY(100%)',
     transition: 'transform 260ms cubic-bezier(0.22, 0.84, 0.36, 1)',
     display: 'flex',
     flexDirection: 'column',
+    pointerEvents: shown ? 'auto' : 'none',
   };
 
   return (

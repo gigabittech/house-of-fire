@@ -2,7 +2,14 @@
 
 import { colors, layoutChrome } from '@hof/design-tokens';
 import { eventPhotoGridUrl, eventPhotoLightboxUrl } from '@hof/media';
-import { EmptyState, ErrorState, FeedSkeletonCard, ImageLightbox, useResponsive, VirtualPhotoGrid } from '@hof/ui';
+import {
+  EmptyState,
+  ErrorState,
+  FeedSkeletonCard,
+  ImageLightbox,
+  useResponsive,
+  VirtualPhotoGrid,
+} from '@hof/ui';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
@@ -42,17 +49,8 @@ export default function ArchiveThemeScreen() {
   const columns = isWide ? 4 : 2;
 
   const galleryPath = edition != null ? `/api/archive/${edition}/photos` : '';
-  const {
-    photos,
-    eventMeta,
-    totalCount,
-    hasMore,
-    loading,
-    loadingMore,
-    error,
-    refresh,
-    loadMore,
-  } = useEventPhotoGallery<ApiEvent>(galleryPath);
+  const { photos, eventMeta, totalCount, hasMore, loading, loadingMore, error, refresh, loadMore } =
+    useEventPhotoGallery<ApiEvent>(galleryPath);
 
   const event = eventMeta;
 
@@ -79,8 +77,7 @@ export default function ArchiveThemeScreen() {
   const lightboxUrls = useMemo(
     () =>
       photos.map(
-        (photo, index) =>
-          eventPhotoLightboxUrl(photo) ?? photo.public_url ?? photoSrc(index),
+        (photo, index) => eventPhotoLightboxUrl(photo) ?? photo.public_url ?? photoSrc(index),
       ),
     [photos],
   );
