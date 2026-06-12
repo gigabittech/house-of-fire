@@ -1,8 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const eventId = request.nextUrl.searchParams.get('eventId');
   if (!eventId) {
     return NextResponse.json({ error: 'eventId required' }, { status: 400 });

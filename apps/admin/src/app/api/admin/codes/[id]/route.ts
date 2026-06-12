@@ -4,8 +4,12 @@ import {
   fetchPromoAnalyticsForCodes,
   syncAllDiscountCodeUses,
 } from '../../../../../lib/promoCodes';
+import { requireAdminRole } from '../../../../../lib/requireAdminRole';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
   const supabase = createAdminSupabaseClient();
   await syncAllDiscountCodeUses(supabase);
@@ -35,6 +39,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
   const supabase = createAdminSupabaseClient();
   const { error } = await supabase.from('discount_codes').update({ active: false }).eq('id', id);

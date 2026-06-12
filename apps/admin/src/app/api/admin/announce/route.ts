@@ -2,11 +2,15 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { isVapidConfigured } from '@hof/push';
 import { createPushCampaign, deliverPushCampaign } from '@/lib/pushCampaign.server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { resend } from '@/lib/resend';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from('posts')
@@ -31,6 +35,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   // Verify caller is admin or crew
   const serverClient = await createServerSupabaseClient();
   const {
