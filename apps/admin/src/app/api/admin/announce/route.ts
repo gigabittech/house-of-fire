@@ -1,12 +1,16 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { isVapidConfigured } from '@hof/push';
+import { isVapidConfigured, type PushSegment } from '@hof/push';
 import { createPushCampaign, deliverPushCampaign } from '@/lib/pushCampaign.server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { resend } from '@/lib/resend';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from('posts')
@@ -31,6 +35,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   // Verify caller is admin or crew
   const serverClient = await createServerSupabaseClient();
   const {
@@ -58,7 +65,8 @@ export async function POST(request: NextRequest) {
     eventId?: string;
     draft?: boolean;
     mediaUrls?: string[];
-    channels?: { feed?: boolean; email?: boolean; sms?: boolean };
+    channels?: { feed?: boolean; email?: boolean; sms?: boolean; push?: boolean };
+    pushSegment?: PushSegment;
   };
 
   const {
@@ -153,7 +161,10 @@ export async function POST(request: NextRequest) {
   let pushCampaignId: string | null = null;
   if (channels?.push && !draft && isVapidConfigured()) {
     try {
-      const segment = pushSegment ?? 'all_members';
+      const validSegments: readonly PushSegment[] = ['all_members', 'event_attendees', 'vip_members'];
+      const segment: PushSegment = validSegments.includes(pushSegment as PushSegment)
+        ? (pushSegment as PushSegment)
+        : 'all_members';
       const created = await createPushCampaign(admin, {
         title: title.trim(),
         body: (postBody?.trim() || title.trim()).slice(0, 240),

@@ -2,9 +2,13 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '@/lib/liveEvent.server';
 import { ADMIN_GUEST_SELECT, normalizeGuestTicket } from '@/lib/guestTicket';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const eventIdParam = request.nextUrl.searchParams.get('eventId');
   const page = Math.max(1, parseInt(request.nextUrl.searchParams.get('page') ?? '1', 10) || 1);
   const pageSize = Math.min(

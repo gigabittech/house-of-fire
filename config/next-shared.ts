@@ -20,12 +20,30 @@ export const optimizePackageImports = [
   'qrcode',
 ] as const;
 
+/** Baseline security headers for every route in every app. */
+export const securityHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Camera stays available same-origin for door QR scanning.
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+] as const;
+
 /**
  * Settings shared by every Next app in the monorepo.
  * App-specific config (images, server externals, etc.) is merged on top.
  */
 export function createMonorepoNextBase(): NextConfig {
   return {
+    async headers() {
+      return [
+        {
+          source: '/(.*)',
+          headers: [...securityHeaders],
+        },
+      ];
+    },
     // Typecheck via `pnpm typecheck` — Next's in-build checker OOMs on large types.
     typescript: {
       ignoreBuildErrors: true,

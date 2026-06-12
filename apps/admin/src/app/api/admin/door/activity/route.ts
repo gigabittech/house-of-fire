@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '@/lib/liveEvent.server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 function guestName(
@@ -17,6 +18,9 @@ function guestName(
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const eventIdParam = request.nextUrl.searchParams.get('eventId');
   const limitRaw = request.nextUrl.searchParams.get('limit');
   const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
