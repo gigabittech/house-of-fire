@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase';
 
 const supabase = createClient();
 
-const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing'];
+const STANDALONE_LAYOUT_PATHS = ['/sign-in', '/onboarding', '/landing', '/preview-access'];
 
 function usesStandaloneLayout(pathname: string): boolean {
   return STANDALONE_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
