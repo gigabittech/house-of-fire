@@ -88,7 +88,10 @@ export async function POST(request: NextRequest) {
   const ev = eventData as EventRow | null;
 
   if (!ev || (ev.status !== 'live' && ev.status !== 'upcoming')) {
-    return NextResponse.json({ error: 'Tickets are not available for this event' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Tickets are not available for this event' },
+      { status: 400 },
+    );
   }
 
   const tierFeeCents = (tierRow as TicketTierRow & { fee_cents?: number }).fee_cents ?? 0;

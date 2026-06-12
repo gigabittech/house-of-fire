@@ -91,6 +91,8 @@ export type Database = {
           capacity: number;
           max_tickets_per_user: number;
           status: 'upcoming' | 'live' | 'past' | 'cancelled';
+          visibility: 'public' | 'hidden';
+          dress_code: string | null;
           hero_image_url: string | null;
           created_at: string;
         };
@@ -542,6 +544,32 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      email_resend_audit: {
+        Row: {
+          id: string;
+          created_at: string;
+          order_id: string | null;
+          email_log_id: string | null;
+          actor_id: string | null;
+          actor_type: 'admin' | 'member' | 'system';
+          recipient: string;
+          source: string;
+          meta: Json;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          order_id?: string | null;
+          email_log_id?: string | null;
+          actor_id?: string | null;
+          actor_type: 'admin' | 'member' | 'system';
+          recipient: string;
+          source: string;
+          meta?: Json;
+        };
+        Update: Partial<Database['public']['Tables']['email_resend_audit']['Insert']>;
+        Relationships: [];
       };
     };
     Views: {

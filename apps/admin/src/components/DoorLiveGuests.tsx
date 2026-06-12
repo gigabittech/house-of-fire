@@ -1,6 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useSupabaseRealtime, useRealtimeStatus } from '@hof/realtime';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchAdminGuestByTicketId } from '@/lib/fetchGuestTicket';
+import { patchGuestTicketRow, type TicketRealtimeRow } from '@/lib/realtimePatch';
 import { Pill } from '@/components/Pill';
 import { TablePagination } from '@/components/TablePagination';
 import { TicketDetailPanel } from '@/components/TicketDetailPanel';
@@ -34,6 +37,11 @@ export function DoorLiveGuests({ eventId, refreshKey = 0 }: DoorLiveGuestsProps)
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [detailTicket, setDetailTicket] = useState<AdminGuestTicket | null>(null);
+  const pageRef = useRef(page);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
 
   const loadGuests = useCallback(async () => {
     if (!eventId) {
@@ -64,11 +72,56 @@ export function DoorLiveGuests({ eventId, refreshKey = 0 }: DoorLiveGuestsProps)
     void loadGuests();
   }, [loadGuests, refreshKey]);
 
+  const prependCheckedInGuest = useCallback(async (ticketId: string) => {
+    const guest = await fetchAdminGuestByTicketId(ticketId);
+    if (!guest || guest.status !== 'used') return;
+
+    let bumpTotal = true;
+    setGuests((prev) => {
+      if (prev.some((g) => g.id === guest.id)) {
+        bumpTotal = false;
+        return patchGuestTicketRow(prev, {
+          id: guest.id,
+          status: guest.status,
+          checked_in_at: guest.checked_in_at,
+          used_at: guest.used_at,
+        });
+      }
+      if (pageRef.current === 1) return [guest, ...prev].slice(0, PAGE_SIZE);
+      return prev;
+    });
+    if (bumpTotal) setTotal((t) => t + 1);
+  }, []);
+
+  const { status: globalStatus } = useRealtimeStatus();
+
+  useSupabaseRealtime<TicketRealtimeRow>({
+    table: 'tickets',
+    filter: eventId ? `event_id=eq.${eventId}` : undefined,
+    eventTypes: ['INSERT', 'UPDATE'],
+    enabled: !!eventId,
+    debounceMs: 300,
+    onInsert: (row) => {
+      if (row.status === 'used' && row.id) void prependCheckedInGuest(row.id);
+    },
+    onUpdate: (row, oldRow) => {
+      if (oldRow.status !== 'used' && row.status === 'used' && row.id) {
+        void prependCheckedInGuest(row.id);
+        return;
+      }
+      if (row.status === 'used' && row.id) {
+        setGuests((prev) => patchGuestTicketRow(prev, row));
+      }
+    },
+    onResync: () => void loadGuests(),
+  });
+
   useEffect(() => {
     if (!eventId) return;
-    const id = setInterval(() => void loadGuests(), 15_000);
+    if (globalStatus !== 'disconnected' && globalStatus !== 'error') return;
+    const id = setInterval(() => void loadGuests(), 60_000);
     return () => clearInterval(id);
-  }, [eventId, loadGuests]);
+  }, [eventId, loadGuests, globalStatus]);
 
   useEffect(() => {
     setPage(1);
@@ -217,12 +270,7 @@ export function DoorLiveGuests({ eventId, refreshKey = 0 }: DoorLiveGuestsProps)
           </table>
         </div>
 
-        <TablePagination
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={total}
-          onPageChange={setPage}
-        />
+        <TablePagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
       </div>
 
       {detailTicket && (

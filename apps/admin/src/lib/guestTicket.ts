@@ -1,5 +1,53 @@
 import { formatCents } from '@/lib/formatters';
 
+/** Shared select for admin guest ticket rows (door list + single-ticket fetch). */
+export const ADMIN_GUEST_SELECT = `
+  id,
+  code,
+  event_id,
+  tier_id,
+  order_id,
+  amount_cents,
+  fee_cents,
+  status,
+  purchased_at,
+  used_at,
+  checked_in_at,
+  source,
+  metadata,
+  qr_data,
+  stripe_charge_id,
+  profiles!tickets_holder_id_fkey (
+    id,
+    display_name,
+    handle,
+    avatar_url
+  ),
+  ticket_tiers!tickets_tier_id_fkey (
+    id,
+    display_name,
+    name
+  ),
+  events!tickets_event_id_fkey (
+    id,
+    edition_number,
+    name,
+    date,
+    venue_name,
+    status
+  ),
+  orders!tickets_order_id_fkey (
+    id,
+    subtotal_cents,
+    discount_cents,
+    fee_cents,
+    total_cents,
+    stripe_payment_intent_id,
+    status,
+    created_at
+  )
+`;
+
 export type TicketMetadata = {
   holder_name?: string | null;
   holder_email?: string | null;
@@ -196,10 +244,9 @@ export function receiptForTicket(
   if (order) {
     const isDoorOrder = order.stripe_payment_intent_id.startsWith('door_sale_');
     const metaPay = (ticket.metadata?.pay_method as string | undefined)?.trim();
-    const payFromCharge =
-      ticket.stripe_charge_id?.startsWith('door-')
-        ? ticket.stripe_charge_id.replace(/^door-/, '').split('-')[0]
-        : null;
+    const payFromCharge = ticket.stripe_charge_id?.startsWith('door-')
+      ? ticket.stripe_charge_id.replace(/^door-/, '').split('-')[0]
+      : null;
     return {
       kind: isDoorOrder ? 'door' : 'order',
       subtotal: order.subtotal_cents,
@@ -207,9 +254,7 @@ export function receiptForTicket(
       fees: order.fee_cents,
       total: order.total_cents,
       ticketCount: allTickets.filter((t) => t.order_id === order.id).length,
-      payMethod: isDoorOrder
-        ? (metaPay || payFromCharge || 'Door')
-        : 'Stripe',
+      payMethod: isDoorOrder ? metaPay || payFromCharge || 'Door' : 'Stripe',
       stripePaymentIntentId: isDoorOrder ? null : order.stripe_payment_intent_id,
       stripeChargeId: ticket.stripe_charge_id,
     };
@@ -268,7 +313,10 @@ export function receiptText(ticket: AdminGuestTicket, receipt: TicketReceipt): s
 export function groupTicketsByEvent(
   tickets: AdminGuestTicket[],
 ): Array<{ event: NonNullable<AdminGuestEvent>; tickets: AdminGuestTicket[] }> {
-  const map = new Map<string, { event: NonNullable<AdminGuestEvent>; tickets: AdminGuestTicket[] }>();
+  const map = new Map<
+    string,
+    { event: NonNullable<AdminGuestEvent>; tickets: AdminGuestTicket[] }
+  >();
   for (const t of tickets) {
     if (!t.events) continue;
     const existing = map.get(t.events.id);

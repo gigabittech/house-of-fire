@@ -10,9 +10,7 @@ export function isLandingOnlyRoute(pathname: string): boolean {
 /** Next.js internals, APIs, and static assets — never redirect these. */
 export function isInfrastructureRoute(pathname: string): boolean {
   return (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/assets')
+    pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.startsWith('/assets')
   );
 }
 

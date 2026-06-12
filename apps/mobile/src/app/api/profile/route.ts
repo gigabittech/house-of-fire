@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import type { Json } from '../../../lib/database.types';
 import { createServerSupabaseClient } from '../../../lib/supabase.server';
 
 export async function GET() {
@@ -9,23 +8,30 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [profileRes, ticketsRes, postsRes] = await Promise.all([
+  const [profileRes, ticketsRes, reactionsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase
       .from('tickets')
       .select('*, events(*), ticket_tiers(*)')
       .eq('holder_id', user.id)
       .order('purchased_at', { ascending: false }),
-    supabase.from('posts').select('id, reaction_counts').eq('author_id', user.id),
+    supabase.rpc('profile_author_reaction_totals', { p_author_id: user.id }),
   ]);
 
   if (profileRes.error) {
     return NextResponse.json({ error: profileRes.error.message }, { status: 500 });
   }
+  if (reactionsRes.error) {
+    return NextResponse.json({ error: reactionsRes.error.message }, { status: 500 });
+  }
 
   const profileRow = profileRes.data;
   const tickets = ticketsRes.data ?? [];
-  const posts = postsRes.data ?? [];
+  const reactionTotals = (reactionsRes.data ?? { fire: 0, eyes: 0, heart: 0 }) as {
+    fire?: number;
+    eyes?: number;
+    heart?: number;
+  };
 
   const editions = new Set(tickets.map((t: { event_id: string }) => t.event_id)).size;
   const meta = user.user_metadata ?? {};
@@ -37,22 +43,6 @@ export async function GET() {
         : null;
   const firstName = typeof meta.first_name === 'string' ? meta.first_name : null;
   const lastName = typeof meta.last_name === 'string' ? meta.last_name : null;
-
-  const totalFire = posts.reduce(
-    (sum: number, p: { reaction_counts: Json }) =>
-      sum + ((p.reaction_counts as Record<string, number>)?.fire ?? 0),
-    0,
-  );
-  const totalEyes = posts.reduce(
-    (sum: number, p: { reaction_counts: Json }) =>
-      sum + ((p.reaction_counts as Record<string, number>)?.eyes ?? 0),
-    0,
-  );
-  const totalHeart = posts.reduce(
-    (sum: number, p: { reaction_counts: Json }) =>
-      sum + ((p.reaction_counts as Record<string, number>)?.heart ?? 0),
-    0,
-  );
 
   return NextResponse.json({
     profile: profileRow
@@ -67,7 +57,11 @@ export async function GET() {
         }
       : null,
     tickets,
-    reactions: { fire: totalFire, eyes: totalEyes, heart: totalHeart },
+    reactions: {
+      fire: reactionTotals.fire ?? 0,
+      eyes: reactionTotals.eyes ?? 0,
+      heart: reactionTotals.heart ?? 0,
+    },
   });
 }
 

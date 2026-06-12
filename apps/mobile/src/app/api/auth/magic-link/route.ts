@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
 import { createEmailLog, updateEmailLog } from '../../../../lib/emailLog.server';
+import { rateLimitCheck } from '../../../../lib/rateLimit';
 import type { Database } from '../../../../lib/database.types';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:54321';
@@ -38,10 +39,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid flow' }, { status: 400 });
   }
 
-  const origin = request.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-  const redirectTo =
-    body.redirectTo?.trim() ||
-    `${origin}/auth/callback/client?next=${encodeURIComponent('/')}`;
+  // Rate limit: protect against email bombing / user enumeration.
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  if (
+    !rateLimitCheck(`magic-link:ip:${ip}`, 8, 15 * 60_000) ||
+    !rateLimitCheck(`magic-link:email:${email}`, 4, 15 * 60_000)
+  ) {
+    return NextResponse.json({ error: 'Too many requests. Try again shortly.' }, { status: 429 });
+  }
+
+  const origin =
+    request.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+  // Only honor a caller-supplied redirect if it stays on an origin we own
+  // (Supabase's redirect allow-list is the backstop, this keeps intent explicit).
+  const defaultRedirect = `${origin}/auth/callback/client?next=${encodeURIComponent('/')}`;
+  let redirectTo = defaultRedirect;
+  const requestedRedirect = body.redirectTo?.trim();
+  if (requestedRedirect) {
+    try {
+      const requestedOrigin = new URL(requestedRedirect).origin;
+      const appOrigin = process.env.NEXT_PUBLIC_APP_URL
+        ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
+        : null;
+      if (
+        requestedOrigin === appOrigin ||
+        requestedOrigin === origin ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        redirectTo = requestedRedirect;
+      }
+    } catch {
+      // Malformed URL — keep default.
+    }
+  }
 
   let logId: string | undefined;
   try {

@@ -16,11 +16,7 @@ interface NavItem extends MemberNavItem {
 }
 
 /** Floating capsule tab bar — PWA-safe-area aware. */
-export function HofBottomNav({
-  active = 'home',
-  onChange,
-  excludeNavIds = [],
-}: HofBottomNavProps) {
+export function HofBottomNav({ active = 'home', onChange, excludeNavIds = [] }: HofBottomNavProps) {
   const items: NavItem[] = filterMemberNavItems(excludeNavIds);
   return (
     <nav
@@ -30,7 +26,7 @@ export function HofBottomNav({
         left: 12,
         right: 12,
         bottom: layoutChrome.mobileNavSafeBottom,
-        zIndex: 30,
+        zIndex: 100,
         background: 'rgba(20,20,18,0.94)',
         backdropFilter: 'blur(24px) saturate(150%)',
         WebkitBackdropFilter: 'blur(24px) saturate(150%)',
@@ -67,11 +63,10 @@ export function HofBottomNav({
                 padding: isActive ? '6px 10px' : '6px 4px',
                 borderRadius: 999,
                 background: isActive ? 'rgba(232,101,26,0.14)' : 'transparent',
-                border: isActive
-                  ? '1px solid rgba(232,101,26,0.38)'
-                  : '1px solid transparent',
+                border: isActive ? '1px solid rgba(232,101,26,0.38)' : '1px solid transparent',
                 minHeight: 44,
                 opacity: it.soon ? 0.6 : 1,
+                touchAction: 'manipulation',
               }}
             >
               <Icon name={it.icon} color={c} size={20} />

@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '../../../../lib/supabase.admin';
-import {
-  fetchPromoAnalyticsForCodes,
-  syncAllDiscountCodeUses,
-} from '../../../../lib/promoCodes';
+import { fetchPromoAnalyticsForCodes, syncAllDiscountCodeUses } from '../../../../lib/promoCodes';
+import { requireAdminRole } from '../../../../lib/requireAdminRole';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
   await syncAllDiscountCodeUses(supabase);
 
@@ -24,8 +25,7 @@ export async function GET() {
   const codesWithStats = codes.map((c) => {
     const stats = analytics[c.id];
     const totalUses = stats?.totalUses ?? c.uses ?? 0;
-    const remainingUses =
-      c.max_uses !== null ? Math.max(0, c.max_uses - totalUses) : null;
+    const remainingUses = c.max_uses !== null ? Math.max(0, c.max_uses - totalUses) : null;
     return {
       ...c,
       uses: totalUses,
@@ -51,6 +51,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
   const body = (await request.json()) as {
     code: string;
@@ -66,7 +69,8 @@ export async function POST(request: NextRequest) {
   const code = body.code?.trim().toUpperCase();
   if (!code) return NextResponse.json({ error: 'code is required' }, { status: 400 });
 
-  const kind = body.kind === 'flat_cents' ? 'flat_cents' : body.kind === 'fixed' ? 'fixed' : 'percent';
+  const kind =
+    body.kind === 'flat_cents' ? 'flat_cents' : body.kind === 'fixed' ? 'fixed' : 'percent';
 
   const { data, error } = await supabase
     .from('discount_codes')

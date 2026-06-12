@@ -1,10 +1,18 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-const QR_HMAC_SECRET = process.env.QR_HMAC_SECRET ?? 'dev-secret-do-not-use-in-prod';
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+/** Fail closed in production: a missing/weak secret must never silently sign or verify tickets. */
+function qrHmacSecret(): string {
+  const secret = process.env.QR_HMAC_SECRET;
+  if (secret && secret.length >= 16) return secret;
+  if (IS_PROD) throw new Error('QR_HMAC_SECRET must be set (>=16 chars) in production');
+  return 'dev-secret-do-not-use-in-prod';
+}
 
 export function buildTicketQRData(ticketCode: string, eventId: string): string {
   const payload = JSON.stringify({ code: ticketCode, eventId });
-  const sig = createHmac('sha256', QR_HMAC_SECRET).update(payload).digest('hex');
+  const sig = createHmac('sha256', qrHmacSecret()).update(payload).digest('hex');
   return JSON.stringify({ code: ticketCode, eventId, sig });
 }
 
@@ -18,8 +26,9 @@ export function verifyTicketQRData(qrData: string): boolean {
 
   const { code, eventId, sig } = parsed;
 
+  // Unsigned QR: only tolerated outside production (dev fixtures / legacy test data).
   if (sig === undefined) {
-    return true;
+    return !IS_PROD;
   }
 
   if (typeof code !== 'string' || typeof eventId !== 'string' || typeof sig !== 'string') {
@@ -27,7 +36,7 @@ export function verifyTicketQRData(qrData: string): boolean {
   }
 
   const payload = JSON.stringify({ code, eventId });
-  const expected = createHmac('sha256', QR_HMAC_SECRET).update(payload).digest('hex');
+  const expected = createHmac('sha256', qrHmacSecret()).update(payload).digest('hex');
 
   try {
     const expectedBuf = Buffer.from(expected, 'hex');

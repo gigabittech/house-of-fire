@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  eventDisplayStatusLabel,
   eventHeroBadgeLabel,
   eventHeroBadgeTone,
   eventInventoryBadgeLabel,
   isEventSoldOut,
+  resolveEventDisplayStatus,
   type UpcomingTier,
 } from './eventDisplay';
 
@@ -34,9 +36,9 @@ describe('event status badges', () => {
   });
 
   it('shows live when status is live', () => {
-    expect(
-      eventHeroBadgeLabel({ ...baseEvent, status: 'live' }, [availableTier]),
-    ).toBe('Live · Theme № 24');
+    expect(eventHeroBadgeLabel({ ...baseEvent, status: 'live' }, [availableTier])).toBe(
+      'Live · Theme № 24',
+    );
   });
 
   it('shows sold out when all purchasable tiers are gone', () => {
@@ -44,16 +46,23 @@ describe('event status badges', () => {
     expect(isEventSoldOut([soldOutTier])).toBe(true);
   });
 
-  it('prioritizes sold out over live status', () => {
-    expect(
-      eventHeroBadgeLabel({ ...baseEvent, status: 'live' }, [soldOutTier]),
-    ).toBe('Sold out · Theme № 24');
-    expect(eventHeroBadgeTone({ status: 'live' }, [soldOutTier])).toBe('danger');
+  it('keeps live display status when doors are open even if sold out', () => {
+    expect(resolveEventDisplayStatus({ ...baseEvent, status: 'live' }, [soldOutTier])).toBe('live');
+    expect(eventHeroBadgeLabel({ ...baseEvent, status: 'live' }, [soldOutTier])).toBe(
+      'Live · Theme № 24',
+    );
+    expect(eventHeroBadgeTone({ status: 'live' }, [soldOutTier])).toBe('success');
+  });
+
+  it('derives hidden and sold out display statuses', () => {
+    expect(resolveEventDisplayStatus({ ...baseEvent, visibility: 'hidden' }, [availableTier])).toBe(
+      'hidden',
+    );
+    expect(eventDisplayStatusLabel('hidden')).toBe('Hidden');
+    expect(resolveEventDisplayStatus(baseEvent, [soldOutTier])).toBe('sold_out');
   });
 
   it('shows live inventory badge on home hero', () => {
-    expect(
-      eventInventoryBadgeLabel({ status: 'live' }, [availableTier]),
-    ).toBe('Live · 12 left');
+    expect(eventInventoryBadgeLabel({ status: 'live' }, [availableTier])).toBe('Live · 12 left');
   });
 });

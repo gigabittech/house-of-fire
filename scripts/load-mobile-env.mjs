@@ -52,7 +52,10 @@ export function loadProjectEnv(envName = envNameFromArgv()) {
     path.join(repoRoot, 'apps/mobile/.env.local'),
   ];
   if (envName) {
-    paths.push(path.join(repoRoot, `.env.${envName}`), path.join(repoRoot, `.env.${envName}.local`));
+    paths.push(
+      path.join(repoRoot, `.env.${envName}`),
+      path.join(repoRoot, `.env.${envName}.local`),
+    );
   }
   const env = paths.reduce((acc, p) => ({ ...acc, ...parseEnvFile(p) }), {});
   if (envName) {

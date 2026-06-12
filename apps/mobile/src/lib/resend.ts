@@ -25,8 +25,7 @@ export interface SendEmailResult {
   id: string;
 }
 
-const DEFAULT_FROM =
-  process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';
+const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>';
 
 async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const { log, ...email } = params;

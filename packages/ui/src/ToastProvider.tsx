@@ -38,7 +38,8 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 function toastViewportClass(placement: ToastPlacement): string {
   if (placement === 'top') return 'hof-toast-viewport hof-toast-viewport--top';
-  if (placement === 'above-composer') return 'hof-toast-viewport hof-toast-viewport--above-composer';
+  if (placement === 'above-composer')
+    return 'hof-toast-viewport hof-toast-viewport--above-composer';
   return 'hof-toast-viewport';
 }
 

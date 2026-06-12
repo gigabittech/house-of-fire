@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '../../../../../lib/supabase.admin';
 import { validateDiscountCodeForCheckout } from '../../../../../lib/promoCodes';
+import { requireAdminRole } from '../../../../../lib/requireAdminRole';
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const body = (await request.json()) as {
     code?: string;
     tierId?: string;

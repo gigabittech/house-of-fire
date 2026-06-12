@@ -86,9 +86,7 @@ export function TicketTiersEditor({ tiers, onChange, soldByTierId = {} }: Ticket
   function removeTier(index: number) {
     const tier = tiers[index];
     if (tier?.id && (soldByTierId[tier.id] ?? 0) > 0) return;
-    onChange(
-      tiers.filter((_, i) => i !== index).map((t, i) => ({ ...t, sort_order: i })),
-    );
+    onChange(tiers.filter((_, i) => i !== index).map((t, i) => ({ ...t, sort_order: i })));
   }
 
   return (
@@ -271,9 +269,7 @@ export function TicketTiersEditor({ tiers, onChange, soldByTierId = {} }: Ticket
                     <select
                       style={inputStyle}
                       value={tier.status}
-                      onChange={(e) =>
-                        updateTier(index, { status: e.target.value as TierStatus })
-                      }
+                      onChange={(e) => updateTier(index, { status: e.target.value as TierStatus })}
                     >
                       {TIER_STATUSES.map((s) => (
                         <option key={s.value} value={s.value}>

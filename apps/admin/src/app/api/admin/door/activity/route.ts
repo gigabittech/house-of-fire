@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '@/lib/liveEvent.server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 function guestName(
@@ -17,6 +18,9 @@ function guestName(
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const eventIdParam = request.nextUrl.searchParams.get('eventId');
   const limitRaw = request.nextUrl.searchParams.get('limit');
   const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
@@ -59,9 +63,12 @@ export async function GET(request: NextRequest) {
   }
 
   const activity = (rows ?? []).map((row) => {
-    const profileRaw = row.profiles as { display_name?: string | null } | null | Array<{
-      display_name?: string | null;
-    }>;
+    const profileRaw = row.profiles as
+      | { display_name?: string | null }
+      | null
+      | Array<{
+          display_name?: string | null;
+        }>;
     const profile = Array.isArray(profileRaw) ? (profileRaw[0] ?? null) : profileRaw;
     const tierRaw = row.ticket_tiers as
       | { display_name?: string; name?: string }
@@ -73,11 +80,9 @@ export async function GET(request: NextRequest) {
       row.metadata && typeof row.metadata === 'object'
         ? (row.metadata as Record<string, unknown>)
         : null;
-    const isDoor =
-      row.source === 'door' || (row.stripe_charge_id ?? '').startsWith('door-');
+    const isDoor = row.source === 'door' || (row.stripe_charge_id ?? '').startsWith('door-');
     const isCheckedIn = row.status === 'used' || !!row.checked_in_at;
-    const payMethod =
-      typeof meta?.pay_method === 'string' ? meta.pay_method : null;
+    const payMethod = typeof meta?.pay_method === 'string' ? meta.pay_method : null;
 
     const purchased = new Date(row.purchased_at);
     const t = purchased.toLocaleTimeString('en-US', {

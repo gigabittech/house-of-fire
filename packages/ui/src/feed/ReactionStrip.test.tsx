@@ -12,9 +12,18 @@ const base: Post = {
 };
 
 describe('ReactionStrip', () => {
-  it('shows the summed total', () => {
+  it('shows per-type reaction counts', () => {
     render(<ReactionStrip post={{ ...base, reactions: { fire: 52, heart: 12, pray: 4 } }} />);
-    expect(screen.getByText('68')).toBeInTheDocument();
+    expect(screen.getByText('52')).toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('highlights the viewer reaction', () => {
+    render(
+      <ReactionStrip post={{ ...base, reactions: { fire: 3, heart: 2 }, myReaction: 'heart' }} />,
+    );
+    expect(screen.getByTitle('Your reaction')).toBeInTheDocument();
   });
 
   it('invites the first reaction when empty', () => {

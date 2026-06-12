@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const years = [
-      ...new Set((data ?? []).map((e) => e.date.slice(0, 4))),
-    ].sort((a, b) => b.localeCompare(a));
+    const years = [...new Set((data ?? []).map((e) => e.date.slice(0, 4)))].sort((a, b) =>
+      b.localeCompare(a),
+    );
 
     return NextResponse.json({ years });
   }
@@ -58,13 +58,11 @@ export async function GET(request: NextRequest) {
     {},
   );
 
-  const events = (data ?? []).map(
-    (e: { id: string; event_photos?: Array<{ count: number }> }) => ({
-      ...e,
-      attendee_count: countMap[e.id] ?? 0,
-      photo_count: e.event_photos?.[0]?.count ?? 0,
-    }),
-  );
+  const events = (data ?? []).map((e: { id: string; event_photos?: Array<{ count: number }> }) => ({
+    ...e,
+    attendee_count: countMap[e.id] ?? 0,
+    photo_count: e.event_photos?.[0]?.count ?? 0,
+  }));
 
   return NextResponse.json({ events });
 }

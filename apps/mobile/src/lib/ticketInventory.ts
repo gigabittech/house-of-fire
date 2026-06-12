@@ -12,12 +12,21 @@ export async function getTierAvailableCount(
 ): Promise<{ available: number } | { error: string }> {
   const { data: tier, error: tierError } = await supabase
     .from('ticket_tiers')
-    .select('capacity')
+    .select('capacity, sold_count, status')
     .eq('id', tierId)
     .single();
 
   if (tierError || !tier) {
     return { error: tierError?.message ?? 'Tier not found' };
+  }
+
+  const sold =
+    typeof (tier as { sold_count?: number }).sold_count === 'number'
+      ? (tier as { sold_count: number }).sold_count
+      : null;
+
+  if (sold !== null) {
+    return { available: Math.max(0, tier.capacity - sold) };
   }
 
   const { count, error: countError } = await supabase
@@ -30,8 +39,7 @@ export async function getTierAvailableCount(
     return { error: countError.message };
   }
 
-  const sold = count ?? 0;
-  return { available: Math.max(0, tier.capacity - sold) };
+  return { available: Math.max(0, tier.capacity - (count ?? 0)) };
 }
 
 export async function getUserEventTicketCount(

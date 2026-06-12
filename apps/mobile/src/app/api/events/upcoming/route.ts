@@ -3,6 +3,7 @@ import type { Database } from '../../../../lib/database.types';
 import { getActiveEvent, NO_EVENTS_MESSAGE } from '../../../../lib/liveEvent.server';
 import { getUserEventTicketCount } from '../../../../lib/ticketInventory';
 import { effectiveMaxTicketsPerUser } from '../../../../lib/ticketLimits';
+import { resolveEventDisplayStatus } from '../../../../lib/eventDisplay';
 import {
   createServerSupabaseClient,
   createServiceRoleClient,
@@ -14,10 +15,7 @@ function normalizeDbTime(value: string): string {
   return value.length >= 5 ? value.slice(0, 5) : value;
 }
 
-function effectiveTierStatus(
-  tier: TicketTierRow,
-  remaining: number,
-): TicketTierRow['status'] {
+function effectiveTierStatus(tier: TicketTierRow, remaining: number): TicketTierRow['status'] {
   if (tier.status === 'hidden') return 'hidden';
   if (tier.status === 'sold_out' || remaining <= 0) return 'sold_out';
   return 'available';
@@ -39,15 +37,27 @@ export async function GET() {
     .order('sort_order', { ascending: true });
 
   const inventorySupabase = await createServiceRoleClient();
-  const { data: tickets } = await inventorySupabase
-    .from('tickets')
-    .select('tier_id')
-    .eq('event_id', event.id)
-    .in('status', ['valid', 'used']);
 
   const soldByTier: Record<string, number> = {};
-  for (const t of tickets ?? []) {
-    soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+  const tiersHaveSoldCount = (tiers ?? []).some(
+    (t) => typeof (t as TicketTierRow & { sold_count?: number }).sold_count === 'number',
+  );
+
+  if (tiersHaveSoldCount) {
+    for (const tier of tiers ?? []) {
+      const sc = (tier as TicketTierRow & { sold_count?: number }).sold_count;
+      if (typeof sc === 'number') soldByTier[tier.id] = sc;
+    }
+  } else {
+    const { data: tickets } = await inventorySupabase
+      .from('tickets')
+      .select('tier_id')
+      .eq('event_id', event.id)
+      .in('status', ['valid', 'used']);
+
+    for (const t of tickets ?? []) {
+      soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+    }
   }
 
   const tiersWithRemaining = (tiers ?? []).map((tier) => {
@@ -83,9 +93,19 @@ export async function GET() {
     }
   }
 
+  const visibility = (event as { visibility?: 'public' | 'hidden' }).visibility ?? 'public';
+  const dressCode = (event as { dress_code?: string | null }).dress_code ?? null;
+  const displayStatus = resolveEventDisplayStatus(
+    { status: event.status, visibility },
+    tiersWithRemaining,
+  );
+
   return NextResponse.json({
     event: {
       ...event,
+      visibility,
+      dress_code: dressCode,
+      display_status: displayStatus,
       doors_open: normalizeDbTime(event.doors_open),
       doors_close: normalizeDbTime(event.doors_close),
       faqs,

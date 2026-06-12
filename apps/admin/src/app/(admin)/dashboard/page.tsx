@@ -1,6 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { removeById, upsertById } from '@hof/realtime';
+import { useCallback, useEffect, useState } from 'react';
+import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
+import { fetchAdminGuestByTicketId } from '@/lib/fetchGuestTicket';
+import {
+  bumpSalesSeries,
+  isSoldTicketStatus,
+  isWalkupTicket,
+  patchEventStatsOnTicketInsert,
+  patchEventStatsOnTicketUpdate,
+  toDashboardGuestRow,
+} from '@/lib/realtimePatch';
 import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
 import { Pill } from '@/components/Pill';
@@ -25,16 +36,6 @@ interface GuestRow {
   ticket_tiers: { display_name: string; name: string } | null;
 }
 
-interface FinancialRow {
-  event_id: string;
-  edition_number: number;
-  name: string;
-  date: string;
-  status: string;
-  gross_cents: number;
-  ticket_count: number;
-}
-
 interface PhotoRow {
   id: string;
   event_id: string;
@@ -45,14 +46,17 @@ interface PhotoRow {
 }
 
 function SalesChart({ data }: { data: number[] }) {
-  const chartData = data.length > 0 ? data : [0];
+  const chartData = (data.length > 0 ? data : [0]).map((v) =>
+    Number.isFinite(v) ? Math.max(0, v) : 0,
+  );
   const max = Math.max(...chartData, 1);
   const cumulative = chartData.reduce<number[]>((acc, v) => {
     const last = acc[acc.length - 1] ?? 0;
     acc.push(last + v);
     return acc;
   }, []);
-  const cumMax = cumulative[cumulative.length - 1] ?? 1;
+  const cumMax = Math.max(cumulative[cumulative.length - 1] ?? 0, 1);
+  const barWidth = 400 / Math.max(chartData.length, 1);
 
   return (
     <svg width="100%" height="180" viewBox="0 0 400 180" preserveAspectRatio="none">
@@ -78,7 +82,7 @@ function SalesChart({ data }: { data: number[] }) {
         />
       ))}
       {chartData.map((v, i) => {
-        const w = 400 / chartData.length;
+        const w = barWidth;
         const h = (v / max) * 130;
         return (
           <rect
@@ -94,7 +98,7 @@ function SalesChart({ data }: { data: number[] }) {
       })}
       {(() => {
         const pts = cumulative
-          .map((v, i) => `${(i + 0.5) * (400 / chartData.length)},${170 - (v / cumMax) * 150}`)
+          .map((v, i) => `${(i + 0.5) * barWidth},${170 - (v / cumMax) * 150}`)
           .join(' ');
         const fillPath = `M 0,170 L ${pts} L 400,170 Z`;
         const linePath = `M ${pts.replace(/ /g, ' L ')}`;
@@ -105,7 +109,7 @@ function SalesChart({ data }: { data: number[] }) {
             {cumulative.map((v, i) => (
               <circle
                 key={i}
-                cx={(i + 0.5) * (400 / chartData.length)}
+                cx={(i + 0.5) * barWidth}
                 cy={170 - (v / cumMax) * 150}
                 r="2.5"
                 fill="var(--hof-text)"
@@ -121,11 +125,13 @@ function SalesChart({ data }: { data: number[] }) {
 function GuestListWidget({
   guests,
   loading,
+  totalCount,
   searchQuery,
   onSearchChange,
 }: {
   guests: GuestRow[];
   loading: boolean;
+  totalCount: number;
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }) {
@@ -178,9 +184,7 @@ function GuestListWidget({
               marginTop: 4,
             }}
           >
-            {loading
-              ? '…'
-              : `${filtered.length} confirmed · ${displayGuests.length} of ${filtered.length}`}
+            {loading ? '…' : `${totalCount} confirmed · showing ${displayGuests.length}`}
           </div>
         </div>
         <div
@@ -507,15 +511,16 @@ const TIER_COLORS = ['var(--hof-amber)', 'var(--hof-glow)', 'var(--hof-gold)'];
 export default function DashboardPage() {
   const [event, setEvent] = useState<EventRow | null>(null);
   const [guests, setGuests] = useState<GuestRow[]>([]);
-  const [financials, setFinancials] = useState<FinancialRow[]>([]);
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [guestSearch, setGuestSearch] = useState('');
+  const [guestTotalCount, setGuestTotalCount] = useState(0);
   const [period, setPeriod] = useState<'1D' | '7D' | '14D' | 'All'>('14D');
   const [salesData, setSalesData] = useState<number[]>([]);
   const [tierBars, setTierBars] = useState<Array<{ label: string; sold: number; cap: number }>>([]);
   const [openRequests, setOpenRequests] = useState(0);
   const [doorSalesCount, setDoorSalesCount] = useState(0);
+  const [eventStats, setEventStats] = useState({ sold: 0, scanned: 0, gross_cents: 0 });
 
   useEffect(() => {
     async function load() {
@@ -529,18 +534,15 @@ export default function DashboardPage() {
           null;
         setEvent(activeEvent);
 
-        // Fetch guests for that event (if found)
-        const guestUrl = activeEvent
-          ? `/api/admin/guests?eventId=${activeEvent.id}`
-          : '/api/admin/guests';
-        const gRes = await fetch(guestUrl);
-        const gData = (await gRes.json()) as { guests: GuestRow[] };
+        const guestParams = new URLSearchParams({ page: '1', pageSize: '6' });
+        if (activeEvent) guestParams.set('eventId', activeEvent.id);
+        const gRes = await fetch(`/api/admin/guests?${guestParams}`);
+        const gData = (await gRes.json()) as {
+          guests: GuestRow[];
+          pagination?: { totalCount?: number };
+        };
         setGuests(gData.guests ?? []);
-
-        // Fetch financials
-        const fRes = await fetch('/api/admin/financials');
-        const fData = (await fRes.json()) as { financials: FinancialRow[] };
-        setFinancials(fData.financials ?? []);
+        setGuestTotalCount(gData.pagination?.totalCount ?? gData.guests?.length ?? 0);
 
         // Fetch pending photos
         const pRes = await fetch('/api/admin/media?status=pending');
@@ -555,29 +557,124 @@ export default function DashboardPage() {
     void load();
   }, []);
 
-  useEffect(() => {
+  const loadMetrics = useCallback(async () => {
     const eventId = event?.id;
     if (!eventId) return;
-    async function loadMetrics() {
-      try {
-        const res = await fetch(`/api/admin/dashboard/metrics?eventId=${eventId}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          salesData: number[];
-          tierBars: Array<{ label: string; sold: number; cap: number }>;
-          openRequests?: number;
-          salesByChannel?: { online: number; door: number };
-        };
-        setSalesData(data.salesData ?? []);
-        setTierBars(data.tierBars ?? []);
-        setOpenRequests(data.openRequests ?? 0);
-        setDoorSalesCount(data.salesByChannel?.door ?? 0);
-      } catch {
-        /* keep prior */
-      }
+    try {
+      const res = await fetch(`/api/admin/dashboard/metrics?eventId=${eventId}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        salesData: number[];
+        tierBars: Array<{ label: string; sold: number; cap: number }>;
+        openRequests?: number;
+        salesByChannel?: { online: number; door: number };
+        eventStats?: { sold: number; scanned: number; gross_cents: number };
+      };
+      setSalesData(data.salesData ?? []);
+      setTierBars(data.tierBars ?? []);
+      setOpenRequests(data.openRequests ?? 0);
+      setDoorSalesCount(data.salesByChannel?.door ?? 0);
+      setEventStats(data.eventStats ?? { sold: 0, scanned: 0, gross_cents: 0 });
+    } catch {
+      /* keep prior */
     }
-    void loadMetrics();
   }, [event?.id]);
+
+  const loadGuests = useCallback(async () => {
+    const guestParams = new URLSearchParams({ page: '1', pageSize: '6' });
+    if (event?.id) guestParams.set('eventId', event.id);
+    try {
+      const gRes = await fetch(`/api/admin/guests?${guestParams}`);
+      const gData = (await gRes.json()) as {
+        guests: GuestRow[];
+        pagination?: { totalCount?: number };
+      };
+      setGuests(gData.guests ?? []);
+      setGuestTotalCount(gData.pagination?.totalCount ?? gData.guests?.length ?? 0);
+    } catch {
+      /* keep prior */
+    }
+  }, [event?.id]);
+
+  const loadPendingPhotos = useCallback(async () => {
+    try {
+      const pRes = await fetch('/api/admin/media?status=pending');
+      const pData = (await pRes.json()) as { photos: PhotoRow[] };
+      setPhotos(pData.photos ?? []);
+    } catch {
+      /* keep prior */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMetrics();
+  }, [loadMetrics]);
+
+  useEffect(() => {
+    if (!event?.id || loading) return;
+    const id = setInterval(() => void loadMetrics(), 15_000);
+    return () => clearInterval(id);
+  }, [event?.id, loading, loadMetrics]);
+
+  useDashboardRealtime({
+    eventId: event?.id,
+    enabled: !loading,
+    onTicketInsert: (row) => {
+      setEventStats((s) => patchEventStatsOnTicketInsert(s, row));
+      setSalesData((s) => bumpSalesSeries(s));
+      if (isWalkupTicket(row)) setDoorSalesCount((c) => c + 1);
+      if (isSoldTicketStatus(row.status)) {
+        setGuestTotalCount((c) => c + 1);
+        void fetchAdminGuestByTicketId(row.id).then((guest) => {
+          if (!guest) return;
+          const mapped = toDashboardGuestRow(guest);
+          setGuests((prev) => {
+            if (prev.some((g) => g.id === mapped.id)) return prev;
+            return [mapped, ...prev].slice(0, 6);
+          });
+        });
+      }
+    },
+    onTicketUpdate: (row, oldRow) => {
+      setEventStats((s) => patchEventStatsOnTicketUpdate(s, row, oldRow));
+      setGuests((prev) =>
+        prev.map((g) =>
+          g.id === row.id
+            ? {
+                ...g,
+                status: (row.status as GuestRow['status']) ?? g.status,
+              }
+            : g,
+        ),
+      );
+    },
+    onRefundInsert: () => setOpenRequests((c) => c + 1),
+    onRefundUpdate: (_row, oldRow) => {
+      if (oldRow.status === 'pending') setOpenRequests((c) => Math.max(0, c - 1));
+    },
+    onPhotoInsert: (row) => {
+      setPhotos((prev) =>
+        upsertById(prev, {
+          id: row.id,
+          event_id: row.event_id ?? '',
+          public_url: null,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          profiles: null,
+        }),
+      );
+    },
+    onPhotoUpdate: (row, oldRow) => {
+      if (oldRow.status === 'pending' && row.status !== 'pending') {
+        setPhotos((prev) => removeById(prev, row.id));
+      }
+    },
+    onResync: () => {
+      void loadMetrics();
+      void loadGuests();
+      void loadPendingPhotos();
+    },
+  });
 
   function exportGuestsCsv() {
     const header = ['code', 'name', 'handle', 'tier', 'status', 'purchased_at', 'amount_cents'];
@@ -619,12 +716,9 @@ export default function DashboardPage() {
     }
   }
 
-  // Compute KPI values
-  const currentFinancial = financials.find((f) => f.event_id === event?.id);
-  const grossCents = currentFinancial?.gross_cents ?? 0;
-  const grossFormatted = `$${(grossCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const ticketCount = guests.length;
-  const checkedIn = guests.filter((g) => g.status === 'used').length;
+  const grossFormatted = `$${(eventStats.gross_cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const ticketCount = eventStats.sold || guestTotalCount;
+  const checkedIn = eventStats.scanned;
 
   const eventTitle = event
     ? `${event.name} · Theme ${event.edition_number}`
@@ -917,6 +1011,7 @@ export default function DashboardPage() {
         <GuestListWidget
           guests={guests}
           loading={loading}
+          totalCount={guestTotalCount}
           searchQuery={guestSearch}
           onSearchChange={setGuestSearch}
         />

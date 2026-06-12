@@ -99,6 +99,15 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: `Transfer is already ${transfer.status}` }, { status: 409 });
   }
 
+  // Bind acceptance to the invited email — knowing the transfer ID is not enough.
+  const userEmail = user.email?.trim().toLowerCase() ?? '';
+  if (!userEmail || transfer.to_email.trim().toLowerCase() !== userEmail) {
+    return NextResponse.json(
+      { error: 'This transfer was sent to a different email address' },
+      { status: 403 },
+    );
+  }
+
   if (new Date(transfer.expires_at) < new Date()) {
     // Mark as expired
     await supabase.from('ticket_transfers').update({ status: 'expired' }).eq('id', id);

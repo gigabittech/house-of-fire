@@ -77,6 +77,74 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
+/** minmax(0, …) lets long strings shrink inside the grid without blowing out the layout */
+const TABLE_GRID = '150px minmax(0, 140px) 88px 110px minmax(0, 1fr) minmax(0, 1.4fr) 88px';
+const TABLE_MIN_WIDTH = 920;
+
+function cellShrink(): React.CSSProperties {
+  return { minWidth: 0 };
+}
+
+function EmailErrorCell({ message }: { message: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!message) {
+    return (
+      <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-dis)' }}>
+        —
+      </span>
+    );
+  }
+
+  const isLong = message.length > 100 || message.includes('\n');
+
+  return (
+    <div style={cellShrink()}>
+      <div
+        title={expanded ? undefined : message}
+        style={{
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 10,
+          color: 'var(--hof-error)',
+          lineHeight: 1.45,
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          ...(expanded
+            ? { whiteSpace: 'pre-wrap' }
+            : {
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }),
+        }}
+      >
+        {message}
+      </div>
+      {isLong ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            marginTop: 4,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            fontFamily: 'Inter, system-ui',
+            fontSize: 10,
+            fontWeight: 500,
+            color: 'var(--hof-text-sec)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+        >
+          {expanded ? 'Show less' : 'Show full error'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function EmailLogPage() {
   const [rows, setRows] = useState<EmailLogRow[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -289,7 +357,14 @@ export default function EmailLogPage() {
             }}
           >
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              >
                 <Icon name="search" size={14} color="var(--hof-text-sec)" />
               </div>
               <input
@@ -385,138 +460,174 @@ export default function EmailLogPage() {
             background: 'var(--hof-surface)',
           }}
         >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '160px 140px 90px 120px 1fr 100px',
-              gap: 12,
-              padding: '10px 16px',
-              borderBottom: '1px solid var(--hof-border)',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 10,
-              fontWeight: 600,
-              color: 'var(--hof-text-sec)',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-            }}
-          >
-            <div>When</div>
-            <div>To</div>
-            <div>Status</div>
-            <div>Source</div>
-            <div>Subject</div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
-          </div>
-
-          {loading ? (
-            <div style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}>
-              Loading…
-            </div>
-          ) : loadError ? (
-            <div style={{ padding: 20, color: 'var(--hof-error)', fontFamily: 'Inter, system-ui' }}>
-              {loadError}
-            </div>
-          ) : rows.length === 0 ? (
-            <div style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}>
-              No email logs found.
-            </div>
-          ) : (
-            rows.map((r) => (
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ minWidth: TABLE_MIN_WIDTH }}>
               <div
-                key={r.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '160px 140px 90px 120px 1fr 100px',
+                  gridTemplateColumns: TABLE_GRID,
                   gap: 12,
-                  padding: '12px 16px',
+                  padding: '10px 16px',
                   borderBottom: '1px solid var(--hof-border)',
+                  fontFamily: 'Inter, system-ui',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: 'var(--hof-text-sec)',
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
                 }}
               >
+                <div>When</div>
+                <div>To</div>
+                <div>Status</div>
+                <div>Source</div>
+                <div>Subject</div>
+                <div>Error</div>
+                <div style={{ textAlign: 'right' }}>Actions</div>
+              </div>
+
+              {loading ? (
                 <div
                   style={{
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 11,
+                    padding: 20,
                     color: 'var(--hof-text-sec)',
+                    fontFamily: 'Inter, system-ui',
                   }}
                 >
-                  {formatWhen(r.created_at)}
+                  Loading…
                 </div>
+              ) : loadError ? (
+                <div
+                  style={{ padding: 20, color: 'var(--hof-error)', fontFamily: 'Inter, system-ui' }}
+                >
+                  {loadError}
+                </div>
+              ) : rows.length === 0 ? (
                 <div
                   style={{
+                    padding: 20,
+                    color: 'var(--hof-text-sec)',
                     fontFamily: 'Inter, system-ui',
-                    fontSize: 12,
-                    color: 'var(--hof-text)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {r.to_address}
+                  No email logs found.
                 </div>
-                <div>
-                  <Pill tone={statusTone(r.status)}>{r.status}</Pill>
-                </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-sec)' }}>
-                  {r.app}
-                  {r.kind ? (
-                    <div style={{ fontSize: 10, color: 'var(--hof-text-dis)', marginTop: 2 }}>{r.kind}</div>
-                  ) : null}
-                </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text)' }}>
-                  {r.subject}
-                  {r.status === 'failed' && r.error_message ? (
+              ) : (
+                rows.map((r) => (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: TABLE_GRID,
+                      gap: 12,
+                      padding: '12px 16px',
+                      borderBottom: '1px solid var(--hof-border)',
+                      alignItems: 'start',
+                    }}
+                  >
                     <div
                       style={{
-                        marginTop: 4,
+                        ...cellShrink(),
+                        fontFamily: 'JetBrains Mono, monospace',
                         fontSize: 11,
-                        color: 'var(--hof-error)',
+                        color: 'var(--hof-text-sec)',
+                      }}
+                    >
+                      {formatWhen(r.created_at)}
+                    </div>
+                    <div
+                      style={{
+                        ...cellShrink(),
+                        fontFamily: 'Inter, system-ui',
+                        fontSize: 12,
+                        color: 'var(--hof-text)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {r.error_message}
+                      {r.to_address}
                     </div>
-                  ) : null}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  {canResend(r) ? (
-                    <button
-                      type="button"
-                      onClick={() => void retry(r.id)}
-                      disabled={retryingId === r.id}
+                    <div>
+                      <Pill tone={statusTone(r.status)}>{r.status}</Pill>
+                    </div>
+                    <div
                       style={{
-                        height: 28,
-                        padding: '0 10px',
-                        borderRadius: 8,
-                        border: '1px solid var(--hof-border)',
-                        background: 'var(--hof-amber)',
-                        color: 'var(--hof-bg)',
-                        cursor: 'pointer',
+                        ...cellShrink(),
                         fontFamily: 'Inter, system-ui',
                         fontSize: 12,
-                        fontWeight: 600,
-                        opacity: retryingId === r.id ? 0.6 : 1,
+                        color: 'var(--hof-text-sec)',
                       }}
                     >
-                      {retryingId === r.id ? 'Sending…' : 'Resend'}
-                    </button>
-                  ) : (
-                    <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: 'var(--hof-text-dis)' }}>
-                      —
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+                      {r.app}
+                      {r.kind ? (
+                        <div style={{ fontSize: 10, color: 'var(--hof-text-dis)', marginTop: 2 }}>
+                          {r.kind}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div
+                      style={{
+                        ...cellShrink(),
+                        fontFamily: 'Inter, system-ui',
+                        fontSize: 12,
+                        color: 'var(--hof-text)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {r.subject}
+                    </div>
+                    <EmailErrorCell message={r.status === 'failed' ? r.error_message : null} />
+                    <div
+                      style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}
+                    >
+                      {canResend(r) ? (
+                        <button
+                          type="button"
+                          onClick={() => void retry(r.id)}
+                          disabled={retryingId === r.id}
+                          style={{
+                            height: 28,
+                            padding: '0 10px',
+                            borderRadius: 8,
+                            border: '1px solid var(--hof-border)',
+                            background: 'var(--hof-amber)',
+                            color: 'var(--hof-bg)',
+                            cursor: 'pointer',
+                            fontFamily: 'Inter, system-ui',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            opacity: retryingId === r.id ? 0.6 : 1,
+                          }}
+                        >
+                          {retryingId === r.id ? 'Sending…' : 'Resend'}
+                        </button>
+                      ) : (
+                        <span
+                          style={{
+                            fontFamily: 'Inter, system-ui',
+                            fontSize: 12,
+                            color: 'var(--hof-text-dis)',
+                          }}
+                        >
+                          —
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
 
-          <TablePagination
-            page={pagination.page}
-            pageSize={pagination.limit}
-            total={pagination.total}
-            onPageChange={(p) => setPagination((cur) => ({ ...cur, page: p }))}
-          />
+              <TablePagination
+                page={pagination.page}
+                pageSize={pagination.limit}
+                total={pagination.total}
+                onPageChange={(p) => setPagination((cur) => ({ ...cur, page: p }))}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>

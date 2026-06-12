@@ -1,10 +1,16 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { isVapidConfigured, type PushSegment } from '@hof/push';
+import { createPushCampaign, deliverPushCampaign } from '@/lib/pushCampaign.server';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { resend } from '@/lib/resend';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 import { createServerSupabaseClient } from '@/lib/supabase.server';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from('posts')
@@ -29,6 +35,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   // Verify caller is admin or crew
   const serverClient = await createServerSupabaseClient();
   const {
@@ -56,10 +65,20 @@ export async function POST(request: NextRequest) {
     eventId?: string;
     draft?: boolean;
     mediaUrls?: string[];
-    channels?: { feed?: boolean; email?: boolean; sms?: boolean };
+    channels?: { feed?: boolean; email?: boolean; sms?: boolean; push?: boolean };
+    pushSegment?: PushSegment;
   };
 
-  const { title, body: postBody, channel = 'general', eventId, draft, channels, mediaUrls } = body;
+  const {
+    title,
+    body: postBody,
+    channel = 'general',
+    eventId,
+    draft,
+    channels,
+    mediaUrls,
+    pushSegment,
+  } = body;
 
   if (channels?.sms) {
     return NextResponse.json(
@@ -115,7 +134,9 @@ export async function POST(request: NextRequest) {
     if (emails.length > 0) {
       const imagesHtml =
         safeMedia.length > 0
-          ? safeMedia.map((url) => `<p><img src="${url}" alt="" style="max-width:100%"/></p>`).join('')
+          ? safeMedia
+              .map((url) => `<p><img src="${url}" alt="" style="max-width:100%"/></p>`)
+              .join('')
           : '';
       try {
         await resend.emails.send({
@@ -137,7 +158,30 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let pushCampaignId: string | null = null;
+  if (channels?.push && !draft && isVapidConfigured()) {
+    try {
+      const validSegments: readonly PushSegment[] = ['all_members', 'event_attendees', 'vip_members'];
+      const segment: PushSegment = validSegments.includes(pushSegment as PushSegment)
+        ? (pushSegment as PushSegment)
+        : 'all_members';
+      const created = await createPushCampaign(admin, {
+        title: title.trim(),
+        body: (postBody?.trim() || title.trim()).slice(0, 240),
+        url: eventId ? `/event` : '/',
+        segment,
+        eventId: segment === 'all_members' ? null : (eventId ?? null),
+        createdBy: user.id,
+        meta: { postId: post.id, source: 'announce' },
+      });
+      await deliverPushCampaign(admin, created.id);
+      pushCampaignId = created.id;
+    } catch (e) {
+      console.error('[announce] push send failed', e);
+    }
+  }
+
   console.log(`[announce] post=${post.id} channel=${safeChannel} by=${user.id}`);
 
-  return NextResponse.json({ post }, { status: 201 });
+  return NextResponse.json({ post, pushCampaignId }, { status: 201 });
 }

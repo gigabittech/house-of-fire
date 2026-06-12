@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-export const EVENT_SLUG_SELECT =
-  'id, edition_number, name, date, venue_name, status' as const;
+export const EVENT_SLUG_SELECT = 'id, edition_number, name, date, venue_name, status' as const;
 
 export type EventSlugRow = Pick<
   Database['public']['Tables']['events']['Row'],
@@ -22,10 +21,7 @@ export function archiveThemePath(edition: number): string {
   return `/archive/${edition}`;
 }
 
-export async function fetchEventBySlug(
-  supabase: SupabaseClient<Database>,
-  slug: string,
-) {
+export async function fetchEventBySlug(supabase: SupabaseClient<Database>, slug: string) {
   const parsed = parseEventSlug(slug);
   if (parsed.type === 'edition') {
     return supabase

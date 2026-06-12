@@ -74,7 +74,8 @@ async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: email.from ?? process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>',
+      from:
+        email.from ?? process.env.RESEND_FROM_EMAIL ?? 'House of Fire <tickets@houseoffire.club>',
       to: Array.isArray(email.to) ? email.to : [email.to],
       subject: email.subject,
       html: email.html,

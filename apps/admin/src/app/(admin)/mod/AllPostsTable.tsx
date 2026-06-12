@@ -189,7 +189,9 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
           }}
         >
           <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <div
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}
+            >
               <Icon name="search" size={14} color="var(--hof-text-sec)" />
             </div>
             <input
@@ -338,7 +340,9 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
         </div>
 
         {loading ? (
-          <div style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}>
+          <div
+            style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}
+          >
             Loading…
           </div>
         ) : loadError ? (
@@ -346,14 +350,14 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
             {loadError}
           </div>
         ) : rows.length === 0 ? (
-          <div style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}>
+          <div
+            style={{ padding: 20, color: 'var(--hof-text-sec)', fontFamily: 'Inter, system-ui' }}
+          >
             No posts found.
           </div>
         ) : (
           rows.map((row) => {
-            const author = row.is_anonymous
-              ? 'Anonymous'
-              : `@${row.profiles?.handle ?? 'unknown'}`;
+            const author = row.is_anonymous ? 'Anonymous' : `@${row.profiles?.handle ?? 'unknown'}`;
             const preview = row.body?.trim() || row.title;
             return (
               <div
@@ -411,7 +415,9 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
                   >
                     {row.title || '(no title)'}
                     {row.is_pinned ? (
-                      <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--hof-amber)' }}>pinned</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--hof-amber)' }}>
+                        pinned
+                      </span>
                     ) : null}
                   </div>
                   <div
@@ -480,12 +486,18 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
                     }}
                     onActivate={() => {
                       setOpenMenuId(null);
-                      if (!window.confirm('Activate this post and show it on the board again?')) return;
+                      if (!window.confirm('Activate this post and show it on the board again?'))
+                        return;
                       void runAction(row.id, () => patchPost(row.id, { action: 'approved' }));
                     }}
                     onDelete={() => {
                       setOpenMenuId(null);
-                      if (!window.confirm('Permanently delete this post? The author will be notified.')) return;
+                      if (
+                        !window.confirm(
+                          'Permanently delete this post? The author will be notified.',
+                        )
+                      )
+                        return;
                       void runAction(row.id, () => deletePost(row.id));
                     }}
                   />
@@ -580,7 +592,12 @@ function PostActionsMenu({
           }}
         >
           {canApprove ? (
-            <button type="button" role="menuitem" onClick={onApprove} style={menuItemStyle('success')}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onApprove}
+              style={menuItemStyle('success')}
+            >
               Approve
             </button>
           ) : null}
@@ -601,22 +618,12 @@ function PostActionsMenu({
             </button>
           ) : null}
           {canHide ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={onHide}
-              style={menuItemStyle()}
-            >
+            <button type="button" role="menuitem" onClick={onHide} style={menuItemStyle()}>
               Hide post
             </button>
           ) : null}
           {canApprove || canReject || canActivate || canHide ? <MenuDivider /> : null}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={onDelete}
-            style={menuItemStyle('danger')}
-          >
+          <button type="button" role="menuitem" onClick={onDelete} style={menuItemStyle('danger')}>
             Delete post
           </button>
         </div>

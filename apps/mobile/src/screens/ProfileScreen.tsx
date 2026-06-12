@@ -2,14 +2,7 @@
 
 import { colors, layoutChrome } from '@hof/design-tokens';
 import type { Post as UiPost } from '@hof/ui';
-import {
-  EmptyState,
-  ErrorState,
-  FeedPost,
-  HofSkeleton,
-  Icon,
-  useResponsive,
-} from '@hof/ui';
+import { EmptyState, ErrorState, FeedPost, HofSkeleton, Icon, useResponsive } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import {
   useCallback,
@@ -212,9 +205,7 @@ function ProfileRoleBadge({ role }: { role: string | undefined }) {
         color: isStaff ? colors.amber : colors.gold,
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
-        boxShadow: isStaff
-          ? '0 0 20px rgba(232,101,26,0.15)'
-          : '0 0 16px rgba(201,148,42,0.12)',
+        boxShadow: isStaff ? '0 0 20px rgba(232,101,26,0.15)' : '0 0 16px rgba(201,148,42,0.12)',
       }}
     >
       <Icon name="star" size={10} color={isStaff ? colors.amber : colors.gold} />
@@ -666,7 +657,11 @@ export default function ProfileScreen() {
         .then((r) => r.json())
         .then((d) => {
           if (d.referral_code) {
-            const next = d as { referral_code: string; referral_count: number; conversions: number };
+            const next = d as {
+              referral_code: string;
+              referral_count: number;
+              conversions: number;
+            };
             setReferral(next);
             writeProfileCache({ referral: next });
           }
@@ -751,381 +746,381 @@ export default function ProfileScreen() {
   useAppHeader({ title: 'Profile', actions: headerActions });
 
   return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: colors.bg,
+        overflow: 'hidden',
+      }}
+    >
       <div
+        className="hof-scroll hof-app-page-scroll"
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          background: colors.bg,
-          overflow: 'hidden',
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
+          paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
         }}
       >
-        <div
-          className="hof-scroll hof-app-page-scroll"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            paddingTop: isWide ? layoutChrome.wideActionsInset : 0,
-            paddingBottom: isWide ? layoutChrome.wideScrollBottom : layoutChrome.mobileScrollBottom,
-          }}
-        >
-          <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
-            {profileError ? (
-              <ErrorState />
-            ) : profileLoading ? (
-              <div
-                style={{
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 16,
-                  padding: 20,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <HofSkeleton width={64} height={64} radius={32} style={{ flexShrink: 0 }} />
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <HofSkeleton width="55%" height={18} />
-                    <HofSkeleton width="70%" height={12} />
-                    <HofSkeleton width={80} height={20} radius={4} style={{ marginTop: 2 }} />
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 8,
-                    marginTop: 18,
-                    paddingTop: 14,
-                    borderTop: `1px solid ${colors.border}`,
-                  }}
-                >
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <HofSkeleton width="50%" height={22} />
-                      <HofSkeleton width="70%" height={10} />
-                    </div>
-                  ))}
+        <div style={{ ...pageColumn, paddingTop: isWide ? 8 : 12 }}>
+          {profileError ? (
+            <ErrorState />
+          ) : profileLoading ? (
+            <div
+              style={{
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 16,
+                padding: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <HofSkeleton width={64} height={64} radius={32} style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <HofSkeleton width="55%" height={18} />
+                  <HofSkeleton width="70%" height={12} />
+                  <HofSkeleton width={80} height={20} radius={4} style={{ marginTop: 2 }} />
                 </div>
               </div>
-            ) : (
               <div
                 style={{
-                  position: 'relative',
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 16,
-                  padding: 20,
-                  overflow: 'hidden',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 8,
+                  marginTop: 18,
+                  paddingTop: 14,
+                  borderTop: `1px solid ${colors.border}`,
                 }}
               >
-                {/* warm glow */}
-                <div
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <HofSkeleton width="50%" height={22} />
+                    <HofSkeleton width="70%" height={10} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                position: 'relative',
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 16,
+                padding: 20,
+                overflow: 'hidden',
+              }}
+            >
+              {/* warm glow */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -60,
+                  right: -60,
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
+                  background: 'radial-gradient(circle, rgba(232,101,26,0.18), transparent 70%)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+                <ProfileRoleBadge role={profile?.role} />
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  void handleAvatarSelect(file);
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 16,
+                  position: 'relative',
+                  paddingRight: 88,
+                }}
+              >
+                <button
+                  type="button"
+                  className="hof-btn hof-press"
+                  aria-label="Change profile photo"
+                  disabled={avatarUploading}
+                  onClick={() => avatarInputRef.current?.click()}
                   style={{
-                    position: 'absolute',
-                    top: -60,
-                    right: -60,
-                    width: 200,
-                    height: 200,
-                    borderRadius: 100,
-                    background: 'radial-gradient(circle, rgba(232,101,26,0.18), transparent 70%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-                <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
-                  <ProfileRoleBadge role={profile?.role} />
-                </div>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    void handleAvatarSelect(file);
-                  }}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 16,
                     position: 'relative',
-                    paddingRight: 88,
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    flexShrink: 0,
+                    padding: 0,
+                    overflow: 'hidden',
+                    border: `2px solid ${colors.borderHi}`,
+                    background: colors.elevated,
                   }}
                 >
-                  <button
-                    type="button"
-                    className="hof-btn hof-press"
-                    aria-label="Change profile photo"
-                    disabled={avatarUploading}
-                    onClick={() => avatarInputRef.current?.click()}
+                  {avatarPreview || profile?.avatar_url ? (
+                    <img
+                      src={avatarPreview ?? profile?.avatar_url ?? ''}
+                      alt={profile?.display_name ?? 'Profile photo'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        background: `linear-gradient(135deg, ${colors.amber}, ${colors.ember})`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontFamily: 'Clash Display',
+                        fontWeight: 700,
+                        fontSize: 28,
+                        color: colors.bg,
+                        letterSpacing: '-0.02em',
+                      }}
+                    >
+                      {initials}
+                    </div>
+                  )}
+                  <div
                     style={{
-                      position: 'relative',
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      flexShrink: 0,
-                      padding: 0,
-                      overflow: 'hidden',
-                      border: `2px solid ${colors.borderHi}`,
-                      background: colors.elevated,
+                      position: 'absolute',
+                      inset: 0,
+                      background: avatarUploading ? 'rgba(0,0,0,0.45)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 150ms',
                     }}
                   >
-                    {(avatarPreview || profile?.avatar_url) ? (
-                      <img
-                        src={avatarPreview ?? profile?.avatar_url ?? ''}
-                        alt={profile?.display_name ?? 'Profile photo'}
+                    {avatarUploading ? (
+                      <span
                         style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          background: `linear-gradient(135deg, ${colors.amber}, ${colors.ember})`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontFamily: 'Clash Display',
-                          fontWeight: 700,
-                          fontSize: 28,
-                          color: colors.bg,
-                          letterSpacing: '-0.02em',
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: colors.text,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
                         }}
                       >
-                        {initials}
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: avatarUploading ? 'rgba(0,0,0,0.45)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'background 150ms',
-                      }}
-                    >
-                      {avatarUploading ? (
-                        <span
-                          style={{
-                            fontFamily: 'Inter',
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: colors.text,
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Saving
-                        </span>
-                      ) : null}
-                    </div>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        right: 2,
-                        bottom: 2,
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        background: colors.bg,
-                        border: `1px solid ${colors.borderHi}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
-                      }}
-                    >
-                      <Icon name="camera" size={12} color={colors.amber} />
-                    </div>
-                  </button>
-                  <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
-                    <ProfileNameField
-                      displayName={profile?.display_name ?? 'Member'}
-                      editing={editingName}
-                      onEditingChange={setEditingName}
-                      saving={savingName}
-                      onSave={saveDisplayName}
-                    />
+                        Saving
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 2,
+                      bottom: 2,
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      background: colors.bg,
+                      border: `1px solid ${colors.borderHi}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    <Icon name="camera" size={12} color={colors.amber} />
+                  </div>
+                </button>
+                <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
+                  <ProfileNameField
+                    displayName={profile?.display_name ?? 'Member'}
+                    editing={editingName}
+                    onEditingChange={setEditingName}
+                    saving={savingName}
+                    onSave={saveDisplayName}
+                  />
+                  <div
+                    style={{
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: colors.textSec,
+                      marginTop: 4,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {profile?.handle ? `@${profile.handle}` : '@member'} · Member since{' '}
+                    {profile?.member_since
+                      ? new Date(profile.member_since).toLocaleDateString('en-US', {
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : 'Recently'}
+                  </div>
+                  {profile?.email && (
                     <div
                       style={{
                         fontFamily: 'Inter',
                         fontSize: 12,
                         color: colors.textSec,
                         marginTop: 4,
-                        lineHeight: 1.4,
                       }}
                     >
-                      {profile?.handle ? `@${profile.handle}` : '@member'} · Member since{' '}
-                      {profile?.member_since
-                        ? new Date(profile.member_since).toLocaleDateString('en-US', {
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : 'Recently'}
+                      {profile.email}
                     </div>
-                    {profile?.email && (
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: colors.textSec,
-                          marginTop: 4,
-                        }}
-                      >
-                        {profile.email}
-                      </div>
-                    )}
-                    {profile?.phone && (
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: colors.textSec,
-                          marginTop: 2,
-                        }}
-                      >
-                        {profile.phone}
-                      </div>
-                    )}
-                    {!editingName && (
-                      <button
-                        type="button"
-                        className="hof-btn hof-press"
-                        onClick={() => setEditingName(true)}
-                        style={{
-                          marginTop: 10,
-                          padding: 0,
-                          background: 'transparent',
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: colors.amber,
-                        }}
-                      >
-                        Edit name
-                      </button>
-                    )}
-                    {profileSaveError && (
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          color: colors.error,
-                          marginTop: 8,
-                        }}
-                      >
-                        {profileSaveError}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 10,
-                    marginTop: 20,
-                    paddingTop: 16,
-                    borderTop: `1px solid ${colors.border}`,
-                    position: 'relative',
-                  }}
-                >
-                  {(
-                    [
-                      [String(profile?.editions_attended ?? 0), 'Themes', colors.amber],
-                      [String(profile?.tickets_count ?? 0), 'Tickets', colors.gold],
-                      ['—', 'Photos', colors.textSec],
-                    ] as [string, string, string][]
-                  ).map(([n, l, accent]) => (
+                  )}
+                  {profile?.phone && (
                     <div
-                      key={l}
                       style={{
-                        background: colors.elevated,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 10,
-                        padding: '12px 10px',
-                        textAlign: 'center',
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: colors.textSec,
+                        marginTop: 2,
                       }}
                     >
-                      <div
-                        style={{
-                          fontFamily: 'Clash Display',
-                          fontWeight: 600,
-                          fontSize: 24,
-                          color: accent,
-                          letterSpacing: '-0.01em',
-                          lineHeight: 1,
-                        }}
-                      >
-                        {n}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: colors.textSec,
-                          marginTop: 6,
-                          letterSpacing: '0.14em',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {l}
-                      </div>
+                      {profile.phone}
                     </div>
-                  ))}
+                  )}
+                  {!editingName && (
+                    <button
+                      type="button"
+                      className="hof-btn hof-press"
+                      onClick={() => setEditingName(true)}
+                      style={{
+                        marginTop: 10,
+                        padding: 0,
+                        background: 'transparent',
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: colors.amber,
+                      }}
+                    >
+                      Edit name
+                    </button>
+                  )}
+                  {profileSaveError && (
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: colors.error,
+                        marginTop: 8,
+                      }}
+                    >
+                      {profileSaveError}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Stats */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 10,
+                  marginTop: 20,
+                  paddingTop: 16,
+                  borderTop: `1px solid ${colors.border}`,
+                  position: 'relative',
+                }}
+              >
+                {(
+                  [
+                    [String(profile?.editions_attended ?? 0), 'Themes', colors.amber],
+                    [String(profile?.tickets_count ?? 0), 'Tickets', colors.gold],
+                    ['—', 'Photos', colors.textSec],
+                  ] as [string, string, string][]
+                ).map(([n, l, accent]) => (
+                  <div
+                    key={l}
+                    style={{
+                      background: colors.elevated,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: 10,
+                      padding: '12px 10px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: 'Clash Display',
+                        fontWeight: 600,
+                        fontSize: 24,
+                        color: accent,
+                        letterSpacing: '-0.01em',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {n}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: colors.textSec,
+                        marginTop: 6,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {l}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tabs — COMMUNITY_FEATURE hides Posts tab */}
           {COMMUNITY_FEATURE_ENABLED ? (
-          <div style={{ padding: '20px 0 0' }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 4,
-                padding: 4,
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 8,
-              }}
-            >
-              {(
-                [
-                  ['overview', 'Overview'],
-                  ['posts', 'Posts'],
-                ] as ['overview' | 'posts', string][]
-              ).map(([k, l]) => (
-                <button
-                  key={k}
-                  className="hof-btn hof-press"
-                  onClick={() => setTab(k)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: tab === k ? colors.elevated : 'transparent',
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: tab === k ? colors.text : colors.textSec,
-                  }}
-                >
-                  {l}
-                </button>
-              ))}
+            <div style={{ padding: '20px 0 0' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 4,
+                  padding: 4,
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 8,
+                }}
+              >
+                {(
+                  [
+                    ['overview', 'Overview'],
+                    ['posts', 'Posts'],
+                  ] as ['overview' | 'posts', string][]
+                ).map(([k, l]) => (
+                  <button
+                    key={k}
+                    className="hof-btn hof-press"
+                    onClick={() => setTab(k)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      background: tab === k ? colors.elevated : 'transparent',
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: tab === k ? colors.text : colors.textSec,
+                    }}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
           ) : null}
 
           {tab === 'posts' && COMMUNITY_FEATURE_ENABLED && (
@@ -1347,7 +1342,8 @@ export default function ProfileScreen() {
                         width: 160,
                         height: 160,
                         borderRadius: 80,
-                        background: 'radial-gradient(circle, rgba(201,148,42,0.12), transparent 70%)',
+                        background:
+                          'radial-gradient(circle, rgba(201,148,42,0.12), transparent 70%)',
                         pointerEvents: 'none',
                       }}
                     />
@@ -1482,7 +1478,9 @@ export default function ProfileScreen() {
                     marginBottom: 12,
                   }}
                 >
-                  <ProfileSectionLabel style={{ marginBottom: 0 }}>Your tickets</ProfileSectionLabel>
+                  <ProfileSectionLabel style={{ marginBottom: 0 }}>
+                    Your tickets
+                  </ProfileSectionLabel>
                   <span
                     style={{
                       fontFamily: 'Inter',
@@ -1616,8 +1614,8 @@ export default function ProfileScreen() {
           )}
 
           <div style={{ height: 24 }} />
-          </div>
         </div>
       </div>
+    </div>
   );
 }
