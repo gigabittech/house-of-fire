@@ -1,6 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import { adminLayout } from '@/lib/adminLayout';
 
 interface TablePaginationProps {
   page: number;
@@ -20,22 +21,11 @@ export function TablePagination({ page, pageSize, total, onPageChange }: TablePa
   if (total <= pageSize) return null;
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 18px',
-        borderTop: '1px solid var(--hof-border)',
-        fontFamily: 'Inter, system-ui',
-        fontSize: 12,
-        color: 'var(--hof-text-sec)',
-      }}
-    >
+    <div className={adminLayout.pagination}>
       <span>
         {start}–{end} of {total}
       </span>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className={adminLayout.paginationControls}>
         <button
           type="button"
           disabled={safePage <= 1}

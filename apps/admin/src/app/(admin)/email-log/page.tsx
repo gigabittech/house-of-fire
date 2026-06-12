@@ -328,8 +328,8 @@ export default function EmailLogPage() {
         }
       />
 
-      <div style={{ padding: '20px 28px 28px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+      <div className="hof-admin-pad-section-bottom">
+        <div className="hof-admin-kpi-grid">
           <Kpi label="Sent (30d)" value={String(stats?.sent30d ?? '—')} />
           <Kpi
             label="Delivery rate"
@@ -349,13 +349,7 @@ export default function EmailLogPage() {
             padding: 14,
           }}
         >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-              gap: 10,
-            }}
-          >
+          <div className="hof-admin-filter-grid">
             <div style={{ position: 'relative' }}>
               <div
                 style={{
@@ -411,7 +405,7 @@ export default function EmailLogPage() {
               placeholder="Kind (receipt, auth…)"
               style={inputStyle}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="hof-admin-two-col-equal">
               <input
                 type="date"
                 value={dateFrom}
@@ -460,8 +454,8 @@ export default function EmailLogPage() {
             background: 'var(--hof-surface)',
           }}
         >
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: TABLE_MIN_WIDTH }}>
+          <div className="hof-admin-table-scroll">
+            <div className="hof-admin-data-table hof-admin-data-table--xl">
               <div
                 style={{
                   display: 'grid',

@@ -342,7 +342,7 @@ export default function EventsPage() {
       />
 
       {/* Filter tabs */}
-      <div style={{ padding: '16px 28px 0', display: 'flex', gap: 4 }}>
+      <div className="hof-admin-pad-section" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {FILTERS.map(([k, l]) => (
           <button
             key={k}
@@ -381,7 +381,7 @@ export default function EventsPage() {
         </div>
       )}
 
-      <div style={{ padding: '14px 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -390,6 +390,8 @@ export default function EventsPage() {
             overflow: 'hidden',
           }}
         >
+          <div className="hof-admin-table-scroll">
+          <div className="hof-admin-data-table hof-admin-data-table--lg">
           <div
             style={{
               display: 'grid',
@@ -580,6 +582,8 @@ export default function EventsPage() {
                 </div>
               </div>
             ))}
+          </div>
+          </div>
         </div>
       </div>
 

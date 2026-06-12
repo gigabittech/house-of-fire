@@ -172,7 +172,7 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
   }
 
   return (
-    <div style={{ padding: '0 28px 28px' }}>
+    <div className="hof-admin-pad-section-bottom">
       <div
         style={{
           background: 'var(--hof-surface)',
@@ -181,13 +181,7 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
           padding: 14,
         }}
       >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-            gap: 10,
-          }}
-        >
+        <div className="hof-admin-filter-grid">
           <div style={{ position: 'relative' }}>
             <div
               style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}
@@ -316,6 +310,8 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
           </div>
         </div>
 
+        <div className="hof-admin-table-scroll">
+        <div className="hof-admin-data-table hof-admin-data-table--lg">
         <div
           style={{
             display: 'grid',
@@ -506,6 +502,8 @@ export function AllPostsTable({ onRefreshQueue }: AllPostsTableProps) {
             );
           })
         )}
+        </div>
+        </div>
 
         <TablePagination
           page={pagination.page}

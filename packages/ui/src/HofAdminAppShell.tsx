@@ -158,7 +158,10 @@ function AdminSidebar({
           onClick={() => onChange?.('dashboard')}
           style={{ padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }}
         >
-          <span className="hof-admin-logo-wordmark">
+          <span
+            className="hof-admin-logo-wordmark"
+            style={inDrawer ? { display: 'none' } : undefined}
+          >
             <HofLogoMark
               fit="wordmark"
               variant="sidebar"
@@ -167,8 +170,15 @@ function AdminSidebar({
               alt="House of Fire"
             />
           </span>
-          <span className="hof-admin-logo-compact">
-            <HofLogoMark size={24} alt="House of Fire" />
+          <span
+            className="hof-admin-logo-compact"
+            style={inDrawer ? { display: 'block' } : undefined}
+          >
+            <img
+              src="/assets/icon.png"
+              alt="House of Fire"
+              style={{ width: 28, height: 28, display: 'block', objectFit: 'contain' }}
+            />
           </span>
         </button>
       </div>
@@ -323,6 +333,8 @@ export function HofAdminAppShell({
           <div className="hof-show-mobile-only">
             <HofMobilePageHeader
               title={pageTitle}
+              homeHref="/dashboard"
+              homeIconSrc="/assets/icon.png"
               actions={
                 <button
                   type="button"
@@ -403,11 +415,25 @@ export function HofAdminAppShell({
           .hof-admin-sidebar {
             padding: 2px 0 16px !important;
           }
+          .hof-admin-sidebar .hof-admin-sidebar-logo {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+          }
+          .hof-admin-sidebar .hof-admin-sidebar-logo button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+          }
           .hof-admin-sidebar .hof-admin-logo-wordmark {
             display: none;
           }
           .hof-admin-sidebar .hof-admin-logo-compact {
-            display: block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
           }
           .hof-admin-sidebar .hof-admin-nav-label {
             display: none;

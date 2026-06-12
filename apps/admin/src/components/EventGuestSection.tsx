@@ -139,7 +139,9 @@ export function EventGuestSection({
 
       {expanded && (
         <div style={{ borderTop: '1px solid var(--hof-border)' }}>
+          <div className="hof-admin-table-scroll">
           <div
+            className="hof-admin-data-table hof-admin-data-table--lg"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1.4fr 1.2fr 0.8fr 0.7fr 1fr 0.6fr',
@@ -243,6 +245,7 @@ export function EventGuestSection({
               onPageChange={onPageChange}
             />
           )}
+          </div>
         </div>
       )}
     </div>

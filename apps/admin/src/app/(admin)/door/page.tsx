@@ -334,15 +334,7 @@ export default function DoorPage() {
   return (
     <>
       {/* Header */}
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className="hof-admin-pane-header">
         <div>
           <div
             style={{
@@ -356,6 +348,7 @@ export default function DoorPage() {
             Door · Tonight
           </div>
           <div
+            className="hof-admin-pane-title"
             style={{
               fontFamily: 'Clash Display, system-ui',
               fontWeight: 600,
@@ -378,7 +371,7 @@ export default function DoorPage() {
             {headerSub || '—'}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="hof-admin-pane-cta">
           {eventOptions.length > 0 && (
             <select
               value={selectedEventId ?? ''}
@@ -443,11 +436,11 @@ export default function DoorPage() {
         }}
       />
 
-      <div style={{ padding: '0 28px 12px' }}>
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0, paddingBottom: 12 }}>
         <DoorOfflineStatus eventId={selectedEventId} onRefreshed={() => void loadStats()} />
       </div>
 
-      <div style={{ padding: '20px 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         <div
           style={{
             display: 'grid',
@@ -466,7 +459,7 @@ export default function DoorPage() {
             <DoorScanResult result={scanResult} onDismiss={() => setScanResult(null)} />
 
             {/* Door stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            <div className="hof-admin-four-col">
               <DoorStat label="Sold" value={statSold} sub="online" />
               <DoorStat
                 label="Scanned"

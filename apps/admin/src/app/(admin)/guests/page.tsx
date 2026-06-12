@@ -309,12 +309,8 @@ export default function GuestsPage() {
 
   return (
     <>
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-        }}
-      >
+      <div className="hof-admin-pane-header">
+        <div>
         <div
           style={{
             fontFamily: 'Inter, system-ui',
@@ -327,6 +323,7 @@ export default function GuestsPage() {
           Guest list
         </div>
         <div
+          className="hof-admin-pane-title"
           style={{
             fontFamily: 'Clash Display, system-ui',
             fontWeight: 600,
@@ -348,6 +345,7 @@ export default function GuestsPage() {
         >
           {subtitle}
         </div>
+        </div>
       </div>
 
       <GuestFilters
@@ -364,7 +362,7 @@ export default function GuestsPage() {
         scopeLabel={tierStatusScopeLabel}
       />
 
-      <div style={{ padding: '0 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         {error && (
           <div
             style={{

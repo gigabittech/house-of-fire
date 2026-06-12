@@ -211,12 +211,8 @@ export default function AnnouncePage() {
 
   return (
     <>
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-        }}
-      >
+      <div className="hof-admin-pane-header">
+        <div>
         <div
           style={{
             fontFamily: 'Inter, system-ui',
@@ -229,6 +225,7 @@ export default function AnnouncePage() {
           Announcements
         </div>
         <div
+          className="hof-admin-pane-title"
           style={{
             fontFamily: 'Clash Display, system-ui',
             fontWeight: 600,
@@ -250,16 +247,10 @@ export default function AnnouncePage() {
         >
           What you post here lands on every member's home feed.
         </div>
+        </div>
       </div>
 
-      <div
-        style={{
-          padding: '20px 28px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 16,
-        }}
-      >
+      <div className="hof-admin-section hof-admin-two-col">
         {/* Compose card */}
         <div
           style={{
@@ -363,10 +354,8 @@ export default function AnnouncePage() {
             ) : (
               <div style={{ position: 'relative' }}>
                 <div
+                  className="hof-admin-three-col"
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 6,
                     borderRadius: 10,
                     overflow: 'hidden',
                   }}
