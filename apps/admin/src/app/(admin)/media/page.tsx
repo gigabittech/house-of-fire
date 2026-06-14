@@ -610,14 +610,13 @@ export default function MediaPage() {
         }
       />
 
-      <div className="hof-admin-pad-section-bottom">
+      <div className="hof-admin-inline-pad">
         <div
           style={{
             background: 'var(--hof-surface)',
             border: '1px solid var(--hof-border)',
             borderRadius: 12,
             padding: 14,
-            marginBottom: 16,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -828,7 +827,9 @@ export default function MediaPage() {
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0 }}>
         {error && (
           <div
             style={{

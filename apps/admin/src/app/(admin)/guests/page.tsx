@@ -263,9 +263,9 @@ export default function GuestsPage() {
   const tierStatusScopeLabel = useMemo(() => {
     if (filters.eventId) {
       const ev = events.find((e) => e.id === filters.eventId);
-      if (ev) return `${ev.name} · Edition ${ev.edition_number}`;
+      if (ev) return `${ev.name} · Theme ${ev.edition_number}`;
     }
-    return 'All editions';
+    return 'All themes';
   }, [filters.eventId, events]);
 
   const filteredTickets = useMemo(() => {
@@ -289,11 +289,11 @@ export default function GuestsPage() {
     if (filters.eventId) {
       const ev = events.find((e) => e.id === filters.eventId);
       if (ev) {
-        return `${ev.name} · Edition ${ev.edition_number} · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'}`;
+        return `${ev.name} · Theme ${ev.edition_number} · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'}`;
       }
     }
     const eventCount = groups.length;
-    return `All editions · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'} across ${eventCount} event${eventCount === 1 ? '' : 's'} on this page`;
+    return `All themes · ${pagination.totalCount} ticket${pagination.totalCount === 1 ? '' : 's'} across ${eventCount} event${eventCount === 1 ? '' : 's'} on this page`;
   }, [filters.eventId, events, pagination.totalCount, groups.length]);
 
   function exportCsv() {

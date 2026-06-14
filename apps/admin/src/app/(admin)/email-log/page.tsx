@@ -328,7 +328,7 @@ export default function EmailLogPage() {
         }
       />
 
-      <div className="hof-admin-pad-section-bottom">
+      <div className="hof-admin-inline-pad">
         <div className="hof-admin-kpi-grid">
           <Kpi label="Sent (30d)" value={String(stats?.sent30d ?? '—')} />
           <Kpi
@@ -343,20 +343,28 @@ export default function EmailLogPage() {
         <div
           style={{
             marginTop: 18,
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
             background: 'var(--hof-surface)',
             border: '1px solid var(--hof-border)',
             borderRadius: 12,
             padding: 14,
           }}
         >
-          <div className="hof-admin-filter-grid">
-            <div style={{ position: 'relative' }}>
+          <div className="hof-admin-filter-grid" style={{ alignItems: 'end' }}>
+            <div
+              className="hof-admin-filter-span-2"
+              style={{ minWidth: 0, position: 'relative' }}
+            >
               <div
                 style={{
                   position: 'absolute',
                   left: 12,
                   top: '50%',
                   transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
                 }}
               >
                 <Icon name="search" size={14} color="var(--hof-text-sec)" />
@@ -371,41 +379,37 @@ export default function EmailLogPage() {
                 style={{ ...inputStyle, paddingLeft: 36 }}
               />
             </div>
-            <select
-              value={status}
-              onChange={(e) => {
-                setPagination((p) => ({ ...p, page: 1 }));
-                setStatus(e.target.value as EmailLogStatus | '');
-              }}
-              style={inputStyle}
-            >
-              <option value="">All statuses</option>
-              <option value="queued">Queued</option>
-              <option value="sent">Sent</option>
-              <option value="failed">Failed</option>
-            </select>
-            <select
-              value={app}
-              onChange={(e) => {
-                setPagination((p) => ({ ...p, page: 1 }));
-                setApp(e.target.value as 'mobile' | 'admin' | '');
-              }}
-              style={inputStyle}
-            >
-              <option value="">All apps</option>
-              <option value="mobile">Mobile</option>
-              <option value="admin">Admin</option>
-            </select>
-            <input
-              value={kind}
-              onChange={(e) => {
-                setPagination((p) => ({ ...p, page: 1 }));
-                setKind(e.target.value);
-              }}
-              placeholder="Kind (receipt, auth…)"
-              style={inputStyle}
-            />
-            <div className="hof-admin-two-col-equal">
+            <div style={{ minWidth: 0 }}>
+              <select
+                value={status}
+                onChange={(e) => {
+                  setPagination((p) => ({ ...p, page: 1 }));
+                  setStatus(e.target.value as EmailLogStatus | '');
+                }}
+                style={inputStyle}
+              >
+                <option value="">All statuses</option>
+                <option value="queued">Queued</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <select
+                value={app}
+                onChange={(e) => {
+                  setPagination((p) => ({ ...p, page: 1 }));
+                  setApp(e.target.value as 'mobile' | 'admin' | '');
+                }}
+                style={inputStyle}
+              >
+                <option value="">All apps</option>
+                <option value="mobile">Mobile</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+       
+            <div style={{ minWidth: 0 }}>
               <input
                 type="date"
                 value={dateFrom}
@@ -415,6 +419,8 @@ export default function EmailLogPage() {
                 }}
                 style={inputStyle}
               />
+            </div>
+            <div style={{ minWidth: 0 }}>
               <input
                 type="date"
                 value={dateTo}
@@ -427,7 +433,9 @@ export default function EmailLogPage() {
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0 }}>
         {actionError ? (
           <div
             style={{

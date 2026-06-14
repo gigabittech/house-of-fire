@@ -137,7 +137,7 @@ export function GuestTierStatus({ events, loading, scopeLabel }: GuestTierStatus
                     letterSpacing: '0.02em',
                   }}
                 >
-                  Edition {ev.edition_number} · {ev.name}
+                  Theme {ev.edition_number} · {ev.name}
                 </div>
               )}
               <div

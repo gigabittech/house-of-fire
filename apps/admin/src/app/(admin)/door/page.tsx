@@ -436,7 +436,7 @@ export default function DoorPage() {
         }}
       />
 
-      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0, paddingBottom: 12 }}>
+      <div className="hof-admin-inline-pad">
         <DoorOfflineStatus eventId={selectedEventId} onRefreshed={() => void loadStats()} />
       </div>
 

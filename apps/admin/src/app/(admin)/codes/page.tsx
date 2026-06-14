@@ -200,7 +200,7 @@ export default function CodesPage() {
         }
       />
 
-      <div className="hof-admin-pad-section-bottom">
+      <div className="hof-admin-inline-pad" style={{ paddingBottom: showForm ? undefined : 0 }}>
         {/* New code form */}
         {showForm && (
           <div
@@ -435,7 +435,9 @@ export default function CodesPage() {
             </div>
           </div>
         )}
+      </div>
 
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0 }}>
         {/* Codes table */}
         <div
           style={{
