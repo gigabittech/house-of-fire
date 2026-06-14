@@ -35,7 +35,7 @@ export default function ArchiveScreen() {
   const [archiveError, setArchiveError] = useState(false);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d: { event?: ApiEvent }) => {
         if (d.event) {

@@ -24,7 +24,7 @@ import {
   parseEventFaqs,
   resolveEventHeroImage,
   totalTicketsSold,
-  type UpcomingEvent,
+  type ActiveEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { apiPostToUi, type ApiPost } from '../lib/postUi';
@@ -333,11 +333,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [wlEmail, setWlEmail] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlDone, setWlDone] = useState<{ position: number } | null>(null);
-  const [eventData, setEventData] = useState<UpcomingEvent | null>(null);
+  const [eventData, setEventData] = useState<ActiveEvent | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d) => {
         if (d.event) setEventData(d.event);

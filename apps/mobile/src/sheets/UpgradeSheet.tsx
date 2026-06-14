@@ -302,7 +302,7 @@ export function UpgradeSheet({ open, onClose }: UpgradeSheetProps) {
               full
               icon={<Icon name="star" size={16} color={colors.bg} />}
               onClick={async () => {
-                const r = await fetch('/api/events/upcoming');
+                const r = await fetch('/api/events/active');
                 const d = (await r.json()) as {
                   event?: { ticket_tiers?: Array<{ id: string; name: string }> };
                 };

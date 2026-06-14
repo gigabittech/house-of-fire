@@ -29,15 +29,10 @@ const PUBLIC_ROUTES = [
   '/accept-transfer',
 ];
 
-async function shouldLockToLanding(
-  request: NextRequest,
-  supabase: ReturnType<typeof createServerClient>,
-) {
+function shouldLockToLanding(request: NextRequest, hasLivePublicEvent: boolean): boolean {
   if (isComingSoonBypass(request)) return false;
   if (isComingSoonMode()) return true;
-
-  const { data: liveEvent } = await getLiveEvent(supabase, 'id');
-  return !liveEvent;
+  return !hasLivePublicEvent;
 }
 
 export async function proxy(request: NextRequest) {
@@ -99,13 +94,19 @@ export async function proxy(request: NextRequest) {
   const previewSatisfied =
     !isPreviewAccessEnabled() || isPreviewAccessGranted(request);
 
+  let hasLivePublicEvent = false;
+  if (previewSatisfied && !isInfrastructureRoute(pathname)) {
+    const { data: liveEvent } = await getLiveEvent(supabase, 'id');
+    hasLivePublicEvent = Boolean(liveEvent);
+  }
+
   if (
     previewSatisfied &&
     !isInfrastructureRoute(pathname) &&
     !isLandingOnlyRoute(pathname) &&
     !isPreviewAccessRoute(pathname)
   ) {
-    const lockToLanding = await shouldLockToLanding(request, supabase);
+    const lockToLanding = shouldLockToLanding(request, hasLivePublicEvent);
     if (lockToLanding) {
       const url = request.nextUrl.clone();
       url.pathname = '/landing';

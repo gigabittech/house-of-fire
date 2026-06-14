@@ -78,7 +78,7 @@ export default function PhotoSubmitSheet({
   useEffect(() => {
     setResolvedEventId(eventId);
     if (!open || eventId) return;
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d: { event?: { id: string } }) => {
         if (d.event?.id) setResolvedEventId(d.event.id);

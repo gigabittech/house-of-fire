@@ -12,7 +12,7 @@ import {
   formatDoorsRange,
   formatEventDateShort,
   NO_EVENTS_MESSAGE,
-  type UpcomingEvent,
+  type ActiveEvent,
 } from '@/lib/eventDisplay';
 import { computeCheckoutAmounts } from '@/lib/ticketPricing';
 import { MAX_TICKETS_PER_ORDER } from '@/lib/ticketLimits';
@@ -1507,10 +1507,10 @@ export default function CheckoutScreen() {
 
   const [tierData, setTierData] = useState<Record<string, TierData>>({});
   const [checkoutEvent, setCheckoutEvent] = useState<Pick<
-    UpcomingEvent,
+    ActiveEvent,
     'name' | 'date' | 'venue_name' | 'doors_open' | 'doors_close'
   > | null>(null);
-  const [checkoutEventFull, setCheckoutEventFull] = useState<UpcomingEvent | null>(null);
+  const [checkoutEventFull, setCheckoutEventFull] = useState<ActiveEvent | null>(null);
   const [maxQtyCheckout, setMaxQtyCheckout] = useState(MAX_TICKETS_PER_ORDER);
   const [eventLoading, setEventLoading] = useState(true);
 
@@ -1544,9 +1544,9 @@ export default function CheckoutScreen() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
-      .then((d: { event?: UpcomingEvent }) => {
+      .then((d: { event?: ActiveEvent }) => {
         if (d.event) {
           setCheckoutEventFull(d.event);
           setCheckoutEvent({

@@ -5,18 +5,18 @@ import { Icon } from '@hof/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppHeader } from '@/hooks/useAppHeader';
-import { formatEventDate, type UpcomingEvent } from '@/lib/eventDisplay';
+import { formatEventDate, type ActiveEvent } from '@/lib/eventDisplay';
 
 export default function ArtistsPage() {
   const router = useRouter();
-  const [event, setEvent] = useState<UpcomingEvent | null>(null);
+  const [event, setEvent] = useState<ActiveEvent | null>(null);
 
   const handleBack = useCallback(() => router.back(), [router]);
 
   useAppHeader({ title: 'Artists', onBack: handleBack });
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d) => {
         if (d.event) setEvent(d.event);

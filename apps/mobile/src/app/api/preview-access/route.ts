@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { resolvePostPreviewPath } from '@/lib/previewRedirect.server';
 import {
   isPreviewAccessEnabled,
   previewAccessCookieOptions,
@@ -29,7 +30,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Preview access is not configured' }, { status: 503 });
   }
 
-  const response = NextResponse.json({ ok: true });
+  const redirectTo = resolvePostPreviewPath();
+
+  const response = NextResponse.json({ ok: true, redirectTo });
   response.cookies.set(PREVIEW_ACCESS_COOKIE, token, previewAccessCookieOptions());
   return response;
 }

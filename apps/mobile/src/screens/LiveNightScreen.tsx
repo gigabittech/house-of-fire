@@ -296,7 +296,7 @@ export default function LiveNightScreen() {
     let cancelled = false;
     setLineupLoading(true);
 
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json() as Promise<{ event?: ApiEvent }>)
       .then(({ event }) => {
         if (cancelled || !event) return;
