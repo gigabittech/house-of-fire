@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '../../../../lib/supabase.admin';
 import { fetchPromoAnalyticsForCodes, syncAllDiscountCodeUses } from '../../../../lib/promoCodes';
+import { requireAdminRole } from '../../../../lib/requireAdminRole';
 
 export async function GET() {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
   await syncAllDiscountCodeUses(supabase);
 
@@ -47,6 +51,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   const supabase = createAdminSupabaseClient();
   const body = (await request.json()) as {
     code: string;

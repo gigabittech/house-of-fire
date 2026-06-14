@@ -8,10 +8,17 @@ import {
   isLandingOnlyRoute,
 } from './lib/comingSoon.server';
 import { getLiveEvent } from './lib/liveEvent.server';
+import {
+  isPreviewAccessEnabled,
+  isPreviewAccessExemptRoute,
+  isPreviewAccessGranted,
+  isPreviewAccessRoute,
+} from './lib/previewAccess.server';
 
 // Routes that should be reachable without a session (when the site is not locked).
 const PUBLIC_ROUTES = [
   '/landing',
+  '/preview-access',
   '/sign-in',
   '/onboarding',
   '/auth/callback',
@@ -69,7 +76,35 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  if (!isInfrastructureRoute(pathname) && !isLandingOnlyRoute(pathname)) {
+  // Gate order: preview → coming-soon/live lock → auth (below).
+
+  if (isPreviewAccessEnabled()) {
+    if (
+      !isInfrastructureRoute(pathname) &&
+      !isPreviewAccessExemptRoute(pathname) &&
+      !isPreviewAccessGranted(request)
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/preview-access';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  } else if (isPreviewAccessRoute(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/landing';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  const previewSatisfied =
+    !isPreviewAccessEnabled() || isPreviewAccessGranted(request);
+
+  if (
+    previewSatisfied &&
+    !isInfrastructureRoute(pathname) &&
+    !isLandingOnlyRoute(pathname) &&
+    !isPreviewAccessRoute(pathname)
+  ) {
     const lockToLanding = await shouldLockToLanding(request, supabase);
     if (lockToLanding) {
       const url = request.nextUrl.clone();

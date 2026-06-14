@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { fulfillDoorSale } from '@/lib/fulfillDoorSale';
+import { requireAdminRole } from '@/lib/requireAdminRole';
 import { createAdminSupabaseClient } from '@/lib/supabase.admin';
 
 interface SellRequestBody {
@@ -30,6 +31,9 @@ function isSellBody(v: unknown): v is SellRequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole();
+  if (!auth.ok) return auth.response;
+
   let body: unknown;
   try {
     body = (await request.json()) as unknown;
