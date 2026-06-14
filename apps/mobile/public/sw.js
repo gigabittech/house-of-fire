@@ -5,7 +5,6 @@ const CACHE = 'hof-v2';
 
 const PRECACHE = [
   '/',
-  '/',
   '/event',
   '/archive',
   '/live',

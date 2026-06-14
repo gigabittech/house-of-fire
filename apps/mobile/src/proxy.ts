@@ -76,6 +76,8 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Gate order: preview → coming-soon/live lock → auth (below).
+
   if (isPreviewAccessEnabled()) {
     if (
       !isInfrastructureRoute(pathname) &&
@@ -94,7 +96,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!isInfrastructureRoute(pathname) && !isLandingOnlyRoute(pathname)) {
+  const previewSatisfied =
+    !isPreviewAccessEnabled() || isPreviewAccessGranted(request);
+
+  if (
+    previewSatisfied &&
+    !isInfrastructureRoute(pathname) &&
+    !isLandingOnlyRoute(pathname) &&
+    !isPreviewAccessRoute(pathname)
+  ) {
     const lockToLanding = await shouldLockToLanding(request, supabase);
     if (lockToLanding) {
       const url = request.nextUrl.clone();

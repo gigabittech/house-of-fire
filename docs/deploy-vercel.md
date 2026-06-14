@@ -65,6 +65,10 @@ Create under **Team Settings → Environment Variables → Shared**, then link t
 | `NEXT_PUBLIC_APP_URL` | Production mobile URL (e.g. `https://app.houseoffire.events`) |
 | `SUPABASE_AUTH_REDIRECT_URLS` | Optional comma-separated extra redirect URLs (localhost callbacks for dev) |
 | `QR_HMAC_SECRET` | Long random string for ticket QR signing |
+| `PREVIEW_ACCESS_IND` | `true`/`1`/`yes`/`on` to enable private preview gate (optional) |
+| `PREVIEW_ACCESS_PASS` | Required when indicator is on; server-only preview password |
+
+Both `PREVIEW_ACCESS_*` vars must be set for the gate to activate. If only the indicator is set without a password, the gate stays off.
 
 Do **not** add Stripe/Resend keys to the admin project unless you add features that need them.
 
