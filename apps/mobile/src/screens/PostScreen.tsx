@@ -338,6 +338,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
               </div>
             )}
             <FeedPost
+              key={post.id}
               post={{ ...post, replyCount }}
               resolvePhoto={photoSrc}
               interactiveReactions={post.moderationStatus === 'approved' || !post.moderationStatus}

@@ -1,7 +1,7 @@
 // House of Fire — Service Worker
-// Strategy: network-first for pages/API, cache-first for static assets.
+// Strategy: network-first for pages, API, and /_next/static; cache-first for images/fonts.
 
-const CACHE = 'hof-v2';
+const CACHE = 'hof-v3';
 
 const PRECACHE = [
   '/',
@@ -40,9 +40,24 @@ self.addEventListener('fetch', (ev) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Static assets (fonts, images, _next/static) — cache-first
+  // Next.js build chunks — network-first so deploys/HMR aren't stuck on old JS.
+  if (url.pathname.startsWith('/_next/static/')) {
+    ev.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
+
+  // Fonts, images, public assets — cache-first
   if (
-    url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/assets/') ||
     url.pathname.match(/\.(woff2?|ttf|png|jpg|jpeg|svg|ico|webp)$/)
   ) {

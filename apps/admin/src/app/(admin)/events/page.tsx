@@ -422,7 +422,7 @@ export default function EventsPage() {
               textTransform: 'uppercase',
             }}
           >
-            <div>Ed</div>
+            <div>Theme</div>
             <div>Name</div>
             <div>Date</div>
             <div>Status</div>

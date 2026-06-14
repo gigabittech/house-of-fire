@@ -8,6 +8,36 @@
 /* Design tokens (CSS custom properties + keyframes + utility classes) */
 @import "@hof/design-tokens/tokens.css";
 
+/* Reaction pill — in app bundle (not @import) so soft refresh keeps border styling */
+button.hof-react-pill,
+span.hof-react-pill {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px !important;
+  border-radius: 16px !important;
+  background: var(--hof-elevated) !important;
+  border: 1px solid var(--hof-border) !important;
+  box-shadow: inset 0 0 0 1px var(--hof-border) !important;
+  font-family: var(--hof-font-body);
+  font-size: 11px;
+  color: var(--hof-text-sec);
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+button.hof-react-pill {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.hof-react-pill[data-expanded="true"],
+span.hof-react-pill[data-expanded="true"] {
+  background: rgba(232, 101, 26, 0.12) !important;
+  border-color: rgba(232, 101, 26, 0.35) !important;
+}
+
 /* ─── Reset ─────────────────────────────────────────────────────────────────*/
 *,
 *::before,

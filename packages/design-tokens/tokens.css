@@ -92,6 +92,31 @@ button.hof-btn {
   color: inherit;
 }
 
+/* Community reaction pill — not a hof-btn reset; keeps border on cached/hydrated loads */
+.hof-react-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 16px;
+  background: var(--hof-elevated);
+  border: 1px solid var(--hof-border);
+  font-family: var(--hof-font-body);
+  font-size: 11px;
+  color: var(--hof-text-sec);
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+button.hof-react-pill {
+  cursor: pointer;
+}
+
+.hof-react-pill[data-expanded="true"] {
+  background: rgba(232, 101, 26, 0.12);
+  border-color: rgba(232, 101, 26, 0.35);
+}
+
 /* ── App shell sidebar nav ──────────────────────────────────────────────── */
 .hof-sidebar-nav-item-btn {
   display: flex;

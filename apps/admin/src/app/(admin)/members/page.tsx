@@ -130,7 +130,10 @@ export default function MembersPage() {
               : `+${stats.new_this_month} this month · ${stats.return_rate}% return rate · ${stats.crew_count} Crew · ${stats.photographer_count} Photographers`}
           </div>
         </div>
-        <div className={adminLayout.searchBox} style={{ background: 'var(--hof-surface)' }}>
+        <div
+          className={adminLayout.searchBox}
+          style={{ background: 'var(--hof-surface)', flex: '0 1 260px', width: 260, maxWidth: '100%' }}
+        >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle stroke="var(--hof-text-sec)" strokeWidth="1.5" cx="11" cy="11" r="7" />
             <path
@@ -148,7 +151,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div className={adminLayout.padSection}>
+      <div className="hof-admin-inline-pad">
         <div className={adminLayout.kpiGrid}>
         <Kpi
           label="Total members"
@@ -183,7 +186,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div className={adminLayout.padSectionBottom}>
+      <div className={adminLayout.padSectionBottom} style={{ paddingTop: 0 }}>
         <div
           style={{
             background: 'var(--hof-surface)',

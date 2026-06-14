@@ -438,12 +438,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             effective === 'sold_out'
               ? 0
               : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
-          const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
-          const allInCents = t.price_cents + feeCents;
           return {
             id: t.id,
             name: t.display_name ?? t.name,
-            price: allInCents / 100,
+            price: t.price_cents / 100,
             sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
             remaining,
             tone: (effective === 'sold_out' || remaining <= 0

@@ -3,6 +3,7 @@
 import { colors } from '@hof/design-tokens';
 import { HofButton, Icon } from '@hof/ui';
 import type { CSSProperties } from 'react';
+import { useChromeOverlay } from '@/hooks/useChromeOverlay';
 import { appOverlayFixed } from './overlay';
 import { useSheet } from './useSheet';
 
@@ -108,6 +109,7 @@ function DarkMap() {
 
 export function MapSheet({ open, onClose }: MapSheetProps) {
   const { mounted, shown } = useSheet(open);
+  useChromeOverlay(open);
   if (!mounted) return null;
 
   const outer: CSSProperties = {
@@ -235,6 +237,8 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
           background: colors.bg,
           borderTop: `1px solid ${colors.border}`,
           padding: '20px 18px',
@@ -286,10 +290,11 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 18, alignItems: 'stretch' }}>
           <HofButton
             variant="primary"
-            full
+            size="md"
+            style={{ flex: 1, minWidth: 0 }}
             icon={<Icon name="pin" size={16} color={colors.bg} />}
             onClick={() => {
               window.open(
@@ -302,6 +307,8 @@ export function MapSheet({ open, onClose }: MapSheetProps) {
           </HofButton>
           <HofButton
             variant="ghost"
+            size="md"
+            style={{ flexShrink: 0 }}
             icon={<Icon name="share" size={16} color={colors.text} />}
             onClick={() => {
               const text = 'House of Fire @ Junkyard Social Club, Boulder CO';

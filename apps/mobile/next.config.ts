@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
 
   experimental: {
     ...monorepoBase.experimental,
+    // Workspace package edits (@hof/ui) must not serve stale bundles on soft refresh.
+    turbopackFileSystemCacheForDev: false,
     optimizePackageImports: [
       ...optimizePackageImports,
       '@stripe/stripe-js',
