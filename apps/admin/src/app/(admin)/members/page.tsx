@@ -8,6 +8,7 @@ import { MemberEditModal } from '@/components/MemberEditModal';
 import { Pill } from '@/components/Pill';
 import { DEFAULT_PAGE_SIZE, TablePagination } from '@/components/TablePagination';
 import type { ApiPagination } from '@/lib/pagination';
+import { adminLayout } from '@/lib/adminLayout';
 import { type MemberApiPayload, type MemberRow, mapMemberRow } from '@/lib/mapMemberRow';
 
 interface MembersStats {
@@ -90,15 +91,7 @@ export default function MembersPage() {
 
   return (
     <>
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className={adminLayout.paneHeader}>
         <div>
           <div
             style={{
@@ -112,6 +105,7 @@ export default function MembersPage() {
             Members
           </div>
           <div
+            className={adminLayout.paneTitle}
             style={{
               fontFamily: 'Clash Display, system-ui',
               fontWeight: 600,
@@ -136,18 +130,7 @@ export default function MembersPage() {
               : `+${stats.new_this_month} this month · ${stats.return_rate}% return rate · ${stats.crew_count} Crew · ${stats.photographer_count} Photographers`}
           </div>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '7px 12px',
-            background: 'var(--hof-surface)',
-            border: '1px solid var(--hof-border)',
-            borderRadius: 8,
-            width: 260,
-          }}
-        >
+        <div className={adminLayout.searchBox} style={{ background: 'var(--hof-surface)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle stroke="var(--hof-text-sec)" strokeWidth="1.5" cx="11" cy="11" r="7" />
             <path
@@ -161,27 +144,12 @@ export default function MembersPage() {
             placeholder="Search name or handle…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              border: 0,
-              background: 'transparent',
-              outline: 'none',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 12,
-              color: 'var(--hof-text)',
-              width: '100%',
-            }}
           />
         </div>
       </div>
 
-      <div
-        style={{
-          padding: '20px 28px 0',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 12,
-        }}
-      >
+      <div className={adminLayout.padSection}>
+        <div className={adminLayout.kpiGrid}>
         <Kpi
           label="Total members"
           value={loading ? '…' : String(stats?.total ?? 0)}
@@ -212,9 +180,10 @@ export default function MembersPage() {
           }
           tone="muted"
         />
+        </div>
       </div>
 
-      <div style={{ padding: '20px 28px 28px' }}>
+      <div className={adminLayout.padSectionBottom}>
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -223,6 +192,8 @@ export default function MembersPage() {
             overflow: 'hidden',
           }}
         >
+          <div className={adminLayout.tableScroll}>
+          <div className={adminLayout.dataTableLg}>
           <div
             style={{
               display: 'grid',
@@ -400,6 +371,8 @@ export default function MembersPage() {
               No members match your search.
             </div>
           )}
+          </div>
+          </div>
           <TablePagination
             page={pagination.page}
             pageSize={pagination.pageSize}

@@ -1,3 +1,5 @@
+import { adminLayout } from '@/lib/adminLayout';
+
 interface PaneHeaderProps {
   eyebrow?: string;
   title: string;
@@ -7,15 +9,7 @@ interface PaneHeaderProps {
 
 export function PaneHeader({ eyebrow = 'Admin', title, sub, cta }: PaneHeaderProps) {
   return (
-    <div
-      style={{
-        padding: '22px 28px 18px',
-        borderBottom: '1px solid var(--hof-border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
+    <div className={adminLayout.paneHeader}>
       <div>
         <div
           style={{
@@ -29,6 +23,7 @@ export function PaneHeader({ eyebrow = 'Admin', title, sub, cta }: PaneHeaderPro
           {eyebrow}
         </div>
         <div
+          className={adminLayout.paneTitle}
           style={{
             fontFamily: 'Clash Display, system-ui',
             fontWeight: 600,
@@ -53,7 +48,7 @@ export function PaneHeader({ eyebrow = 'Admin', title, sub, cta }: PaneHeaderPro
           </div>
         )}
       </div>
-      {cta}
+      {cta ? <div className={adminLayout.paneCta}>{cta}</div> : null}
     </div>
   );
 }

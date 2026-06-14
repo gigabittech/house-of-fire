@@ -546,17 +546,7 @@ export default function ModPage() {
 
   return (
     <>
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
+      <div className="hof-admin-pane-header">
         <div>
           <div
             style={{
@@ -570,6 +560,7 @@ export default function ModPage() {
             Moderation
           </div>
           <div
+            className="hof-admin-pane-title"
             style={{
               fontFamily: 'Clash Display, system-ui',
               fontWeight: 600,
@@ -593,9 +584,11 @@ export default function ModPage() {
             {loading ? '…' : `${queue.length} posts awaiting approval`}
           </div>
         </div>
-        <button type="button" onClick={() => void openLog()} style={ghostBtn}>
-          Mod log
-        </button>
+        <div className="hof-admin-pane-cta">
+          <button type="button" onClick={() => void openLog()} style={ghostBtn}>
+            Mod log
+          </button>
+        </div>
       </div>
 
       {(error || actionError) && (
@@ -615,14 +608,7 @@ export default function ModPage() {
         </div>
       )}
 
-      <div
-        style={{
-          padding: '20px 28px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 16,
-        }}
-      >
+      <div className="hof-admin-section hof-admin-two-col">
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -763,7 +749,7 @@ export default function ModPage() {
         </div>
       </div>
 
-      <div style={{ padding: '0 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -921,6 +907,8 @@ export default function ModPage() {
                 background: 'var(--hof-bg)',
               }}
             >
+              <div className="hof-admin-table-scroll">
+              <div className="hof-admin-data-table hof-admin-data-table--lg">
               <div
                 style={{
                   display: 'grid',
@@ -1033,6 +1021,8 @@ export default function ModPage() {
                   </div>
                 ))
               )}
+              </div>
+              </div>
             </div>
           </div>
         </div>

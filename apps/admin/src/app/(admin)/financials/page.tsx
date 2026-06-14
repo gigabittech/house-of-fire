@@ -165,7 +165,7 @@ export default function FinancialsPage() {
       />
 
       {/* KPI strip */}
-      <div style={{ padding: '20px 28px 0' }}>
+      <div className="hof-admin-pad-section">
         {error && (
           <div
             style={{
@@ -182,7 +182,7 @@ export default function FinancialsPage() {
             Error: {error}
           </div>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div className="hof-admin-kpi-grid">
           <Kpi
             label={`${activeEditionLabel} gross`}
             value={loading ? '…' : activeGross}
@@ -211,14 +211,7 @@ export default function FinancialsPage() {
       </div>
 
       {/* Charts */}
-      <div
-        style={{
-          padding: '20px 28px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 16,
-        }}
-      >
+      <div className="hof-admin-section hof-admin-two-col">
         {/* By-edition bar chart */}
         <div
           style={{
@@ -453,7 +446,7 @@ export default function FinancialsPage() {
       </div>
 
       {/* Refund queue */}
-      <div style={{ padding: '0 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         <div
           style={{
             background: 'var(--hof-surface)',

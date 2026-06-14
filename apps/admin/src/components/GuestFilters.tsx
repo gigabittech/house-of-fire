@@ -53,8 +53,8 @@ export function GuestFilters({ events, tiers, filters, onChange, onExportCsv }: 
 
   return (
     <div
+      className="hof-admin-inline-pad"
       style={{
-        padding: '16px 28px',
         display: 'flex',
         flexWrap: 'wrap',
         gap: 16,

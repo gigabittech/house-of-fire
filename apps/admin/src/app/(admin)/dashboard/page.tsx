@@ -16,6 +16,7 @@ import { Avatar } from '@/components/Avatar';
 import { Kpi } from '@/components/Kpi';
 import { Pill } from '@/components/Pill';
 import { TierBar } from '@/components/TierBar';
+import { adminLayout } from '@/lib/adminLayout';
 
 interface EventRow {
   id: string;
@@ -155,12 +156,11 @@ function GuestListWidget({
       }}
     >
       <div
+        className={adminLayout.widgetHeader}
         style={{
           padding: 16,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           borderBottom: '1px solid var(--hof-border)',
+          marginBottom: 0,
         }}
       >
         <div>
@@ -187,18 +187,7 @@ function GuestListWidget({
             {loading ? '…' : `${totalCount} confirmed · showing ${displayGuests.length}`}
           </div>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '7px 12px',
-            background: 'var(--hof-elevated)',
-            border: '1px solid var(--hof-border)',
-            borderRadius: 8,
-            width: 200,
-          }}
-        >
+        <div className={adminLayout.searchBox}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle stroke="var(--hof-text-sec)" strokeWidth="1.5" cx="11" cy="11" r="7" />
             <path
@@ -212,19 +201,11 @@ function GuestListWidget({
             placeholder="Search name or email…"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            style={{
-              border: 0,
-              background: 'transparent',
-              outline: 'none',
-              fontFamily: 'Inter, system-ui',
-              fontSize: 12,
-              color: 'var(--hof-text)',
-              width: '100%',
-            }}
           />
         </div>
       </div>
-      <div>
+      <div className={adminLayout.tableScroll}>
+        <div className={adminLayout.dataTable}>
         <div
           style={{
             display: 'grid',
@@ -322,6 +303,7 @@ function GuestListWidget({
               </div>
             );
           })}
+        </div>
       </div>
     </div>
   );
@@ -385,7 +367,7 @@ function PhotoReviewWidget({
           Pending review
         </Pill>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div className={adminLayout.photoGrid}>
         {loading &&
           [0, 1, 2, 3].map((i) => (
             <div
@@ -730,15 +712,7 @@ export default function DashboardPage() {
   return (
     <>
       {/* Header */}
-      <div
-        style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid var(--hof-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className={adminLayout.paneHeader}>
         <div>
           <div
             style={{
@@ -752,6 +726,7 @@ export default function DashboardPage() {
             Dashboard
           </div>
           <div
+            className={adminLayout.paneTitle}
             style={{
               fontFamily: 'Clash Display, system-ui',
               fontWeight: 600,
@@ -774,7 +749,7 @@ export default function DashboardPage() {
             {eventSub}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className={adminLayout.paneCta}>
           <button
             type="button"
             onClick={() => exportGuestsCsv()}
@@ -817,14 +792,8 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs */}
-      <div
-        style={{
-          padding: '20px 28px 0',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 12,
-        }}
-      >
+      <div className={adminLayout.padSection}>
+        <div className={adminLayout.kpiGrid}>
         <Kpi
           label="Revenue · gross"
           value={loading ? '…' : grossFormatted}
@@ -855,17 +824,11 @@ export default function DashboardPage() {
           delta={openRequests === 0 ? 'Nothing pending' : 'Refund requests awaiting review'}
           tone="warning"
         />
+        </div>
       </div>
 
       {/* Two-col charts */}
-      <div
-        style={{
-          padding: '20px 28px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 16,
-        }}
-      >
+      <div className={`${adminLayout.section} ${adminLayout.twoCol}`}>
         {/* Sales trend */}
         <div
           style={{
@@ -875,14 +838,7 @@ export default function DashboardPage() {
             padding: 18,
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
+          <div className={adminLayout.cardHeader}>
             <div>
               <div
                 style={{
@@ -1000,14 +956,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Guest list + Photo review */}
-      <div
-        style={{
-          padding: '0 28px 28px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 16,
-        }}
-      >
+      <div className={`${adminLayout.padSectionBottom} ${adminLayout.twoCol}`}>
         <GuestListWidget
           guests={guests}
           loading={loading}
