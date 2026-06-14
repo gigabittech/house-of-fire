@@ -19,6 +19,127 @@ function initialsFromName(name: string): string {
   );
 }
 
+function AdminSignOutButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      className="hof-btn hof-press"
+      onClick={onClick}
+      title="Sign out"
+      aria-label="Sign out"
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        flexShrink: 0,
+        background: 'transparent',
+        border: `1px solid ${colors.border}`,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          stroke={colors.textSec}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+        />
+      </svg>
+    </button>
+  );
+}
+
+function AdminSidebarUserFooter({
+  user,
+  onSignOut,
+  inDrawer = false,
+}: {
+  user: HofAppHeaderUser;
+  onSignOut?: () => void;
+  inDrawer?: boolean;
+}) {
+  const footerBorder = { borderTop: `1px solid ${colors.border}` };
+
+  if (inDrawer) {
+    return (
+      <div
+        style={{
+          ...footerBorder,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 6px 0',
+        }}
+      >
+        <Avatar
+          initials={initialsFromName(user.name)}
+          src={user.avatarUrl}
+          alt={user.name}
+          size={32}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: colors.text }}>{user.name}</div>
+          <div style={{ fontSize: 10, color: colors.textSec }}>{user.email}</div>
+        </div>
+        {onSignOut ? <AdminSignOutButton onClick={onSignOut} /> : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className="hof-admin-sidebar-user-compact"
+        title={`${user.name} · ${user.email}`}
+        style={{
+          ...footerBorder,
+          flexShrink: 0,
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+          padding: '12px 0 0',
+        }}
+      >
+        <Avatar
+          initials={initialsFromName(user.name)}
+          src={user.avatarUrl}
+          alt={user.name}
+          size={32}
+        />
+        {onSignOut ? <AdminSignOutButton onClick={onSignOut} /> : null}
+      </div>
+
+      <div
+        className="hof-admin-sidebar-user-full"
+        style={{
+          ...footerBorder,
+          flexShrink: 0,
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 6px 0',
+        }}
+      >
+        <Avatar
+          initials={initialsFromName(user.name)}
+          src={user.avatarUrl}
+          alt={user.name}
+          size={32}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: colors.text }}>{user.name}</div>
+          <div style={{ fontSize: 10, color: colors.textSec }}>{user.email}</div>
+        </div>
+        {onSignOut ? <AdminSignOutButton onClick={onSignOut} /> : null}
+      </div>
+    </>
+  );
+}
+
 function NavLabel({ label, badge }: { label: string; badge?: string }) {
   if (!badge) return <>{label}</>;
   return (
@@ -187,59 +308,7 @@ function AdminSidebar({
         <AdminNavList active={active} onChange={onChange} badges={badges} />
       </div>
 
-      {user ? (
-        <div
-          style={{
-            flexShrink: 0,
-            borderTop: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 6px 0',
-          }}
-        >
-          <Avatar
-            initials={initialsFromName(user.name)}
-            src={user.avatarUrl}
-            alt={user.name}
-            size={32}
-          />
-          <div className="hof-admin-nav-label" style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: colors.text }}>{user.name}</div>
-            <div style={{ fontSize: 10, color: colors.textSec }}>{user.email}</div>
-          </div>
-          {onSignOut ? (
-            <button
-              type="button"
-              onClick={onSignOut}
-              title="Sign out"
-              aria-label="Sign out"
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                flexShrink: 0,
-                background: 'transparent',
-                border: `1px solid ${colors.border}`,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  stroke={colors.textSec}
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-                />
-              </svg>
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {user ? <AdminSidebarUserFooter user={user} onSignOut={onSignOut} inDrawer={inDrawer} /> : null}
     </nav>
   );
 }
@@ -409,6 +478,20 @@ export function HofAdminAppShell({
         @media (min-width: 1280px) {
           .hof-admin-sidebar .hof-admin-nav-live {
             display: inline-flex;
+          }
+        }
+        .hof-admin-sidebar-user-compact,
+        .hof-admin-sidebar-user-full {
+          display: none;
+        }
+        @media (min-width: 768px) and (max-width: 1279px) {
+          .hof-admin-sidebar-user-compact {
+            display: flex;
+          }
+        }
+        @media (min-width: 1280px) {
+          .hof-admin-sidebar-user-full {
+            display: flex;
           }
         }
         @media (min-width: 768px) and (max-width: 1279px) {

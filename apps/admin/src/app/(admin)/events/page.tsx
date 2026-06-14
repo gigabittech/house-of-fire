@@ -25,6 +25,10 @@ const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+/** minmax(0, …) keeps status/sold columns from overlapping when the table is narrow */
+const EVENTS_TABLE_GRID =
+  '60px minmax(0, 2fr) minmax(80px, 1fr) minmax(96px, 108px) minmax(88px, 120px) minmax(64px, 1fr) 36px';
+
 function eventToForm(ev: {
   edition_number: number;
   name: string;
@@ -342,7 +346,10 @@ export default function EventsPage() {
       />
 
       {/* Filter tabs */}
-      <div className="hof-admin-pad-section" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div
+        className="hof-admin-pad-section"
+        style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingBottom: 12 }}
+      >
         {FILTERS.map(([k, l]) => (
           <button
             key={k}
@@ -395,7 +402,8 @@ export default function EventsPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
+              gridTemplateColumns: EVENTS_TABLE_GRID,
+              gap: 10,
               padding: '12px 18px',
               borderBottom: '1px solid var(--hof-border)',
               fontFamily: 'Inter, system-ui',
@@ -453,7 +461,8 @@ export default function EventsPage() {
                 }}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
+                  gridTemplateColumns: EVENTS_TABLE_GRID,
+                  gap: 10,
                   padding: '14px 18px',
                   alignItems: 'center',
                   borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
@@ -486,6 +495,7 @@ export default function EventsPage() {
                   {e.date}
                 </div>
                 <div
+                  style={{ minWidth: 0 }}
                   onClick={(ev) => ev.stopPropagation()}
                   onKeyDown={(ev) => ev.stopPropagation()}
                 >
@@ -497,7 +507,9 @@ export default function EventsPage() {
                     }}
                     style={{
                       width: '100%',
-                      maxWidth: 132,
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
                       height: 30,
                       padding: '0 8px',
                       borderRadius: 6,

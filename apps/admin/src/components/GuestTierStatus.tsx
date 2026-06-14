@@ -37,14 +37,20 @@ export function GuestTierStatus({ events, loading, scopeLabel }: GuestTierStatus
 
   return (
     <div
-      style={{
-        margin: '0 28px 20px',
-        background: 'var(--hof-surface)',
-        border: '1px solid var(--hof-border)',
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}
+      className="hof-admin-inline-pad"
+      style={{ paddingTop: 0, paddingBottom: 20 }}
     >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
+          background: 'var(--hof-surface)',
+          border: '1px solid var(--hof-border)',
+          borderRadius: 12,
+        }}
+      >
       <div
         style={{
           padding: '14px 18px 0',
@@ -136,13 +142,15 @@ export function GuestTierStatus({ events, loading, scopeLabel }: GuestTierStatus
               )}
               <div
                 style={{
-                  display: 'flex',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                   gap: 16,
                   width: '100%',
+                  minWidth: 0,
                 }}
               >
                 {ev.tiers.map((tier, i) => (
-                  <div key={tier.tier_id} style={{ flex: 1, minWidth: 0 }}>
+                  <div key={tier.tier_id} style={{ minWidth: 0 }}>
                     <TierBar
                       name={tier.display_name || tier.name}
                       sold={tier.sold}
@@ -155,6 +163,7 @@ export function GuestTierStatus({ events, loading, scopeLabel }: GuestTierStatus
               </div>
             </div>
           ))}
+      </div>
       </div>
     </div>
   );
