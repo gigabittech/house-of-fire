@@ -22,6 +22,7 @@ function StatusDot() {
   );
 }
 
+/** Waiting screen when no theme is live yet. */
 export function LandingUpcomingView() {
   const { pageColumnClassName } = useLandingLayout();
 
@@ -38,7 +39,6 @@ export function LandingUpcomingView() {
           overflow: 'hidden',
         }}
       >
-        {/* Atmospheric photo wash */}
         <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <img
             src="/assets/photos/p3-portal-dj.jpg"
@@ -70,7 +70,6 @@ export function LandingUpcomingView() {
           />
         </div>
 
-        {/* Watermark emblem */}
         <div
           aria-hidden
           className="hof-landing-upcoming-watermark"
@@ -89,7 +88,6 @@ export function LandingUpcomingView() {
           <HofLogoMark size={220} alt="" />
         </div>
 
-        {/* Glow orb behind card */}
         <div
           aria-hidden
           className="hof-landing-upcoming-glow"
@@ -104,7 +102,6 @@ export function LandingUpcomingView() {
           }}
         />
 
-        {/* Center card */}
         <div
           className={pageColumnClassName}
           style={{
@@ -139,21 +136,11 @@ export function LandingUpcomingView() {
               </HofPill>
             </div>
 
-            <h1
-              className="hof-landing-upcoming-title"
-              style={{
-                color: colors.text,
-              }}
-            >
+            <h1 className="hof-landing-upcoming-title" style={{ color: colors.text }}>
               Upcoming
             </h1>
 
-            <p
-              className="hof-landing-upcoming-body"
-              style={{
-                color: colors.textSec,
-              }}
-            >
+            <p className="hof-landing-upcoming-body" style={{ color: colors.textSec }}>
               We&apos;re preparing the next House of Fire experience. Stay tuned for upcoming event
               announcements.
             </p>

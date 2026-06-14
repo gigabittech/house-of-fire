@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { applyInventorySnapshot, type InventorySnapshot } from '@/lib/inventorySnapshot';
-import type { UpcomingEvent } from '@/lib/eventDisplay';
+import type { ActiveEvent } from '@/lib/eventDisplay';
 
 /** Polling intervals tuned for launch traffic (bounded RPS vs realtime storms). */
 export const INVENTORY_POLL_MS = {
@@ -21,8 +21,8 @@ export function useEventInventory({
   enabled = true,
   pollIntervalMs = INVENTORY_POLL_MS.event,
 }: {
-  event: UpcomingEvent | null;
-  onEventChange: (next: UpcomingEvent) => void;
+  event: ActiveEvent | null;
+  onEventChange: (next: ActiveEvent) => void;
   enabled?: boolean;
   pollIntervalMs?: number;
 }) {

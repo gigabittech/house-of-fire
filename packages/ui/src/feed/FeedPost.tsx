@@ -1,7 +1,7 @@
 'use client';
 
 import { colors, fontFamilies } from '@hof/design-tokens';
-import { useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { HofPill } from '../HofPill';
 import { HofPhoto } from '../HofPhoto';
 import { Icon } from '../Icon';
@@ -10,7 +10,7 @@ import { PhotoPlaceholder } from '../PhotoPlaceholder';
 import { Avatar } from './Avatar';
 import { ChannelTag } from './ChannelTag';
 import { ReactionPicker } from './ReactionPicker';
-import { ReactionStrip } from './ReactionStrip';
+import { totalReactions } from './reactions';
 import type { Post, ReactionKey } from './types';
 
 export interface FeedPostProps {
@@ -47,7 +47,11 @@ export function FeedPost({
   const isRecap = post.kind === 'recap';
   const isQuick = post.kind === 'quick';
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [reactionsExpanded, setReactionsExpanded] = useState(false);
+
+  useEffect(() => {
+    setReactionsExpanded(false);
+  }, [post.id]);
 
   const recapCell = (seed: number, style?: CSSProperties) =>
     resolvePhoto ? (
@@ -64,6 +68,26 @@ export function FeedPost({
       : null;
 
   const myReactions = post.myReactions ?? (post.myReaction ? [post.myReaction] : []);
+  const reactionTotal = totalReactions(post);
+
+  const reactPillStyle = (expanded = false): CSSProperties => {
+    const borderColor = expanded ? 'rgba(232,101,26,0.35)' : colors.border;
+    return {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: compact ? '5px 10px' : '5px 10px',
+      borderRadius: 16,
+      background: expanded ? 'rgba(232,101,26,0.12)' : colors.elevated,
+      border: `1px solid ${borderColor}`,
+      boxShadow: `inset 0 0 0 1px ${borderColor}`,
+      fontFamily: fontFamilies.body,
+      fontSize: 11,
+      color: colors.textSec,
+      lineHeight: 1,
+      boxSizing: 'border-box',
+    };
+  };
 
   const openPost = () => {
     onOpen?.();
@@ -344,23 +368,42 @@ export function FeedPost({
               if (interactiveReactions) e.stopPropagation();
             }}
           >
-            <ReactionStrip
-              post={post}
-              compact={compact}
-              interactive={interactiveReactions}
-              myReactions={myReactions}
-              onOpenPicker={() => setPickerOpen((v) => !v)}
-            />
-            {pickerOpen && interactiveReactions && onReact && (
-              <ReactionPicker
-                myReactions={myReactions}
-                counts={post.reactions}
-                compact={compact}
-                onToggle={(key) => {
-                  onReact(key);
-                }}
-              />
-            )}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {interactiveReactions && onReact ? (
+                <button
+                  type="button"
+                  className="hof-react-pill hof-press"
+                  data-expanded={reactionsExpanded ? 'true' : 'false'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReactionsExpanded((open) => !open);
+                  }}
+                  aria-expanded={reactionsExpanded}
+                  style={{
+                    ...reactPillStyle(reactionsExpanded),
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                  }}
+                >
+                  React ({reactionTotal})
+                </button>
+              ) : (
+                <span className="hof-react-pill" style={reactPillStyle()}>
+                  React ({reactionTotal})
+                </span>
+              )}
+              {reactionsExpanded && interactiveReactions && onReact && (
+                <ReactionPicker
+                  myReactions={myReactions}
+                  counts={post.reactions}
+                  compact={compact}
+                  onToggle={(key) => {
+                    onReact(key);
+                  }}
+                />
+              )}
+            </div>
           </div>
           <div style={{ flex: 1 }} />
           <span

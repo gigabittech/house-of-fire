@@ -10,7 +10,7 @@ export default function Page({ params }: Props) {
   const { postId } = use(params);
   return (
     <CommunityFeatureGate>
-      <PostScreen postId={postId} />
+      <PostScreen key={postId} postId={postId} />
     </CommunityFeatureGate>
   );
 }

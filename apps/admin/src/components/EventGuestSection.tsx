@@ -30,6 +30,23 @@ function eventStatusTone(status: string): 'success' | 'amber' | 'neutral' | 'dan
   return 'neutral';
 }
 
+/** minmax(0, …) keeps guest/email columns from overlapping when the table is narrow */
+const GUEST_TABLE_GRID =
+  'minmax(108px, 120px) minmax(140px, 1.5fr) minmax(160px, 1.4fr) minmax(80px, 96px) minmax(76px, 92px) minmax(132px, 1fr) 72px';
+
+function cellShrink(): React.CSSProperties {
+  return { minWidth: 0 };
+}
+
+function ellipsize(): React.CSSProperties {
+  return {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  };
+}
+
 interface EventGuestSectionProps {
   event: NonNullable<AdminGuestEvent>;
   tickets: AdminGuestTicket[];
@@ -76,7 +93,6 @@ export function EventGuestSection({
         background: 'var(--hof-surface)',
         border: '1px solid var(--hof-border)',
         borderRadius: 12,
-        overflow: 'hidden',
         marginBottom: 16,
       }}
     >
@@ -105,7 +121,7 @@ export function EventGuestSection({
               color: 'var(--hof-text)',
             }}
           >
-            Edition {event.edition_number} · {event.name}
+            Theme {event.edition_number} · {event.name}
           </div>
           <div
             style={{
@@ -138,11 +154,21 @@ export function EventGuestSection({
       </button>
 
       {expanded && (
-        <div style={{ borderTop: '1px solid var(--hof-border)' }}>
+        <div
+          style={{
+            borderTop: '1px solid var(--hof-border)',
+            borderBottomLeftRadius: 12,
+            borderBottomRightRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          <div className="hof-admin-table-scroll">
+          <div className="hof-admin-data-table hof-admin-data-table--xl">
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1.4fr 1.2fr 0.8fr 0.7fr 1fr 0.6fr',
+              gridTemplateColumns: GUEST_TABLE_GRID,
+              gap: 10,
               padding: '10px 18px',
               fontFamily: 'Inter, system-ui',
               fontSize: 10,
@@ -172,7 +198,8 @@ export function EventGuestSection({
                 key={t.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1.4fr 1.2fr 0.8fr 0.7fr 1fr 0.6fr',
+                  gridTemplateColumns: GUEST_TABLE_GRID,
+                  gap: 10,
                   padding: '12px 18px',
                   alignItems: 'center',
                   borderBottom:
@@ -187,21 +214,30 @@ export function EventGuestSection({
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: 11,
                     color: 'var(--hof-text-sec)',
+                    ...ellipsize(),
                   }}
+                  title={t.code}
                 >
                   {t.code}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...cellShrink() }}>
                   <Avatar initials={initials} src={guestAvatarUrl(t)} alt={name} size={28} />
-                  <span style={{ fontWeight: 500 }}>{name}</span>
+                  <span style={{ fontWeight: 500, ...ellipsize() }} title={name}>
+                    {name}
+                  </span>
                 </div>
-                <div style={{ color: 'var(--hof-text-sec)', fontSize: 12 }}>{guestEmail(t)}</div>
-                <div>
+                <div
+                  style={{ color: 'var(--hof-text-sec)', fontSize: 12, ...ellipsize() }}
+                  title={guestEmail(t)}
+                >
+                  {guestEmail(t)}
+                </div>
+                <div style={cellShrink()}>
                   <Pill tone={isVip ? 'gold' : 'neutral'} size="sm">
                     {guestTierLabel(t)}
                   </Pill>
                 </div>
-                <div>
+                <div style={cellShrink()}>
                   <Pill tone={statusTone(t.status)} size="sm">
                     {t.status}
                   </Pill>
@@ -210,11 +246,13 @@ export function EventGuestSection({
                   style={{
                     color: 'var(--hof-text-sec)',
                     fontSize: 11,
+                    ...ellipsize(),
                   }}
+                  title={formatPurchasedAt(t.purchased_at)}
                 >
                   {formatPurchasedAt(t.purchased_at)}
                 </div>
-                <div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
                     onClick={() => onViewTicket(t)}
@@ -243,6 +281,8 @@ export function EventGuestSection({
               onPageChange={onPageChange}
             />
           )}
+          </div>
+          </div>
         </div>
       )}
     </div>

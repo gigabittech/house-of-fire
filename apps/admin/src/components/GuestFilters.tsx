@@ -53,8 +53,8 @@ export function GuestFilters({ events, tiers, filters, onChange, onExportCsv }: 
 
   return (
     <div
+      className="hof-admin-inline-pad"
       style={{
-        padding: '16px 28px',
         display: 'flex',
         flexWrap: 'wrap',
         gap: 16,
@@ -68,10 +68,10 @@ export function GuestFilters({ events, tiers, filters, onChange, onExportCsv }: 
           onChange={(e) => set({ eventId: e.target.value, tierId: '' })}
           style={inputStyle}
         >
-          <option value="">All editions</option>
+          <option value="">All themes</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>
-              Edition {ev.edition_number} · {ev.name}
+              Theme {ev.edition_number} · {ev.name}
             </option>
           ))}
         </select>

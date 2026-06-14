@@ -3,19 +3,19 @@ import { redirect } from 'next/navigation';
 import PreviewAccessScreen from '@/screens/PreviewAccessScreen';
 import {
   isPreviewAccessEnabled,
+  isPreviewAccessGrantCookieValid,
   PREVIEW_ACCESS_COOKIE,
-  previewAccessGrantToken,
 } from '@/lib/previewAccess.server';
+import { resolvePostPreviewPath } from '@/lib/previewRedirect.server';
 
 export default async function Page() {
   if (!isPreviewAccessEnabled()) {
-    redirect('/landing');
+    redirect(resolvePostPreviewPath());
   }
 
-  const token = previewAccessGrantToken();
   const cookie = (await cookies()).get(PREVIEW_ACCESS_COOKIE)?.value;
-  if (token && cookie === token) {
-    redirect('/landing');
+  if (isPreviewAccessGrantCookieValid(cookie)) {
+    redirect(resolvePostPreviewPath());
   }
 
   return <PreviewAccessScreen />;

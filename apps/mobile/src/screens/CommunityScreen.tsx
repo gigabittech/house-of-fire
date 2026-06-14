@@ -70,7 +70,7 @@ export default function CommunityScreen() {
       : 116;
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d: { event?: { id: string } }) => {
         if (d.event?.id) setLiveEventId(d.event.id);

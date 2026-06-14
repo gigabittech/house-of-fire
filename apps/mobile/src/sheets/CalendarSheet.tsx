@@ -3,14 +3,14 @@
 import { colors } from '@hof/design-tokens';
 import { Icon } from '@hof/ui';
 import type { CSSProperties } from 'react';
-import { buildCalendarEventData, type UpcomingEvent } from '@/lib/eventDisplay';
+import { buildCalendarEventData, type ActiveEvent } from '@/lib/eventDisplay';
 import { useSheet } from './useSheet';
 
 interface CalendarSheetProps {
   open: boolean;
   onClose: () => void;
   event?: Pick<
-    UpcomingEvent,
+    ActiveEvent,
     | 'name'
     | 'edition_number'
     | 'date'

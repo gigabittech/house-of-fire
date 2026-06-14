@@ -6,12 +6,12 @@ import {
   eventInventoryBadgeLabel,
   isEventSoldOut,
   resolveEventDisplayStatus,
-  type UpcomingTier,
+  type EventTier,
 } from './eventDisplay';
 
 const baseEvent = { edition_number: 24, status: 'upcoming' as const };
 
-const availableTier: UpcomingTier = {
+const availableTier: EventTier = {
   id: 'ga',
   name: 'ga',
   price_cents: 2800,
@@ -20,7 +20,7 @@ const availableTier: UpcomingTier = {
   status: 'available',
 };
 
-const soldOutTier: UpcomingTier = {
+const soldOutTier: EventTier = {
   id: 'ga',
   name: 'ga',
   price_cents: 2800,

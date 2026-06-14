@@ -610,26 +610,18 @@ export default function MediaPage() {
         }
       />
 
-      <div style={{ padding: '20px 28px 28px' }}>
+      <div className="hof-admin-inline-pad">
         <div
           style={{
             background: 'var(--hof-surface)',
             border: '1px solid var(--hof-border)',
             borderRadius: 12,
             padding: 14,
-            marginBottom: 16,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                gap: 10,
-                alignItems: 'end',
-              }}
-            >
-              <div style={{ gridColumn: 'span 2', minWidth: 0, position: 'relative' }}>
+            <div className="hof-admin-filter-grid" style={{ alignItems: 'end' }}>
+              <div className="hof-admin-filter-span-2" style={{ minWidth: 0, position: 'relative' }}>
                 <div
                   style={{
                     fontFamily: 'Inter, system-ui',
@@ -835,7 +827,9 @@ export default function MediaPage() {
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0 }}>
         {error && (
           <div
             style={{
@@ -861,7 +855,7 @@ export default function MediaPage() {
             overflow: 'hidden',
           }}
         >
-          <div style={{ overflowX: 'auto' }}>
+          <div className="hof-admin-table-scroll">
             <TableHeader />
 
             {loading ? (

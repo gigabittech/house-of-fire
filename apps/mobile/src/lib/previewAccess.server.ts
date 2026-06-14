@@ -29,11 +29,9 @@ export function previewAccessGrantToken(): string | null {
   return createHmac('sha256', pass).update('hof-preview-access-v1').digest('hex');
 }
 
-export function isPreviewAccessGranted(request: NextRequest): boolean {
+export function isPreviewAccessGrantCookieValid(cookie: string | undefined | null): boolean {
   const token = previewAccessGrantToken();
-  if (!token) return false;
-  const cookie = request.cookies.get(PREVIEW_ACCESS_COOKIE)?.value;
-  if (!cookie) return false;
+  if (!token || !cookie) return false;
   try {
     const a = Buffer.from(cookie);
     const b = Buffer.from(token);
@@ -42,6 +40,10 @@ export function isPreviewAccessGranted(request: NextRequest): boolean {
   } catch {
     return false;
   }
+}
+
+export function isPreviewAccessGranted(request: NextRequest): boolean {
+  return isPreviewAccessGrantCookieValid(request.cookies.get(PREVIEW_ACCESS_COOKIE)?.value);
 }
 
 export function previewAccessCookieOptions() {

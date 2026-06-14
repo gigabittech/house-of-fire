@@ -42,7 +42,7 @@ export default function CrewDoorPage() {
         }
         setAllowed(true);
 
-        const evRes = await fetch('/api/events/upcoming');
+        const evRes = await fetch('/api/events/active');
         const evData = (await evRes.json()) as {
           event?: { id: string; name: string; edition_number: number };
         };

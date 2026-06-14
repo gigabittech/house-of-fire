@@ -193,7 +193,8 @@ export default function PushPage() {
 
   return (
     <>
-      <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid var(--hof-border)' }}>
+      <div className="hof-admin-pane-header">
+        <div>
         <div
           style={{
             fontFamily: 'Inter, system-ui',
@@ -206,6 +207,7 @@ export default function PushPage() {
           Push
         </div>
         <div
+          className="hof-admin-pane-title"
           style={{
             fontFamily: 'Clash Display, system-ui',
             fontWeight: 600,
@@ -226,16 +228,10 @@ export default function PushPage() {
         >
           Lock-screen alerts for members who opted in on the app.
         </div>
+        </div>
       </div>
 
-      <div
-        style={{
-          padding: '20px 28px',
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 16,
-        }}
-      >
+      <div className="hof-admin-section hof-admin-two-col">
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -304,7 +300,7 @@ export default function PushPage() {
             />
           </div>
 
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="hof-admin-two-col-equal" style={{ marginTop: 14 }}>
             <div>
               <label
                 style={{

@@ -9,7 +9,7 @@ import {
   isEventSoldOut,
   NO_EVENTS_MESSAGE,
   remainingTickets,
-  type UpcomingEvent,
+  type ActiveEvent,
 } from '@/lib/eventDisplay';
 import { useAuthNavigation } from '@/components/auth/AuthNavigation';
 import { photoSrc } from '@/data/photos';
@@ -35,14 +35,14 @@ function LandingSection({
 export function LandingExperienceView() {
   const { navigate } = useAuthNavigation();
   const { pageColumnClassName } = useLandingLayout();
-  const [upcoming, setUpcoming] = useState<UpcomingEvent | null>(null);
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [eventLoaded, setEventLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d) => {
-        if (d.event) setUpcoming(d.event);
+        if (d.event) setActiveEvent(d.event);
       })
       .catch(console.error)
       .finally(() => setEventLoaded(true));
@@ -344,19 +344,19 @@ export function LandingExperienceView() {
                 gap: 8,
               }}
             >
-              <span>{upcoming ? 'Next theme' : 'House of Fire'}</span>
-              {upcoming ? (
+              <span>{activeEvent ? 'Next theme' : 'House of Fire'}</span>
+              {activeEvent ? (
                 <HofPill
                   tone={
-                    isEventSoldOut(upcoming.ticket_tiers)
+                    isEventSoldOut(activeEvent.ticket_tiers)
                       ? 'danger'
-                      : upcoming.status === 'live'
+                      : activeEvent.status === 'live'
                         ? 'success'
                         : 'amber'
                   }
                   size="sm"
                 >
-                  {eventHeroBadgeLabel(upcoming, upcoming.ticket_tiers).split(' · ')[0]}
+                  {eventHeroBadgeLabel(activeEvent, activeEvent.ticket_tiers).split(' · ')[0]}
                 </HofPill>
               ) : null}
             </div>
@@ -369,8 +369,8 @@ export function LandingExperienceView() {
                 letterSpacing: '-0.01em',
               }}
             >
-              {upcoming
-                ? `${upcoming.name} — Theme ${upcoming.edition_number}`
+              {activeEvent
+                ? `${activeEvent.name} — Theme ${activeEvent.edition_number}`
                 : eventLoaded
                   ? NO_EVENTS_MESSAGE
                   : 'Next theme'}
@@ -383,13 +383,13 @@ export function LandingExperienceView() {
                 marginTop: 6,
               }}
             >
-              {upcoming
-                ? `${formatEventDate(upcoming.date)} · ${upcoming.venue_name} · ${remainingTickets(upcoming.ticket_tiers)} tickets left`
+              {activeEvent
+                ? `${formatEventDate(activeEvent.date)} · ${activeEvent.venue_name} · ${remainingTickets(activeEvent.ticket_tiers)} tickets left`
                 : eventLoaded
                   ? ''
                   : 'Loading…'}
             </div>
-            {upcoming ? (
+            {activeEvent ? (
               <div style={{ marginTop: 16 }}>
                 <HofButton
                   variant="primary"
