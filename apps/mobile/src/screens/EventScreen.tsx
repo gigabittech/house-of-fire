@@ -24,7 +24,7 @@ import {
   parseEventFaqs,
   resolveEventHeroImage,
   totalTicketsSold,
-  type UpcomingEvent,
+  type ActiveEvent,
 } from '@/lib/eventDisplay';
 import { photoSrc } from '../data/photos';
 import { apiPostToUi, type ApiPost } from '../lib/postUi';
@@ -333,11 +333,11 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
   const [wlEmail, setWlEmail] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlDone, setWlDone] = useState<{ position: number } | null>(null);
-  const [eventData, setEventData] = useState<UpcomingEvent | null>(null);
+  const [eventData, setEventData] = useState<ActiveEvent | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d) => {
         if (d.event) setEventData(d.event);
@@ -438,12 +438,10 @@ export default function EventScreen({ onOpenArtist }: { onOpenArtist?: (slug: st
             effective === 'sold_out'
               ? 0
               : (t.remaining ?? Math.max(0, t.capacity - (t.sold ?? 0)));
-          const feeCents = (t as { fee_cents?: number }).fee_cents ?? 0;
-          const allInCents = t.price_cents + feeCents;
           return {
             id: t.id,
             name: t.display_name ?? t.name,
-            price: allInCents / 100,
+            price: t.price_cents / 100,
             sub: (t as { description?: string | null }).description?.trim() || 'Inclusive of fees',
             remaining,
             tone: (effective === 'sold_out' || remaining <= 0

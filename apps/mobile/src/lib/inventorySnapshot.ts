@@ -1,4 +1,4 @@
-import type { UpcomingEvent, UpcomingTier } from '@/lib/eventDisplay';
+import type { ActiveEvent, EventTier } from '@/lib/eventDisplay';
 
 export type InventoryTierSnapshot = {
   id: string;
@@ -28,7 +28,7 @@ export type InventorySnapshot = {
   snapshot_at?: string;
 };
 
-function snapshotTierToUpcoming(tier: InventoryTierSnapshot): UpcomingTier {
+function snapshotTierToUpcoming(tier: InventoryTierSnapshot): EventTier {
   return {
     id: tier.id,
     name: tier.name,
@@ -46,13 +46,13 @@ function snapshotTierToUpcoming(tier: InventoryTierSnapshot): UpcomingTier {
 
 /** Merge a polled inventory snapshot into the current event (preserves user-specific fields). */
 export function applyInventorySnapshot(
-  current: UpcomingEvent,
+  current: ActiveEvent,
   snapshot: InventorySnapshot,
-): UpcomingEvent {
+): ActiveEvent {
   const tiers = snapshot.tiers.map(snapshotTierToUpcoming);
   return {
     ...current,
-    status: (snapshot.event.status as UpcomingEvent['status']) ?? current.status,
+    status: (snapshot.event.status as ActiveEvent['status']) ?? current.status,
     name: snapshot.event.name ?? current.name,
     edition_number: snapshot.event.edition_number ?? current.edition_number,
     capacity: snapshot.event.capacity ?? current.capacity,

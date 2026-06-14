@@ -22,7 +22,7 @@ import {
   formatVenueLine,
   NO_EVENTS_MESSAGE,
   resolveEventHeroImage,
-  type UpcomingEvent,
+  type ActiveEvent,
 } from '@/lib/eventDisplay';
 import { archiveThemePath } from '@/lib/resolveEventSlug';
 import { photoSrc } from '../data/photos';
@@ -129,7 +129,7 @@ export default function HomeScreen() {
   const [now, setNow] = useState(Date.now());
   const [calOpen, setCalOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
-  const [upcomingEvent, setUpcomingEvent] = useState<UpcomingEvent | null>(null);
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [eventLoaded, setEventLoaded] = useState(false);
   const [newsEmail, setNewsEmail] = useState('');
   const [newsSent, setNewsSent] = useState(false);
@@ -147,18 +147,18 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/events/upcoming')
+    fetch('/api/events/active')
       .then((r) => r.json())
       .then((d) => {
-        if (d.event) setUpcomingEvent(d.event);
+        if (d.event) setActiveEvent(d.event);
       })
       .catch(console.error)
       .finally(() => setEventLoaded(true));
   }, []);
 
   useEventInventory({
-    event: upcomingEvent,
-    onEventChange: setUpcomingEvent,
+    event: activeEvent,
+    onEventChange: setActiveEvent,
     enabled: eventLoaded,
     pollIntervalMs: INVENTORY_POLL_MS.home,
   });
@@ -240,22 +240,22 @@ export default function HomeScreen() {
   }, [loadTopPosts]);
 
   const inventoryBadgeLabel = eventInventoryBadgeLabel(
-    upcomingEvent ?? { status: 'upcoming' },
-    upcomingEvent?.ticket_tiers,
+    activeEvent ?? { status: 'upcoming' },
+    activeEvent?.ticket_tiers,
   );
   const inventoryBadgeTone = eventInventoryBadgeTone(
-    upcomingEvent ?? { status: 'upcoming' },
-    upcomingEvent?.ticket_tiers,
+    activeEvent ?? { status: 'upcoming' },
+    activeEvent?.ticket_tiers,
   );
-  const eventTs = upcomingEvent?.date
-    ? eventDoorsTimestamp(upcomingEvent.date, upcomingEvent.doors_open)
+  const eventTs = activeEvent?.date
+    ? eventDoorsTimestamp(activeEvent.date, activeEvent.doors_open)
     : Number.NaN;
   const countdown = countdownParts(eventTs, now);
   const { days: dd, hours: hh, minutes: mm, seconds: ss } = countdown;
 
   const { isWide, isDesktop, isMobile } = useResponsive();
 
-  const heroSrc = resolveEventHeroImage(upcomingEvent?.hero_image_url);
+  const heroSrc = resolveEventHeroImage(activeEvent?.hero_image_url);
   const sectionPad = isMobile
     ? `${spacing[5]}px 0 ${spacing[1]}px`
     : `${spacing[6]}px 0 ${spacing[2]}px`;
@@ -384,7 +384,7 @@ export default function HomeScreen() {
                 />
                 {inventoryBadgeLabel}
               </Pill>
-              <Pill tone="neutral">Theme № {upcomingEvent?.edition_number ?? '—'}</Pill>
+              <Pill tone="neutral">Theme № {activeEvent?.edition_number ?? '—'}</Pill>
             </div>
             <div
               style={{
@@ -398,8 +398,8 @@ export default function HomeScreen() {
                 textTransform: 'uppercase',
               }}
             >
-              {upcomingEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next theme')}
-              {upcomingEvent?.tagline ? (
+              {activeEvent?.name ?? (eventLoaded ? NO_EVENTS_MESSAGE : 'Next theme')}
+              {activeEvent?.tagline ? (
                 <span
                   style={{
                     display: 'block',
@@ -408,7 +408,7 @@ export default function HomeScreen() {
                     fontWeight: 500,
                   }}
                 >
-                  {upcomingEvent.tagline}
+                  {activeEvent.tagline}
                 </span>
               ) : null}
             </div>
@@ -421,8 +421,8 @@ export default function HomeScreen() {
                 letterSpacing: '0.04em',
               }}
             >
-              {upcomingEvent
-                ? `${formatEventDate(upcomingEvent.date)} · ${formatVenueLine(upcomingEvent)}`
+              {activeEvent
+                ? `${formatEventDate(activeEvent.date)} · ${formatVenueLine(activeEvent)}`
                 : eventLoaded
                   ? ''
                   : 'Loading next theme…'}
@@ -917,7 +917,7 @@ export default function HomeScreen() {
       <CalendarSheet
         open={calOpen}
         onClose={() => setCalOpen(false)}
-        event={upcomingEvent ?? undefined}
+        event={activeEvent ?? undefined}
       />
       <NotificationsSheet
         open={notifsOpen}

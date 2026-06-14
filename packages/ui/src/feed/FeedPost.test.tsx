@@ -46,4 +46,103 @@ describe('FeedPost', () => {
     const imgs = container.querySelectorAll('img');
     expect(imgs.length).toBe(4);
   });
+
+  it('shows React (N) by default instead of per-reaction chips', () => {
+    render(<FeedPost post={announcement} />);
+    expect(screen.getByText('React (52)')).toBeInTheDocument();
+    expect(screen.queryByText('52')).not.toBeInTheDocument();
+  });
+
+  it('shows React (N) when collapsed even without interactive reactions', () => {
+    const post: Post = {
+      ...announcement,
+      reactions: { heart: 1, music: 1 },
+    };
+    render(<FeedPost post={post} />);
+
+    expect(screen.getByText('React (2)')).toBeInTheDocument();
+  });
+
+  it('opens the reaction picker directly when React (N) is clicked', () => {
+    const post: Post = {
+      ...announcement,
+      reactions: { heart: 2, pray: 1 },
+      myReaction: 'heart',
+    };
+    render(<FeedPost post={post} interactiveReactions onReact={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'React (3)' })).toBeInTheDocument();
+    expect(screen.queryByTitle(/React with/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'React (3)' }));
+
+    expect(screen.getByRole('button', { name: 'React (3)' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTitle('Remove your reaction')).toBeInTheDocument();
+    expect(screen.getByTitle('React with 🙏')).toBeInTheDocument();
+  });
+
+  it('toggles the reaction picker closed when React (N) is clicked again', () => {
+    const post: Post = {
+      ...announcement,
+      reactions: { heart: 2, pray: 1 },
+      myReaction: 'heart',
+    };
+    render(<FeedPost post={post} interactiveReactions onReact={vi.fn()} />);
+
+    const reactButton = screen.getByRole('button', { name: 'React (3)' });
+    fireEvent.click(reactButton);
+    expect(screen.getByTitle('Remove your reaction')).toBeInTheDocument();
+
+    fireEvent.click(reactButton);
+    expect(screen.queryByTitle(/React with/)).not.toBeInTheDocument();
+    expect(reactButton).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('updates the React (N) count when reactions change', () => {
+    const post: Post = {
+      ...announcement,
+      reactions: { heart: 2, pray: 1 },
+      myReaction: 'heart',
+    };
+    const { rerender } = render(
+      <FeedPost post={post} interactiveReactions onReact={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'React (3)' }));
+
+    rerender(
+      <FeedPost
+        post={{ ...post, reactions: { heart: 2, pray: 1, fire: 1 } }}
+        interactiveReactions
+        onReact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('React (4)')).toBeInTheDocument();
+  });
+
+  it('resets to collapsed React (N) when the post changes', () => {
+    const postA: Post = {
+      ...announcement,
+      id: 'post-a',
+      reactions: { heart: 2, pray: 1 },
+    };
+    const postB: Post = {
+      ...announcement,
+      id: 'post-b',
+      reactions: { fire: 1 },
+    };
+
+    const { rerender } = render(
+      <FeedPost post={postA} interactiveReactions onReact={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'React (3)' }));
+    expect(screen.getByTitle('React with 🔥')).toBeInTheDocument();
+
+    rerender(<FeedPost post={postB} interactiveReactions onReact={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'React (1)' })).toBeInTheDocument();
+    expect(screen.queryByTitle(/React with/)).not.toBeInTheDocument();
+  });
 });

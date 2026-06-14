@@ -4,7 +4,14 @@ const LANDING_PATH = '/landing';
 
 /** Routes that stay reachable while the site is locked to the landing page. */
 export function isLandingOnlyRoute(pathname: string): boolean {
-  return pathname === LANDING_PATH || pathname.startsWith(`${LANDING_PATH}/`);
+  const exempt = [
+    LANDING_PATH,
+    '/sign-in',
+    '/onboarding',
+    '/auth/callback',
+    '/auth/callback/client',
+  ];
+  return exempt.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /** Next.js internals, APIs, and static assets — never redirect these. */

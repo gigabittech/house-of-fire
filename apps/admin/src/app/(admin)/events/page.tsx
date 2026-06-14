@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { EventFormModal, parseFaqsFromJson } from '@/components/EventFormModal';
 import { PaneHeader } from '@/components/PaneHeader';
 import type { EventFormPayload, EventStatus } from '@/lib/eventPayload';
@@ -24,6 +24,21 @@ const STATUS_OPTIONS: Array<{ value: EventStatus; label: string }> = [
   { value: 'past', label: 'Past' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
+
+/** minmax(0, …) keeps columns from overflowing into neighbors on narrow viewports */
+const EVENTS_TABLE_GRID =
+  '60px minmax(0, 2fr) minmax(72px, 1fr) minmax(100px, 1.1fr) minmax(96px, 1.2fr) minmax(72px, 1fr) 48px';
+
+const eventsTableGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: EVENTS_TABLE_GRID,
+  gap: 12,
+  alignItems: 'center',
+};
+
+function cellShrink(): CSSProperties {
+  return { minWidth: 0 };
+}
 
 function eventToForm(ev: {
   edition_number: number;
@@ -342,7 +357,10 @@ export default function EventsPage() {
       />
 
       {/* Filter tabs */}
-      <div style={{ padding: '16px 28px 0', display: 'flex', gap: 4 }}>
+      <div
+        className="hof-admin-pad-section"
+        style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingBottom: 12 }}
+      >
         {FILTERS.map(([k, l]) => (
           <button
             key={k}
@@ -381,7 +399,7 @@ export default function EventsPage() {
         </div>
       )}
 
-      <div style={{ padding: '14px 28px 28px' }}>
+      <div className="hof-admin-pad-section-bottom">
         <div
           style={{
             background: 'var(--hof-surface)',
@@ -390,10 +408,11 @@ export default function EventsPage() {
             overflow: 'hidden',
           }}
         >
+          <div className="hof-admin-table-scroll">
+          <div className="hof-admin-data-table hof-admin-data-table--lg">
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
+              ...eventsTableGridStyle,
               padding: '12px 18px',
               borderBottom: '1px solid var(--hof-border)',
               fontFamily: 'Inter, system-ui',
@@ -403,7 +422,7 @@ export default function EventsPage() {
               textTransform: 'uppercase',
             }}
           >
-            <div>Ed</div>
+            <div>Theme</div>
             <div>Name</div>
             <div>Date</div>
             <div>Status</div>
@@ -450,10 +469,8 @@ export default function EventsPage() {
                   }
                 }}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '60px 2fr 1fr 1.1fr 1.2fr 1fr 80px',
+                  ...eventsTableGridStyle,
                   padding: '14px 18px',
-                  alignItems: 'center',
                   borderBottom: i < filtered.length - 1 ? '1px solid var(--hof-border)' : 'none',
                   fontFamily: 'Inter, system-ui',
                   fontSize: 13,
@@ -464,6 +481,7 @@ export default function EventsPage() {
               >
                 <div
                   style={{
+                    ...cellShrink(),
                     fontFamily: 'Clash Display, system-ui',
                     fontWeight: 600,
                     fontSize: 18,
@@ -473,9 +491,21 @@ export default function EventsPage() {
                 >
                   {e.ed}
                 </div>
-                <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 500 }}>{e.name}</div>
                 <div
                   style={{
+                    ...cellShrink(),
+                    fontFamily: 'Inter, system-ui',
+                    fontWeight: 500,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {e.name}
+                </div>
+                <div
+                  style={{
+                    ...cellShrink(),
                     color: 'var(--hof-text-sec)',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: 12,
@@ -484,6 +514,7 @@ export default function EventsPage() {
                   {e.date}
                 </div>
                 <div
+                  style={cellShrink()}
                   onClick={(ev) => ev.stopPropagation()}
                   onKeyDown={(ev) => ev.stopPropagation()}
                 >
@@ -495,7 +526,7 @@ export default function EventsPage() {
                     }}
                     style={{
                       width: '100%',
-                      maxWidth: 132,
+                      maxWidth: '100%',
                       height: 30,
                       padding: '0 8px',
                       borderRadius: 6,
@@ -512,6 +543,7 @@ export default function EventsPage() {
                             : 'var(--hof-text)',
                       cursor: statusUpdating === e.id ? 'wait' : 'pointer',
                       opacity: statusUpdating === e.id ? 0.6 : 1,
+                      boxSizing: 'border-box',
                     }}
                   >
                     {STATUS_OPTIONS.map((opt) => (
@@ -527,7 +559,7 @@ export default function EventsPage() {
                     ))}
                   </select>
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div style={cellShrink()}>
                   <div
                     style={{
                       fontFamily: 'JetBrains Mono, monospace',
@@ -559,6 +591,7 @@ export default function EventsPage() {
                 </div>
                 <div
                   style={{
+                    ...cellShrink(),
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: 13,
                     color: 'var(--hof-text)',
@@ -567,7 +600,7 @@ export default function EventsPage() {
                 >
                   {e.gross}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ ...cellShrink(), display: 'flex', justifyContent: 'flex-end' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
                       stroke="var(--hof-text-sec)"
@@ -580,6 +613,8 @@ export default function EventsPage() {
                 </div>
               </div>
             ))}
+          </div>
+          </div>
         </div>
       </div>
 

@@ -4,7 +4,6 @@ import { LandingExperienceView } from '@/components/landing/LandingExperienceVie
 import { LandingUpcomingView } from '@/components/landing/LandingUpcomingView';
 
 export interface LandingScreenProps {
-  /** When true, render the full marketing landing; otherwise show the Upcoming placeholder. */
   hasLiveEvent: boolean;
 }
 

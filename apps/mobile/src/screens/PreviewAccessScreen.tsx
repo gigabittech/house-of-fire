@@ -1,7 +1,6 @@
 'use client';
 
 import { HofButton } from '@hof/ui';
-import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import {
   AuthErrorBanner,
@@ -13,7 +12,6 @@ import {
 import { AuthScreenShell } from '@/components/auth/AuthScreenShell';
 
 export default function PreviewAccessScreen() {
-  const router = useRouter();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,14 +29,13 @@ export default function PreviewAccessScreen() {
 
     setLoading(false);
 
+    const data = (await res.json()) as { error?: string; redirectTo?: '/landing' };
     if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
       setError(data.error ?? 'Incorrect password. Please try again.');
       return;
     }
 
-    router.push('/landing');
-    router.refresh();
+    window.location.assign(data.redirectTo ?? '/landing');
   }
 
   return (

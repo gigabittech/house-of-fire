@@ -200,7 +200,7 @@ export default function CodesPage() {
         }
       />
 
-      <div style={{ padding: '20px 28px 28px' }}>
+      <div className="hof-admin-inline-pad" style={{ paddingBottom: showForm ? undefined : 0 }}>
         {/* New code form */}
         {showForm && (
           <div
@@ -225,9 +225,7 @@ export default function CodesPage() {
               New promo code
             </div>
 
-            <div
-              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}
-            >
+            <div className="hof-admin-form-two-col" style={{ marginBottom: 14 }}>
               {/* Code */}
               <div>
                 <div
@@ -437,7 +435,9 @@ export default function CodesPage() {
             </div>
           </div>
         )}
+      </div>
 
+      <div className="hof-admin-pad-section-bottom" style={{ paddingTop: 0 }}>
         {/* Codes table */}
         <div
           style={{
@@ -447,6 +447,8 @@ export default function CodesPage() {
             overflow: 'hidden',
           }}
         >
+          <div className="hof-admin-table-scroll">
+          <div className="hof-admin-data-table hof-admin-data-table--xl">
           <div
             style={{
               display: 'grid',
@@ -605,6 +607,8 @@ export default function CodesPage() {
               </div>
             </div>
           ))}
+          </div>
+          </div>
         </div>
 
         {selected && (
@@ -629,7 +633,7 @@ export default function CodesPage() {
             >
               {selected.code} — usage & revenue
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+            <div className="hof-admin-kpi-grid">
               {(
                 [
                   ['Total uses', String(selected.analytics?.totalUses ?? selected.uses)],
@@ -697,7 +701,7 @@ export default function CodesPage() {
             Comp-ticket pool
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div className="hof-admin-three-col">
             {compPools.map(([label, value, sub]) => (
               <div key={label}>
                 <div
